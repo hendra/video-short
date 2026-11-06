@@ -7,7 +7,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { type Alignment, type TimedWord, loadDotenv, publicDir, readScript, requireEnv, videoDir, videoIdArg } from "./lib";
+import { type Alignment, type TimedWord, loadDotenv, publicDir, readScript, requireEnv, videoDir, videoIdArg } from "./lib.mts";
 
 loadDotenv();
 const id = videoIdArg();

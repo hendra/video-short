@@ -56,7 +56,7 @@ src/
       state.ts            # cerita sebagai fungsi waktu: level air, pintu, pompa…
       world.ts            # dunia 3D (dibuat sekali, diupdate tiap frame)
       shots.ts            # judul, kamera, callout, chip per shot
-scripts/                  # tts.ts, align.ts, build-timeline.ts, music.ts
+scripts/                  # tts.mts, align.mts, align-local.mts, build-timeline.mts, music.mts
 public/fonts              # Inter + DejaVu Sans Mono (OFL / Bitstream Vera), dibundel supaya render identik offline
 ```
 
@@ -85,5 +85,5 @@ public/fonts              # Inter + DejaVu Sans Mono (OFL / Bitstream Vera), dib
 ## Catatan
 
 - **YouTube:** suara AI → centang *Altered or synthetic content* saat upload.
-- **Lisensi:** kode template MIT (lihat `LICENSE.md`). **Remotion** gratis untuk individu, tapi perusahaan tertentu wajib lisensi berbayar: [remotion.dev/license](https://www.remotion.dev/license). Font: OFL (Inter) dan Bitstream Vera (DejaVu), lisensi ada di `public/fonts`. Musik di-synthesize dari nol oleh `scripts/music.ts`, jadi bebas royalti.
+- **Lisensi:** kode template MIT (lihat `LICENSE.md`). **Remotion** gratis untuk individu, tapi perusahaan tertentu wajib lisensi berbayar: [remotion.dev/license](https://www.remotion.dev/license). Font: OFL (Inter) dan Bitstream Vera (DejaVu), lisensi ada di `public/fonts`. Musik di-synthesize dari nol oleh `scripts/music.mts`, jadi bebas royalti.
 - Fakta di contoh rumah pompa bersumber dari Suara Surabaya (6 Nov 2026), CNN Indonesia, dan Antara Jatim. Diorama peta bersifat ilustrasi.
