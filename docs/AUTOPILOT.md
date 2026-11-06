@@ -12,6 +12,7 @@ Dibaca oleh scheduled task (Sen/Rab/Jum). Ikuti persis. Bahasa konten: Indonesia
 | Cloudinary | cloud `opqimovw`, folder `shorts/YYYY-MM-DD/<slug>` (resource type **video**) |
 | ElevenLabs | suara **Den – Expressive, Clear, Smooth** `HmwgE8AfbDbaZpgAi4Bn`, model **`eleven_flash_v2_5`**, 1 take |
 | Brand overlay | `{ prefix: "Kali Aja ", accent: "Tau" }` |
+| Laporan | Slack **#social** `C0CDV7Y555K` (`slack_send_message`) |
 | Contoh referensi | `src/videos/terowongan-mrt` (terbaru, paling lengkap) dan `src/videos/rumah-pompa` |
 
 `ELEVENLABS_API_KEY` diberikan oleh prompt scheduled task sebagai env var. **Jangan pernah** mencetak, meng-commit, atau menyertakannya di pesan/memory/Project. Tulis ke `.env` (sudah di-.gitignore) dengan `umask 077`.
@@ -31,7 +32,7 @@ Render di workspace: `--browser-executable=/usr/bin/google-chrome --gl=swangle` 
 
 ## 2. Gerbang kredit (wajib, dua kali)
 
-1. Awal run: `npm run credits -- --need 800`. Exit code 2 → **berhenti**, jangan riset/render. Kirim laporan: "dilewati, kredit ElevenLabs tidak cukup (sisa X, reset tanggal Y)".
+1. Awal run: `npm run credits -- --need 800`. Exit code 2 → **berhenti**, jangan riset/render. Kirim laporan ke Slack #social (§10): "dilewati, kredit ElevenLabs tidak cukup (sisa X, reset tanggal Y)".
 2. Setelah naskah final: `npm run credits -- --video <slug>` (harga persis naskah). Exit 2 → berhenti & laporkan.
 
 Kuota Free 10k/bulan; flash = 0,5 kredit/karakter; naskah ±1.100–1.400 karakter ≈ 550–700 kredit.
@@ -68,6 +69,7 @@ Standar kualitas (pelajaran dari video sebelumnya):
 - Frame **potret**: FOV 44, objek utama mengisi ≥ 50% lebar; diorama yang memanjang diputar agar memanjang ke arah kamera.
 - 1 shot ≈ 1–2 baris naskah (8–12 shot). Setiap shot punya gerak nyata (bukan still).
 - Callout menunjuk objek 3D (anchor), maks 3 per shot, varian `orange` untuk fokus, `red` untuk bahaya.
+- **Tidak boleh ada teks bertumpuk.** `Overlays.tsx` otomatis: label dijauhkan satu sama lain (jarak ≥ 16 px), tetap di bawah header/chip/CTA dan di atas zona caption (y < 1242); anchor di luar zona dipin ke tepi tanpa titik; label yang tetap tak muat disembunyikan. Jadi rancang anchor agar berada **di dalam zona** (antara bawah header dan y ≈ 1240) — kalau tidak, label bisa hilang atau garisnya menunjuk ke tepi. Caption: satu potongan (≤ 5 kata) per saat, tidak pernah dua sekaligus.
 - Partikel kecil (r ≤ 0,05) di close-up; sembunyikan yang menghalangi kamera.
 - Diorama skematis (peta, jalur) diberi `tag: "ILUSTRASI"`.
 - Shot terakhir: aerial/orbit hangat + CTA.
@@ -79,7 +81,7 @@ npx tsc && npx tsc -p scripts && npx eslint src
 npx remotion bundle --out-dir /tmp/rbundle
 npx remotion still /tmp/rbundle <slug> /tmp/s_<f>.jpg --frame=<f> --browser-executable=/usr/bin/google-chrome --gl=swangle --image-format=jpeg
 ```
-Render 1 still per shot di momen terpadat, gabung jadi contact sheet, **lihat dengan Read**: teks terbaca, tidak terpotong/bertabrakan dengan header/caption, objek utama jelas. Perbaiki maks 3 iterasi.
+Render 1 still per shot di momen terpadat, gabung jadi contact sheet, **lihat dengan Read**: teks terbaca, **tidak ada label/caption/header yang saling menimpa**, tidak ada label yang hilang karena anchor di luar zona, objek utama jelas. Perbaiki maks 3 iterasi.
 
 ## 8. Render + finishing
 
@@ -93,9 +95,9 @@ Cek: durasi ≈ `timeline.dur`, 1080×1920, ada audio, loudness ≈ −14 LUFS, 
 
 1. Cloudinary: `sign-upload` `{public_id: "shorts/YYYY-MM-DD/<slug>"}` → POST ke `/video/upload` dengan semua `upload_params`; pastikan `bytes` = ukuran file.
 2. Buffer YouTube (`mode: shareNow`, `schedulingType: automatic`):
-   - `metadata.youtube`: `title` ≤ 100 karakter **diakhiri `| suara: elevenlabs.io`** (wajib, paket Free), `categoryId: "27"`, `privacy: "public"`, `madeForKids: false`, `isAiGenerated: true`, `notifySubscribers: true`.
-   - `text` = deskripsi: ringkasan 2–3 kalimat, CTA, `Sumber: …`, "Animasi bersifat ilustrasi. Suara: elevenlabs.io", hashtag (`#shorts` + 5–6 topik).
-3. Buffer TikTok: `text` caption (hook + CTA + sumber + `Suara: elevenlabs.io` + hashtag), `metadata.tiktok`: `{isAiGenerated: true, title: "<hook singkat> | suara: elevenlabs.io"}`.
+   - `metadata.youtube`: `title` ≤ 100 karakter **diakhiri ` | 11.ai`** (atribusi wajib paket Free ElevenLabs; "11.ai" adalah bentuk resmi yang diterima), `categoryId: "27"`, `privacy: "public"`, `madeForKids: false`, `isAiGenerated: true`, `notifySubscribers: true`.
+   - `text` = deskripsi: ringkasan 2–3 kalimat, CTA, `Sumber: …`, "Animasi bersifat ilustrasi. Suara: 11.ai", hashtag (`#shorts` + 5–6 topik).
+3. Buffer TikTok: `text` caption (hook + CTA + sumber + `Suara: 11.ai` + hashtag), `metadata.tiktok`: `{isAiGenerated: true, title: "<hook singkat> | 11.ai"}`.
 4. `get_post` sampai `sent` (TikTok bisa beberapa menit). `error` → laporkan.
 
 Jika ada keraguan kualitas/fakta tapi video lengkap → `saveToDraft: true` dan laporkan; jika tidak lengkap → jangan posting.
@@ -104,4 +106,4 @@ Jika ada keraguan kualitas/fakta tapi video lengkap → `saveToDraft: true` dan 
 
 - Tambah baris di `docs/ledger.md`.
 - Commit (`src/videos/<slug>/*`, `public/<slug>/vo.mp3`, registry, ledger; bukan `out/` atau `music.wav`) dan push ke `main`.
-- `SendUserMessage`: judul, link YouTube & TikTok, sumber, kredit terpakai/sisa (`npm run credits`).
+- Laporan ke Slack **#social** (`slack_send_message`, channel `C0CDV7Y555K`) untuk **setiap** hasil run — sukses, dilewati (kredit), draft (ragu), atau gagal (langkah + error singkat). Isi sukses: judul, link YouTube & TikTok, sumber, kredit terpakai/sisa (`npm run credits`). Jangan pernah menyertakan API key. Jika Slack gagal, pakai `SendUserMessage` sebagai cadangan.

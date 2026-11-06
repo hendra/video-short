@@ -10,8 +10,6 @@ const CREAM = "#f4f1ea";
 const GREEN = "#1f9e6e";
 const MINT = "#7fe3c4";
 
-// Safe area for vertical Shorts/Reels: keep labels between the header and the captions.
-const SAFE = { left: 170, right: 910, top: 470, bottom: 1210 };
 
 /** "Pintu air *ditutup*\nbaris dua" -> spans with highlighted words. */
 const Title: React.FC<{ text: string }> = ({ text }) => (
@@ -46,6 +44,10 @@ const Header: React.FC<{ shot: ShotDef; local: number; titleLines: number }> = (
 
 /** Header height in px (top of the chip / CTA goes below it). */
 const headerBottom = (title: string) => 178 + 40 + 69 * title.split("\n").length + 22;
+const CHIP_H = 40 + 86; // key tab + value block
+const CTA_H = 84;
+/** Top of the free zone for callout labels: below the header and whatever sits under it. */
+const labelTop = (title: string, under: "chip" | "cta" | null) => headerBottom(title) + (under === "chip" ? CHIP_H : under === "cta" ? CTA_H + 4 : 0) + 24;
 
 const Chip: React.FC<{ shot: ShotDef; t: number }> = ({ shot, t }) => {
   const c = shot.chip?.(t);
@@ -64,42 +66,113 @@ const Chip: React.FC<{ shot: ShotDef; t: number }> = ({ shot, t }) => {
   );
 };
 
-const Callouts: React.FC<{ shot: ShotDef; t: number; pose: CamPose; fov: number }> = ({ shot, t, pose, fov }) => {
+/* ---------- callout layout: no label may overlap another label, the header/chip/CTA or the captions ---------- */
+
+const LABEL_FONT = `700 32px ${FONT.ui}`;
+const LABEL_PAD_X = 20 + 3; // padding + border
+const LABEL_H = 32 * 1.25 + 2 * 10 + 6; // line + padding + border
+const GAP = 16; // minimum gap between label boxes
+const EDGE = 36; // keep labels this far from the frame edge
+const CAPTION_TOP = 1270;
+const CAPTION_CLEAR = CAPTION_TOP - 28; // labels, leader lines and dots stay above this
+
+let measureCtx: CanvasRenderingContext2D | null = null;
+const textWidth = (text: string) => {
+  if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return text.length * 17;
+  measureCtx.font = LABEL_FONT;
+  return measureCtx.measureText(text).width;
+};
+
+type Placed = { ax: number; ay: number; x: number; y: number; w: number; h: number; e: number; idx: number; edge: boolean };
+
+/**
+ * Deterministic overlap removal (pure function of the inputs -> stable across frames/renders).
+ * 1. clamp each label inside [EDGE..1080-EDGE] x [top..CAPTION_CLEAR]
+ * 2. relax pairwise overlaps, mostly vertically (labels sit beside 3D objects), sideways when stuck on a bound
+ */
+export const layoutLabels = (items: Placed[], top: number): Placed[] => {
+  const bx = (p: Placed) => [EDGE + p.w / 2, 1080 - EDGE - p.w / 2] as const;
+  const by = (p: Placed) => [top + p.h / 2, CAPTION_CLEAR - p.h / 2] as const;
+  const fit = (p: Placed) => {
+    const [x0, x1] = bx(p);
+    const [y0, y1] = by(p);
+    p.x = clamp(p.x, x0, x1);
+    p.y = clamp(p.y, y0, y1);
+  };
+  items.forEach(fit);
+  for (let it = 0; it < 60; it++) {
+    let moved = false;
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        const a = items[i];
+        const b = items[j];
+        const ox = (a.w + b.w) / 2 + GAP - Math.abs(a.x - b.x);
+        const oy = (a.h + b.h) / 2 + GAP - Math.abs(a.y - b.y);
+        if (ox <= 0 || oy <= 0) continue;
+        moved = true;
+        // push along the axis that needs the smaller move; prefer vertical
+        if (oy <= ox * 1.5) {
+          const s = a.y < b.y || (a.y === b.y && i < j) ? -1 : 1;
+          a.y += (s * oy) / 2 + s * 0.5;
+          b.y -= (s * oy) / 2 + s * 0.5;
+        } else {
+          const s = a.x < b.x || (a.x === b.x && i < j) ? -1 : 1;
+          a.x += (s * ox) / 2 + s * 0.5;
+          b.x -= (s * ox) / 2 + s * 0.5;
+        }
+        fit(a);
+        fit(b);
+      }
+    }
+    if (!moved) break;
+  }
+  return items;
+};
+
+const overlaps = (a: Placed, b: Placed) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 + 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2 + 2;
+
+const Callouts: React.FC<{ shot: ShotDef; t: number; pose: CamPose; fov: number; top: number }> = ({ shot, t, pose, fov, top }) => {
   const project = makeProjector(pose, fov, 1080, 1920);
-  const items = (shot.callouts ?? []).filter((c) => t >= c.at && (c.until === undefined || t <= c.until));
+  const defs = (shot.callouts ?? []).filter((c) => t >= c.at && (c.until === undefined || t <= c.until));
+  const raw: Placed[] = [];
+  defs.forEach((c, idx) => {
+    const a = project(c.anchor(t));
+    if (a.behind) return;
+    // anchor outside the visible zone (off-frame, under the header, behind the captions): pin it to the zone edge,
+    // draw the leader line towards it without the dot -> nothing is ever drawn over the header or the captions
+    const ax = clamp(a.x, 12, 1068);
+    const ay = clamp(a.y, top - 40, CAPTION_CLEAR);
+    const edge = ax !== a.x || ay !== a.y;
+    const e = clamp((t - c.at) / 0.3);
+    raw.push({ ax, ay, x: a.x + c.dx, y: a.y + c.dy * e, w: textWidth(c.text) + 2 * LABEL_PAD_X, h: LABEL_H, e, idx, edge });
+  });
+  // layout with entry scale ignored (full size) so boxes never collide mid-animation
+  const placed = layoutLabels(raw, top);
+  // last resort: if a label is still overlapping an earlier one (too many for the space), hide it
+  const shown = placed.filter((p, k) => !placed.slice(0, k).some((q) => overlaps(p, q)));
   return (
     <>
       <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
-        {items.map((c, i) => {
-          const a = project(c.anchor(t));
-          if (a.behind) return null;
-          const e = clamp((t - c.at) / 0.3);
-          const lx = clamp(a.x + c.dx, SAFE.left, SAFE.right);
-          const ly = clamp(a.y + c.dy * e, SAFE.top, SAFE.bottom);
-          return (
-            <g key={i} opacity={e}>
-              <line x1={a.x} y1={a.y} x2={lx} y2={ly} stroke={INK} strokeWidth={3} />
-              <circle cx={a.x} cy={a.y} r={9} fill="#fff" stroke={INK} strokeWidth={3} />
-            </g>
-          );
-        })}
+        {shown.map((p) => (
+          <g key={p.idx} opacity={p.e}>
+            <line x1={p.ax} y1={p.ay} x2={p.x} y2={p.y} stroke={INK} strokeWidth={3} />
+            {p.edge ? null : <circle cx={p.ax} cy={p.ay} r={9} fill="#fff" stroke={INK} strokeWidth={3} />}
+          </g>
+        ))}
       </svg>
-      {items.map((c, i) => {
-        const a = project(c.anchor(t));
-        if (a.behind) return null;
-        const e = clamp((t - c.at) / 0.3);
-        const lx = clamp(a.x + c.dx, SAFE.left, SAFE.right);
-        const ly = clamp(a.y + c.dy * e, SAFE.top, SAFE.bottom);
+      {shown.map((p) => {
+        const c = defs[p.idx];
         const bg = c.variant === "orange" ? "#e8622c" : c.variant === "red" ? "#c8352b" : "#fff";
         return (
           <div
-            key={i}
+            key={p.idx}
             style={{
-              position: "absolute", left: lx, top: ly, opacity: e,
-              transform: `translate(-50%,-50%) scale(${0.7 + 0.3 * e})`,
+              position: "absolute", left: p.x, top: p.y, opacity: p.e,
+              transform: `translate(-50%,-50%) scale(${0.7 + 0.3 * p.e})`,
               padding: "10px 20px", borderRadius: 14, background: bg,
               border: `3px solid ${c.variant ? bg : INK}`, color: c.variant ? "#fff" : INK,
-              font: `700 32px ${FONT.ui}`, whiteSpace: "nowrap",
+              font: LABEL_FONT, lineHeight: 1.25, whiteSpace: "nowrap",
             }}
           >
             {c.text}
@@ -120,7 +193,7 @@ const Captions: React.FC<{ tl: Timeline; t: number }> = ({ tl, t }) => {
   if (i < 0) return null;
   const ch = tl.chunks[i];
   return (
-    <div style={{ position: "absolute", left: 90, right: 90, top: 1270, textAlign: "center" }}>
+    <div style={{ position: "absolute", left: 90, right: 90, top: CAPTION_TOP, textAlign: "center" }}>
       <span style={{ display: "inline", padding: "6px 14px", lineHeight: 1.5, background: "rgba(24,30,34,.88)", borderRadius: 12, WebkitBoxDecorationBreak: "clone", boxDecorationBreak: "clone", font: `800 60px ${FONT.ui}`, color: "#fff" }}>
         {ch.words.map((w, k) => {
           const on = t >= w.s && t < w.e + 0.02;
@@ -146,11 +219,11 @@ export const Overlays: React.FC<{
   const tl = video.timeline;
   const cuts = tl.shots.filter((s) => s.s > 0).map((s) => s.s);
   const flash = Math.max(0, ...cuts.map((c) => 1 - Math.abs(t - c) / 0.16));
-  const ctaOn = video.cta && t > tl.lines[video.cta.fromLine - 1].s - 0.1;
+  const ctaOn = Boolean(video.cta && t > tl.lines[video.cta.fromLine - 1].s - 0.1);
   return (
     <AbsoluteFill>
       <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 460, background: `linear-gradient(${CREAM} 0%, rgba(244,241,234,.95) 58%, rgba(244,241,234,0) 100%)` }} />
-      <Callouts shot={shot} t={t} pose={pose} fov={video.fov} />
+      <Callouts shot={shot} t={t} pose={pose} fov={video.fov} top={labelTop(shot.title, ctaOn ? "cta" : shot.chip?.(t) ? "chip" : null)} />
       <Header shot={shot} local={t - shotStart} titleLines={shot.title.split("\n").length} />
       <div style={{ position: "absolute", right: 60, top: 178, padding: "10px 18px", borderRadius: 12, background: INK, color: "#fff", font: `700 26px ${FONT.ui}` }}>
         {video.brand.prefix}
