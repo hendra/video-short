@@ -11,6 +11,7 @@
     "align:local": "tsx scripts/align-local.mts",
     "timeline": "tsx scripts/build-timeline.mts",
     "music": "tsx scripts/music.mts",
+    "credits": "tsx scripts/credits.mts",
     "render": "remotion render",
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
