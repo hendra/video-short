@@ -13,7 +13,7 @@ loadDotenv();
 const id = videoIdArg();
 const apiKey = requireEnv("ELEVENLABS_API_KEY");
 const voiceId = requireEnv("ELEVENLABS_VOICE_ID");
-const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
+const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_flash_v2_5";
 
 const lines = readScript(id);
 // Blank line between script lines -> natural pause; offsets stay exact because we build the text ourselves.
