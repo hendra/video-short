@@ -1,0 +1,940 @@
+{
+ "source": "estimated",
+ "words": [
+  {
+   "text": "Surabaya",
+   "start": 0.0,
+   "end": 0.577
+  },
+  {
+   "text": "lagi",
+   "start": 0.577,
+   "end": 0.885
+  },
+  {
+   "text": "ngebut",
+   "start": 0.885,
+   "end": 1.194
+  },
+  {
+   "text": "bikin",
+   "start": 1.194,
+   "end": 1.763
+  },
+  {
+   "text": "sepuluh",
+   "start": 1.764,
+   "end": 2.351
+  },
+  {
+   "text": "rumah",
+   "start": 2.351,
+   "end": 2.66
+  },
+  {
+   "text": "pompa",
+   "start": 2.66,
+   "end": 2.968
+  },
+  {
+   "text": "baru,",
+   "start": 2.968,
+   "end": 3.539
+  },
+  {
+   "text": "sebelum",
+   "start": 3.539,
+   "end": 3.981
+  },
+  {
+   "text": "puncak",
+   "start": 3.981,
+   "end": 4.29
+  },
+  {
+   "text": "musim",
+   "start": 4.29,
+   "end": 4.598
+  },
+  {
+   "text": "hujan.",
+   "start": 4.599,
+   "end": 4.907
+  },
+  {
+   "text": "Satu",
+   "start": 5.221,
+   "end": 5.577
+  },
+  {
+   "text": "di",
+   "start": 5.577,
+   "end": 5.778
+  },
+  {
+   "text": "antaranya",
+   "start": 5.778,
+   "end": 6.444
+  },
+  {
+   "text": "dirancang",
+   "start": 6.444,
+   "end": 6.955
+  },
+  {
+   "text": "ngangkat",
+   "start": 6.955,
+   "end": 7.46
+  },
+  {
+   "text": "dua",
+   "start": 7.46,
+   "end": 7.661
+  },
+  {
+   "text": "puluh",
+   "start": 7.661,
+   "end": 8.017
+  },
+  {
+   "text": "tiga",
+   "start": 8.017,
+   "end": 8.373
+  },
+  {
+   "text": "ribu",
+   "start": 8.374,
+   "end": 8.73
+  },
+  {
+   "text": "liter",
+   "start": 8.73,
+   "end": 9.086
+  },
+  {
+   "text": "air...",
+   "start": 9.086,
+   "end": 9.655
+  },
+  {
+   "text": "setiap",
+   "start": 9.655,
+   "end": 10.195
+  },
+  {
+   "text": "detik.",
+   "start": 10.195,
+   "end": 10.551
+  },
+  {
+   "text": "Tapi",
+   "start": 11.108,
+   "end": 11.413
+  },
+  {
+   "text": "tunggu.",
+   "start": 11.413,
+   "end": 12.158
+  },
+  {
+   "text": "Kenapa",
+   "start": 12.158,
+   "end": 12.596
+  },
+  {
+   "text": "air",
+   "start": 12.596,
+   "end": 12.768
+  },
+  {
+   "text": "banjir",
+   "start": 12.768,
+   "end": 13.073
+  },
+  {
+   "text": "harus",
+   "start": 13.074,
+   "end": 13.379
+  },
+  {
+   "text": "dipompa?",
+   "start": 13.379,
+   "end": 13.817
+  },
+  {
+   "text": "Bukannya",
+   "start": 13.817,
+   "end": 14.603
+  },
+  {
+   "text": "tinggal",
+   "start": 14.603,
+   "end": 14.908
+  },
+  {
+   "text": "dialirin",
+   "start": 14.908,
+   "end": 15.346
+  },
+  {
+   "text": "ke",
+   "start": 15.346,
+   "end": 15.519
+  },
+  {
+   "text": "sungai?",
+   "start": 15.519,
+   "end": 15.824
+  },
+  {
+   "text": "Masalahnya,",
+   "start": 16.219,
+   "end": 16.883
+  },
+  {
+   "text": "pas",
+   "start": 16.883,
+   "end": 17.215
+  },
+  {
+   "text": "hujan",
+   "start": 17.215,
+   "end": 17.57
+  },
+  {
+   "text": "deras,",
+   "start": 17.57,
+   "end": 17.925
+  },
+  {
+   "text": "sungainya",
+   "start": 17.925,
+   "end": 18.579
+  },
+  {
+   "text": "ikut",
+   "start": 18.579,
+   "end": 18.934
+  },
+  {
+   "text": "penuh.",
+   "start": 18.934,
+   "end": 19.289
+  },
+  {
+   "text": "Permukaan",
+   "start": 19.565,
+   "end": 20.015
+  },
+  {
+   "text": "sungai",
+   "start": 20.015,
+   "end": 20.329
+  },
+  {
+   "text": "bisa",
+   "start": 20.329,
+   "end": 20.642
+  },
+  {
+   "text": "lebih",
+   "start": 20.642,
+   "end": 20.956
+  },
+  {
+   "text": "tinggi",
+   "start": 20.956,
+   "end": 21.269
+  },
+  {
+   "text": "dari",
+   "start": 21.27,
+   "end": 21.583
+  },
+  {
+   "text": "saluran",
+   "start": 21.583,
+   "end": 22.033
+  },
+  {
+   "text": "di",
+   "start": 22.033,
+   "end": 22.21
+  },
+  {
+   "text": "kampung.",
+   "start": 22.21,
+   "end": 22.524
+  },
+  {
+   "text": "Kalau",
+   "start": 22.748,
+   "end": 23.092
+  },
+  {
+   "text": "dibiarin,",
+   "start": 23.093,
+   "end": 23.587
+  },
+  {
+   "text": "airnya",
+   "start": 23.587,
+   "end": 24.058
+  },
+  {
+   "text": "malah",
+   "start": 24.058,
+   "end": 24.402
+  },
+  {
+   "text": "balik",
+   "start": 24.403,
+   "end": 24.747
+  },
+  {
+   "text": "masuk",
+   "start": 24.747,
+   "end": 25.091
+  },
+  {
+   "text": "ke",
+   "start": 25.091,
+   "end": 25.286
+  },
+  {
+   "text": "permukiman.",
+   "start": 25.286,
+   "end": 25.93
+  },
+  {
+   "text": "Di",
+   "start": 26.268,
+   "end": 26.461
+  },
+  {
+   "text": "sinilah",
+   "start": 26.461,
+   "end": 26.952
+  },
+  {
+   "text": "rumah",
+   "start": 26.952,
+   "end": 27.294
+  },
+  {
+   "text": "pompa",
+   "start": 27.294,
+   "end": 27.636
+  },
+  {
+   "text": "kerja.",
+   "start": 27.636,
+   "end": 28.447
+  },
+  {
+   "text": "Langkah",
+   "start": 28.448,
+   "end": 28.789
+  },
+  {
+   "text": "satu:",
+   "start": 28.79,
+   "end": 29.397
+  },
+  {
+   "text": "pintu",
+   "start": 29.397,
+   "end": 29.739
+  },
+  {
+   "text": "air",
+   "start": 29.739,
+   "end": 29.932
+  },
+  {
+   "text": "ditutup.",
+   "start": 29.933,
+   "end": 30.423
+  },
+  {
+   "text": "Air",
+   "start": 30.647,
+   "end": 30.844
+  },
+  {
+   "text": "sungai",
+   "start": 30.844,
+   "end": 31.192
+  },
+  {
+   "text": "tertahan",
+   "start": 31.192,
+   "end": 31.691
+  },
+  {
+   "text": "di",
+   "start": 31.692,
+   "end": 31.888
+  },
+  {
+   "text": "luar,",
+   "start": 31.888,
+   "end": 32.085
+  },
+  {
+   "text": "air",
+   "start": 32.085,
+   "end": 32.457
+  },
+  {
+   "text": "hujan",
+   "start": 32.457,
+   "end": 32.805
+  },
+  {
+   "text": "di",
+   "start": 32.805,
+   "end": 33.002
+  },
+  {
+   "text": "dalam",
+   "start": 33.002,
+   "end": 33.35
+  },
+  {
+   "text": "kota",
+   "start": 33.35,
+   "end": 33.698
+  },
+  {
+   "text": "dikumpulin",
+   "start": 33.698,
+   "end": 34.349
+  },
+  {
+   "text": "di",
+   "start": 34.349,
+   "end": 34.546
+  },
+  {
+   "text": "satu",
+   "start": 34.546,
+   "end": 34.894
+  },
+  {
+   "text": "kolam.",
+   "start": 34.894,
+   "end": 35.242
+  },
+  {
+   "text": "Langkah",
+   "start": 35.615,
+   "end": 36.0
+  },
+  {
+   "text": "dua:",
+   "start": 36.0,
+   "end": 36.46
+  },
+  {
+   "text": "pompa",
+   "start": 36.46,
+   "end": 36.845
+  },
+  {
+   "text": "nyala.",
+   "start": 36.845,
+   "end": 37.231
+  },
+  {
+   "text": "Airnya",
+   "start": 37.231,
+   "end": 37.854
+  },
+  {
+   "text": "diangkat",
+   "start": 37.854,
+   "end": 38.239
+  },
+  {
+   "text": "lewat",
+   "start": 38.239,
+   "end": 38.751
+  },
+  {
+   "text": "pipa,",
+   "start": 38.752,
+   "end": 39.137
+  },
+  {
+   "text": "melewati",
+   "start": 39.137,
+   "end": 39.992
+  },
+  {
+   "text": "tanggul,",
+   "start": 39.992,
+   "end": 40.377
+  },
+  {
+   "text": "lalu",
+   "start": 40.377,
+   "end": 40.763
+  },
+  {
+   "text": "dibuang",
+   "start": 40.763,
+   "end": 41.148
+  },
+  {
+   "text": "ke",
+   "start": 41.148,
+   "end": 41.366
+  },
+  {
+   "text": "sungai.",
+   "start": 41.366,
+   "end": 41.751
+  },
+  {
+   "text": "Dua",
+   "start": 42.107,
+   "end": 42.284
+  },
+  {
+   "text": "puluh",
+   "start": 42.284,
+   "end": 42.597
+  },
+  {
+   "text": "tiga",
+   "start": 42.597,
+   "end": 42.911
+  },
+  {
+   "text": "ribu",
+   "start": 42.911,
+   "end": 43.224
+  },
+  {
+   "text": "liter",
+   "start": 43.224,
+   "end": 43.537
+  },
+  {
+   "text": "per",
+   "start": 43.537,
+   "end": 43.714
+  },
+  {
+   "text": "detik",
+   "start": 43.714,
+   "end": 44.147
+  },
+  {
+   "text": "itu",
+   "start": 44.147,
+   "end": 44.461
+  },
+  {
+   "text": "setara",
+   "start": 44.461,
+   "end": 44.91
+  },
+  {
+   "text": "lebih",
+   "start": 44.91,
+   "end": 45.223
+  },
+  {
+   "text": "dari",
+   "start": 45.223,
+   "end": 45.536
+  },
+  {
+   "text": "seribu",
+   "start": 45.537,
+   "end": 45.986
+  },
+  {
+   "text": "dua",
+   "start": 45.986,
+   "end": 46.163
+  },
+  {
+   "text": "ratus",
+   "start": 46.163,
+   "end": 46.476
+  },
+  {
+   "text": "galon",
+   "start": 46.476,
+   "end": 46.789
+  },
+  {
+   "text": "air",
+   "start": 46.79,
+   "end": 46.966
+  },
+  {
+   "text": "minum.",
+   "start": 46.967,
+   "end": 47.622
+  },
+  {
+   "text": "Tiap",
+   "start": 47.622,
+   "end": 47.799
+  },
+  {
+   "text": "detik.",
+   "start": 47.799,
+   "end": 48.112
+  },
+  {
+   "text": "Tapi",
+   "start": 48.984,
+   "end": 49.461
+  },
+  {
+   "text": "ada",
+   "start": 49.461,
+   "end": 49.807
+  },
+  {
+   "text": "titik",
+   "start": 49.807,
+   "end": 50.153
+  },
+  {
+   "text": "lemahnya.",
+   "start": 50.153,
+   "end": 50.649
+  },
+  {
+   "text": "Kalau",
+   "start": 50.649,
+   "end": 51.279
+  },
+  {
+   "text": "air",
+   "start": 51.279,
+   "end": 51.475
+  },
+  {
+   "text": "laut",
+   "start": 51.475,
+   "end": 51.67
+  },
+  {
+   "text": "lagi",
+   "start": 51.671,
+   "end": 52.016
+  },
+  {
+   "text": "pasang,",
+   "start": 52.017,
+   "end": 52.362
+  },
+  {
+   "text": "sungainya",
+   "start": 52.362,
+   "end": 52.981
+  },
+  {
+   "text": "nggak",
+   "start": 52.981,
+   "end": 53.176
+  },
+  {
+   "text": "bisa",
+   "start": 53.176,
+   "end": 53.522
+  },
+  {
+   "text": "buang",
+   "start": 53.522,
+   "end": 53.718
+  },
+  {
+   "text": "ke",
+   "start": 53.718,
+   "end": 53.913
+  },
+  {
+   "text": "laut.",
+   "start": 53.914,
+   "end": 54.109
+  },
+  {
+   "text": "Pompanya",
+   "start": 54.351,
+   "end": 54.823
+  },
+  {
+   "text": "ikut",
+   "start": 54.823,
+   "end": 55.152
+  },
+  {
+   "text": "kewalahan.",
+   "start": 55.152,
+   "end": 56.005
+  },
+  {
+   "text": "Petugas",
+   "start": 56.005,
+   "end": 56.477
+  },
+  {
+   "text": "cuma",
+   "start": 56.477,
+   "end": 56.806
+  },
+  {
+   "text": "bisa",
+   "start": 56.806,
+   "end": 57.135
+  },
+  {
+   "text": "nunggu",
+   "start": 57.135,
+   "end": 57.464
+  },
+  {
+   "text": "laut",
+   "start": 57.464,
+   "end": 57.65
+  },
+  {
+   "text": "surut.",
+   "start": 57.65,
+   "end": 57.979
+  },
+  {
+   "text": "Makanya",
+   "start": 58.263,
+   "end": 58.79
+  },
+  {
+   "text": "rumah",
+   "start": 58.79,
+   "end": 59.157
+  },
+  {
+   "text": "pompa",
+   "start": 59.157,
+   "end": 59.524
+  },
+  {
+   "text": "Nginden",
+   "start": 59.524,
+   "end": 59.891
+  },
+  {
+   "text": "dikasih",
+   "start": 59.891,
+   "end": 60.418
+  },
+  {
+   "text": "jalur",
+   "start": 60.418,
+   "end": 60.785
+  },
+  {
+   "text": "pintas",
+   "start": 60.785,
+   "end": 61.153
+  },
+  {
+   "text": "ke",
+   "start": 61.153,
+   "end": 61.36
+  },
+  {
+   "text": "Kali",
+   "start": 61.36,
+   "end": 61.727
+  },
+  {
+   "text": "Jagir,",
+   "start": 61.727,
+   "end": 62.246
+  },
+  {
+   "text": "biar",
+   "start": 62.247,
+   "end": 62.454
+  },
+  {
+   "text": "air",
+   "start": 62.454,
+   "end": 62.661
+  },
+  {
+   "text": "lebih",
+   "start": 62.662,
+   "end": 63.029
+  },
+  {
+   "text": "cepat",
+   "start": 63.029,
+   "end": 63.396
+  },
+  {
+   "text": "terbuang.",
+   "start": 63.396,
+   "end": 63.763
+  },
+  {
+   "text": "Dan",
+   "start": 64.118,
+   "end": 64.331
+  },
+  {
+   "text": "musuh",
+   "start": 64.331,
+   "end": 64.709
+  },
+  {
+   "text": "terbesarnya:",
+   "start": 64.709,
+   "end": 65.415
+  },
+  {
+   "text": "sampah.",
+   "start": 65.415,
+   "end": 66.039
+  },
+  {
+   "text": "Nyangkut",
+   "start": 66.039,
+   "end": 66.689
+  },
+  {
+   "text": "di",
+   "start": 66.689,
+   "end": 66.902
+  },
+  {
+   "text": "saringan,",
+   "start": 66.902,
+   "end": 67.444
+  },
+  {
+   "text": "pompanya",
+   "start": 67.444,
+   "end": 68.147
+  },
+  {
+   "text": "bisa",
+   "start": 68.147,
+   "end": 68.524
+  },
+  {
+   "text": "berhenti.",
+   "start": 68.524,
+   "end": 69.066
+  },
+  {
+   "text": "Jadi",
+   "start": 69.311,
+   "end": 69.602
+  },
+  {
+   "text": "kota",
+   "start": 69.602,
+   "end": 69.894
+  },
+  {
+   "text": "nggak",
+   "start": 69.894,
+   "end": 70.058
+  },
+  {
+   "text": "bebas",
+   "start": 70.059,
+   "end": 70.35
+  },
+  {
+   "text": "banjir",
+   "start": 70.35,
+   "end": 70.641
+  },
+  {
+   "text": "karena",
+   "start": 70.641,
+   "end": 71.059
+  },
+  {
+   "text": "airnya",
+   "start": 71.059,
+   "end": 71.351
+  },
+  {
+   "text": "hilang.",
+   "start": 71.351,
+   "end": 71.642
+  },
+  {
+   "text": "Airnya",
+   "start": 71.642,
+   "end": 71.933
+  },
+  {
+   "text": "diangkat,",
+   "start": 71.934,
+   "end": 72.485
+  },
+  {
+   "text": "liter",
+   "start": 72.485,
+   "end": 72.776
+  },
+  {
+   "text": "demi",
+   "start": 72.776,
+   "end": 73.068
+  },
+  {
+   "text": "liter.",
+   "start": 73.068,
+   "end": 73.359
+  },
+  {
+   "text": "Mau",
+   "start": 73.719,
+   "end": 74.095
+  },
+  {
+   "text": "dibongkar",
+   "start": 74.095,
+   "end": 74.668
+  },
+  {
+   "text": "apa",
+   "start": 74.669,
+   "end": 75.366
+  },
+  {
+   "text": "lagi?",
+   "start": 75.366,
+   "end": 75.766
+  },
+  {
+   "text": "Tulis",
+   "start": 75.766,
+   "end": 76.166
+  },
+  {
+   "text": "di",
+   "start": 76.166,
+   "end": 76.669
+  },
+  {
+   "text": "komentar.",
+   "start": 76.67,
+   "end": 77.243
+  }
+ ]
+}
