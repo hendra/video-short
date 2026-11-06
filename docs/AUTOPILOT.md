@@ -22,6 +22,9 @@ Dibaca oleh scheduled task (Sen/Rab/Jum). Ikuti persis. Bahasa konten: Indonesia
 # add_repo hendra/video-short (access: push), lalu:
 git clone https://github.com/hendra/video-short && cd video-short
 npm ci
+# workspace cloud: Node fetch harus lewat proxy + CA bundle (tanpa ini: ENOTFOUND api.elevenlabs.io)
+[ -n "$HTTPS_PROXY" ] && export NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt
+umask 077; printf 'ELEVENLABS_API_KEY=%s\nELEVENLABS_VOICE_ID=HmwgE8AfbDbaZpgAi4Bn\nELEVENLABS_MODEL_ID=eleven_flash_v2_5\n' "$KEY_DARI_PROMPT" > .env
 npm run credits                      # cek kuota (lihat §2)
 ```
 Render di workspace: `--browser-executable=/usr/bin/google-chrome --gl=swangle` (tanpa GPU, ±0,8 dtk/frame → 85 dtk video ≈ 35–40 menit; jalankan di background).
@@ -50,7 +53,6 @@ Kuota Free 10k/bulan; flash = 0,5 kredit/karakter; naskah ±1.100–1.400 karakt
 ## 5. Suara + timing
 
 ```bash
-printf 'ELEVENLABS_VOICE_ID=HmwgE8AfbDbaZpgAi4Bn\nELEVENLABS_MODEL_ID=eleven_flash_v2_5\n' >> .env
 npm run tts -- <slug>        # vo.mp3 + alignment.json (timestamp per karakter dari API)
 npm run timeline -- <slug>   # caption + rentang shot
 npm run music -- <slug>      # musik orisinal sesuai titik potong
