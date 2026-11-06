@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Chunk, Line, ShotSpan, Timeline, Word } from "../src/engine/types";
-import { type Alignment, readConfig, readScript, videoDir, videoIdArg } from "./lib";
+import { type Alignment, readConfig, readScript, videoDir, videoIdArg } from "./lib.mts";
 
 const id = videoIdArg();
 const lines = readScript(id);
