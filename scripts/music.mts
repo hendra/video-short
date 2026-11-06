@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Timeline } from "../src/engine/types";
-import { ROOT, publicDir, videoDir, videoIdArg } from "./lib";
+import { ROOT, publicDir, videoDir, videoIdArg } from "./lib.mts";
 
 // `--missing`: generate for every video that has a timeline but no music.wav yet (used by predev/prerender).
 if (process.argv[2] === "--missing") {

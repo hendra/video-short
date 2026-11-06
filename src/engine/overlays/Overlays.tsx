@@ -149,7 +149,7 @@ export const Overlays: React.FC<{
   const ctaOn = video.cta && t > tl.lines[video.cta.fromLine - 1].s - 0.1;
   return (
     <AbsoluteFill>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 420, background: `linear-gradient(${CREAM} 0%, rgba(244,241,234,.92) 45%, rgba(244,241,234,0) 100%)` }} />
+      <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 460, background: `linear-gradient(${CREAM} 0%, rgba(244,241,234,.95) 58%, rgba(244,241,234,0) 100%)` }} />
       <Callouts shot={shot} t={t} pose={pose} fov={video.fov} />
       <Header shot={shot} local={t - shotStart} titleLines={shot.title.split("\n").length} />
       <div style={{ position: "absolute", right: 60, top: 178, padding: "10px 18px", borderRadius: 12, background: INK, color: "#fff", font: `700 26px ${FONT.ui}` }}>
