@@ -69,7 +69,7 @@ Standar kualitas (pelajaran dari video sebelumnya):
 - Frame **potret**: FOV 44, objek utama mengisi ≥ 50% lebar; diorama yang memanjang diputar agar memanjang ke arah kamera.
 - 1 shot ≈ 1–2 baris naskah (8–12 shot). Setiap shot punya gerak nyata (bukan still).
 - Callout menunjuk objek 3D (anchor), maks 3 per shot, varian `orange` untuk fokus, `red` untuk bahaya.
-- **Tidak boleh ada teks bertumpuk.** `Overlays.tsx` otomatis: label dijauhkan satu sama lain (jarak ≥ 16 px), tetap di bawah header/chip/CTA dan di atas zona caption (y < 1242); anchor di luar zona dipin ke tepi tanpa titik; label yang tetap tak muat disembunyikan. Jadi rancang anchor agar berada **di dalam zona** (antara bawah header dan y ≈ 1240) — kalau tidak, label bisa hilang atau garisnya menunjuk ke tepi. Caption: satu potongan (≤ 5 kata) per saat, tidak pernah dua sekaligus.
+- **Tidak boleh ada teks bertumpuk.** `Overlays.tsx` otomatis: label dijauhkan satu sama lain (jarak ≥ 16 px), tetap di bawah header/chip/CTA dan di atas zona caption (y < 1242); anchor di luar zona dipin ke tepi tanpa titik; label yang tetap tak muat disembunyikan. Jadi rancang anchor agar berada **di dalam zona** (antara bawah header dan y ≈ 1240) — kalau tidak, label bisa hilang atau garisnya menunjuk ke tepi. Caption: satu potongan (≤ 5 kata) per saat, tidak pernah dua sekaligus. Caption dua baris harus punya jarak antarbaris yang jelas (line-height 1.8 di `Overlays.tsx`, jangan dikecilkan).
 - Partikel kecil (r ≤ 0,05) di close-up; sembunyikan yang menghalangi kamera.
 - Diorama skematis (peta, jalur) diberi `tag: "ILUSTRASI"`.
 - Shot terakhir: aerial/orbit hangat + CTA.
