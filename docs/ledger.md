@@ -6,5 +6,5 @@
 | 2026-11-06 | terowongan-mrt | 1.348 | (web app, v4) | https://www.youtube.com/watch?v=8Gn4NwGAmPI | https://tiktok.com/@kaliajatau01/video/7705030508278762753 | TBM-2 tembus Mangga Besar |
 | 2026-11-07 | learjet-greenacres | 1.444 | (web app) | https://www.youtube.com/watch?v=GQjR4Cn5kOo | https://tiktok.com/@kaliajatau01/video/7705109073997384981 | kronologi kecelakaan, nada berduka; dipublish atas permintaan |
 | 2026-11-07 | rumus-kiamat | 1.534 | (web app) | https://www.youtube.com/watch?v=yrQ6hAkcZYU | https://tiktok.com/@kaliajatau01/video/7705253283195096341 | von Foerster doomsday 1960; viral 13 Nov |
-| 2026-11-07 | skybridge-indonesia1 | 1.426 | (web app) | (terjadwal 16:30 WIB, Buffer 6aee97eda7751de7c9c1c276) | (terjadwal 16:30 WIB, Buffer 6aee97eed6bbae6fa160d23a) | strand jack 290 t → 117 m |
+| 2026-11-07 | skybridge-indonesia1 | 1.426 | (web app) | https://www.youtube.com/shorts/gnTenrvJB1Y | https://tiktok.com/@kaliajatau01/video/7705359592338836756 | strand jack 290 t → 117 m |
 | 2026-11-07 | ai-listrik-kota | 1.384 | (web app) | https://www.youtube.com/watch?v=Fg86FHngdm0 | https://tiktok.com/@kaliajatau01/video/7705269929913617684 | AI & listrik pusat data; sumber IEA + ANTARA; VO web app, render lokal |
