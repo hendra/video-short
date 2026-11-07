@@ -194,7 +194,7 @@ const Captions: React.FC<{ tl: Timeline; t: number }> = ({ tl, t }) => {
   const ch = tl.chunks[i];
   return (
     <div style={{ position: "absolute", left: 90, right: 90, top: CAPTION_TOP, textAlign: "center" }}>
-      <span style={{ display: "inline", padding: "6px 14px", lineHeight: 1.5, background: "rgba(24,30,34,.88)", borderRadius: 12, WebkitBoxDecorationBreak: "clone", boxDecorationBreak: "clone", font: `800 60px ${FONT.ui}`, color: "#fff" }}>
+      <span style={{ display: "inline", padding: "6px 14px", lineHeight: 1.8, background: "rgba(24,30,34,.88)", borderRadius: 12, WebkitBoxDecorationBreak: "clone", boxDecorationBreak: "clone", font: `800 60px ${FONT.ui}`, color: "#fff" }}>
         {ch.words.map((w, k) => {
           const on = t >= w.s && t < w.e + 0.02;
           return (
