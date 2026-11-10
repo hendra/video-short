@@ -5,7 +5,7 @@ import { createWorld } from "./world";
 
 export const rumahPompa: VideoDef = {
   id: "rumah-pompa",
-  brand: { prefix: "@heyomynameis", accent: "john" },
+  brand: { prefix: "Kali Aja ", accent: "Tau" },
   fov: 44,
   timeline: timeline as Timeline,
   voice: "rumah-pompa/vo.mp3",
