@@ -11,16 +11,22 @@
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { type Alignment, type TimedWord, publicDir, readScript, videoDir, videoIdArg } from "./lib.mts";
 
 const id = videoIdArg();
 const lines = readScript(id);
 const target = path.join(publicDir(id), "vo.mp3");
-if (process.argv[3]) {
-  fs.mkdirSync(publicDir(id), { recursive: true });
-  fs.copyFileSync(process.argv[3], target);
+const src = process.argv[3];
+const sameFile = src !== undefined && path.resolve(src) === path.resolve(target);
+if (src && !sameFile && !fs.existsSync(src)) {
+  console.error(`No audio at ${src}`);
+  process.exit(1);
 }
+// Stage the source in memory; public/<id>/vo.mp3 is only replaced after the analysis succeeds.
+const srcBuf = src ? fs.readFileSync(sameFile ? target : src) : null;
+const haveAudio = srcBuf !== null || fs.existsSync(target);
 const syl = (s: string) => Math.max(1, (s.toLowerCase().match(/[aiueo]+/g) ?? []).length);
 
 const ffmpeg = (args: string[]) => {
@@ -30,7 +36,7 @@ const ffmpeg = (args: string[]) => {
 };
 
 let spans: { s: number; e: number; segs: [number, number][] }[];
-if (!fs.existsSync(target)) {
+if (!haveAudio) {
   // estimate (2.7 words/s, 0.55 s pauses) so the video can be previewed before the VO exists
   let t = 0.4;
   spans = lines.map((l) => {
@@ -41,7 +47,15 @@ if (!fs.existsSync(target)) {
   });
   console.log("No vo.mp3 yet — wrote an ESTIMATED alignment for previews.");
 } else {
-  const log = ffmpeg(["-hide_banner", "-i", target, "-af", "silencedetect=n=-38dB:d=0.12", "-f", "null", "-"]);
+  let audioPath = target;
+  let stage = "";
+  if (srcBuf) {
+    stage = path.join(os.tmpdir(), `explainer-vo-${process.pid}.mp3`);
+    fs.writeFileSync(stage, srcBuf);
+    audioPath = stage;
+  }
+  try {
+  const log = ffmpeg(["-hide_banner", "-i", audioPath, "-af", "silencedetect=n=-38dB:d=0.12", "-f", "null", "-"]);
   const dur = Number(/Duration: (\d+):(\d+):([\d.]+)/.exec(log)?.slice(1).reduce((a, v, i) => a + Number(v) * [3600, 60, 1][i], 0));
   const st = [...log.matchAll(/silence_start: ([\d.]+)/g)].map((m) => Number(m[1]));
   const en = [...log.matchAll(/silence_end: ([\d.]+)/g)].map((m) => Number(m[1]));
@@ -79,6 +93,9 @@ if (!fs.existsSync(target)) {
   }
   console.log(`${S} speech segments, ${rate.toFixed(3)} s/syllable`);
   spans.forEach((sp, i) => console.log(`  ${String(i + 1).padStart(2, "0")}  ${(sp.e - sp.s).toFixed(2)}s (expected ${exp[i].toFixed(2)}s)  ${lines[i].slice(0, 48)}`));
+  } finally {
+    if (stage) fs.rmSync(stage, { force: true });
+  }
 }
 
 const words: TimedWord[] = [];
@@ -98,5 +115,10 @@ lines.forEach((text, i) => {
   });
 });
 const out: Alignment = { source: "estimated", words };
+// Only now that the analysis succeeded: replace vo.mp3 (keeps audio and alignment.json in sync).
+if (srcBuf && !sameFile) {
+  fs.mkdirSync(publicDir(id), { recursive: true });
+  fs.writeFileSync(target, srcBuf);
+}
 fs.writeFileSync(path.join(videoDir(id), "alignment.json"), JSON.stringify(out, null, 1));
 console.log(`alignment.json written. Next: npm run timeline -- ${id}`);
