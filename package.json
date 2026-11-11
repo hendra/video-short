@@ -16,7 +16,9 @@
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc && tsc -p scripts",
-    "test": "tsx --test scripts/*.test.mts"
+    "test": "tsx --test scripts/*.test.mts",
+    "publish": "tsx scripts/publish.mts",
+    "report": "tsx scripts/report.mts"
   },
   "repository": {},
   "license": "UNLICENSED",
