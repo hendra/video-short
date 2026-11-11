@@ -8,3 +8,4 @@
 | 2026-11-07 | rumus-kiamat | 1.534 | (web app) | https://www.youtube.com/watch?v=yrQ6hAkcZYU | https://tiktok.com/@kaliajatau01/video/7705253283195096341 | von Foerster doomsday 1960; viral 13 Nov |
 | 2026-11-07 | skybridge-indonesia1 | 1.426 | (web app) | https://www.youtube.com/shorts/gnTenrvJB1Y | https://tiktok.com/@kaliajatau01/video/7705359592338836756 | strand jack 290 t → 117 m |
 | 2026-11-07 | ai-listrik-kota | 1.384 | (web app) | https://www.youtube.com/watch?v=Fg86FHngdm0 | https://tiktok.com/@kaliajatau01/video/7705269929913617684 | AI & listrik pusat data; sumber IEA + ANTARA; VO web app, render lokal |
+| 2026-11-11 | jembatan-raksasa | 1.101 | (Gemini, gratis) | https://www.youtube.com/watch?v=wjuOHpXvPUA | https://tiktok.com/@kaliajatau01/video/7706713520024456454 | Jembatan Sentong reopening hook + Suramadu cable-stayed; VO Gemini (Charon); render lokal |
