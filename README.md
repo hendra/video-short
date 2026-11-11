@@ -1,7 +1,7 @@
 # explainer-3d
 
 Template video **explainer 3D vertikal** (YouTube Shorts / Reels / TikTok, 1080×1920) dengan **Remotion + React Three Fiber**:
-animasi 3D low-poly, voiceover **ElevenLabs** dengan timing per kata, caption karaoke, callout berlabel, chip angka, dan musik latar orisinal.
+animasi 3D low-poly, voiceover **AI** (Google AI Studio TTS, gratis — lihat `.env.example`) dengan timing per kata, caption karaoke, callout berlabel, chip angka, dan musik latar orisinal.
 
 Berbasis [`remotion-dev/template-three`](https://github.com/remotion-dev/template-three). Contoh bawaan: **"Kota lebih rendah dari sungai, kok bisa nggak tenggelam?"** (`src/videos/rumah-pompa`).
 
@@ -18,20 +18,22 @@ Butuh Node ≥ 20.19. `predev`/`prerender` otomatis membuat `public/<id>/music.w
 ## Alur membuat video
 
 ```
-naskah.txt ──► npm run tts      (ElevenLabs with-timestamps: suara + timing sekaligus)
-          └──► npm run align    (sudah punya mp3 dari web ElevenLabs? Forced Alignment)
+naskah.txt ──► npm run tts      (Google AI Studio TTS, gratis: suara + timing otomatis)
+          └──► npm run align    (audio sudah ada? timing per kata via ElevenLabs / align:local)
                      │
                      ▼
               alignment.json ──► npm run timeline ──► timeline.json ──► npm run dev / render
 ```
 
 1. Tulis naskah di `src/videos/<id>/naskah.txt`, satu baris per kalimat, format `NN  teks` (baris lain diabaikan).
-2. Isi `.env` (salin dari `.env.example`): `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`.
+2. Isi `.env` (salin dari `.env.example`): `GEMINI_API_KEY` (gratis di [aistudio.google.com/apikey](https://aistudio.google.com/apikey), tanpa billing). Backup opsional: `GCLOUD_TTS_KEY`, atau `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`.
 3. Pilih salah satu:
    ```bash
-   npm run tts   -- <id>                 # generate suara + timing
-   npm run align -- <id> path/ke/vo.mp3  # audio sudah ada -> timing per kata
+   npm run tts   -- <id>                 # generate suara (Gemini, auto-fallback gcloud/azure) + timing
+   npm run align -- <id> path/ke/vo.mp3  # audio sudah ada -> timing per kata (ElevenLabs Forced Alignment)
+   npm run align:local -- <id>           # timing gratis & offline (±0,2 detik per kata)
    ```
+   `npm run tts` pakai provider gratis `auto` (gemini → gcloud → azure). Paksa satu provider: `--provider=gemini|gcloud|azure|elevenlabs`.
 4. `npm run timeline -- <id>` → caption, timing baris, dan rentang shot.
 5. `npm run music -- <id>` (opsional, kalau durasi berubah) → musik baru sesuai titik potong shot.
 6. `npm run dev` untuk cek, lalu `npm run render -- <id> out/<id>.mp4`.
@@ -56,7 +58,7 @@ src/
       state.ts            # cerita sebagai fungsi waktu: level air, pintu, pompa…
       world.ts            # dunia 3D (dibuat sekali, diupdate tiap frame)
       shots.ts            # judul, kamera, callout, chip per shot
-scripts/                  # tts.mts, align.mts, align-local.mts, build-timeline.mts, music.mts
+scripts/                  # tts.mts (+lib-tts.mts), align.mts, align-core.mts, align-local.mts, build-timeline.mts, music.mts
 public/fonts              # Inter + DejaVu Sans Mono (OFL / Bitstream Vera), dibundel supaya render identik offline
 ```
 
