@@ -9,3 +9,4 @@
 | 2026-11-07 | skybridge-indonesia1 | 1.426 | (web app) | https://www.youtube.com/shorts/gnTenrvJB1Y | https://tiktok.com/@kaliajatau01/video/7705359592338836756 | strand jack 290 t → 117 m |
 | 2026-11-07 | ai-listrik-kota | 1.384 | (web app) | https://www.youtube.com/watch?v=Fg86FHngdm0 | https://tiktok.com/@kaliajatau01/video/7705269929913617684 | AI & listrik pusat data; sumber IEA + ANTARA; VO web app, render lokal |
 | 2026-11-11 | jembatan-raksasa | 1.101 | (Gemini, gratis) | https://www.youtube.com/watch?v=wjuOHpXvPUA | https://tiktok.com/@kaliajatau01/video/7706713520024456454 | Jembatan Sentong reopening hook + Suramadu cable-stayed; VO Gemini (Charon); render lokal |
+| 2026-11-11 | plts-karangkates | 1.350 | (Gemini, gratis) | https://www.youtube.com/watch?v=WozCLWn8SMo | https://tiktok.com/@kaliajatau01/video/7706739144239729940 | PLTS Terapung Karangkates 100 MWac (133 MWp), progres ±70%; VO Gemini (Charon); sumber ANTARA 4 & 8 Nov 2026 |
