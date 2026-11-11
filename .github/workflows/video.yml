@@ -51,6 +51,11 @@ jobs:
           if [ -z "$SLUG" ]; then echo "agent produced no video folder"; exit 1; fi
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
 
+      # music.wav is gitignored and synthesized by predev/prerender, which the direct
+      # `npx remotion bundle` below never triggers — synthesize it here or the render 404s on the asset.
+      - name: Generate music bed (missing only)
+        run: npx tsx scripts/music.mts --missing
+
       - name: Gates (lint + tests + bundle)
         id: gates
         run: npm run lint && npm test && npx remotion bundle --out-dir /tmp/rbundle
