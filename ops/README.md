@@ -44,6 +44,7 @@ atau dari UI: Actions → video-run → Run workflow.
 
 - **Agent/no-video**: step "Agent builds the video" selesai tapi folder video tidak ada → job gagal di "Discover slug"; Slack #social melaporkan. Tidak ada commit, tidak ada upload.
 - **Quota**: opencode free model menolak/rate-limit → publish tidak terjadi; coba lagi lewat `workflow_dispatch` nanti.
-- **Render gagal vulkan**: fallback swangle otomatis (lebih lambat).
+- **Render gagal vulkan**: fallback swangle otomatis (lebih lambat). Render dipatok `--concurrency=2` karena PC runner juga dipakai kerja normal — default Remotion (½ core) bikin Chrome tabs menumpuk dan kena OOM killer (run 2026-11-11, megathrust-jakarta).
+- **Runner kena OOM killer saat render**: job dibatalkan GitHub ("runner received a shutdown signal"), langkah sesudahnya (termasuk Slack report) tidak jalan. Cek `journalctl --user -u video-runner.service` untuk konfirmasi `oom-kill`; kosongkan memori (tutup Chrome) lalu re-run. Folder video yang setengah jadi tertinggal di `_work/video-short/video-short` — hapus manual sebelum re-run agar "Discover slug" tidak mengambil folder basi.
 - **Publish gagal setelah buffer terpost** (rare): ledger TIDAK akan ditulis (publish.mts baru menulis setelah semua sukses) — re-run aman; ledger presence check mencegah double-post.
 - **Rollback**: hapus baris ledger + `git revert` commit CI; out/ tidak tercommit.
