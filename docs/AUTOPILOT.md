@@ -1,5 +1,7 @@
 # Autopilot: 3D explainer Short → YouTube + TikTok
 
+(Ada juga varian otomatis penuh via GitHub Actions — 3×/hari — lihat `ops/README.md`. Runbook ini berlaku untuk keduanya.)
+
 Dibaca oleh scheduled task (Sen/Rab/Jum). Ikuti persis. Bahasa konten: Indonesia santai-profesional. Zona waktu WIB.
 
 ## 0. Konstanta

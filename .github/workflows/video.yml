@@ -1,0 +1,96 @@
+name: video-run
+on:
+  repository_dispatch:
+    types: [video-run]
+  workflow_dispatch:
+
+concurrency:
+  group: video-run
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  produce:
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Preflight
+        run: |
+          node -v; npm -v
+          /home/hendra/.opencode/bin/opencode --version
+          which google-chrome || true
+
+      - name: Write .env from secrets
+        run: |
+          umask 077
+          printf 'GEMINI_API_KEY=%s\nCLOUDINARY_CLOUD_NAME=%s\nCLOUDINARY_API_KEY=%s\nCLOUDINARY_API_SECRET=%s\nBUFFER_ACCESS_TOKEN=%s\nSLACK_BOT_TOKEN=%s\nSLACK_SOCIAL_CHANNEL_ID=%s\n' \
+            "${{ secrets.GEMINI_API_KEY }}" "${{ secrets.CLOUDINARY_CLOUD_NAME }}" "${{ secrets.CLOUDINARY_API_KEY }}" "${{ secrets.CLOUDINARY_API_SECRET }}" \
+            "${{ secrets.BUFFER_ACCESS_TOKEN }}" "${{ secrets.SLACK_BOT_TOKEN }}" "${{ secrets.SLACK_SOCIAL_CHANNEL_ID }}" > .env
+
+      - name: Dependencies
+        run: npm ci
+
+      - name: Agent builds the video
+        id: agent
+        run: /home/hendra/.opencode/bin/opencode run --auto --standalone --model opencode/inkling-2-small-free --file AGENTS.md --file docs/AUTOPILOT.md --file ops/ci-prompt.md "You are in CI. Follow AGENTS.md and docs/AUTOPILOT.md. Follow ops/ci-prompt.md exactly. Stop before any publish/upload/render step."
+
+      - name: Discover slug
+        id: slug
+        run: |
+          SLUG="$(git diff --name-only HEAD -- src/videos | grep -oE '^src/videos/[^/]+/' | cut -d/ -f3 | sort | head -1)"
+          if [ -z "$SLUG" ]; then echo "agent produced no video folder"; exit 1; fi
+          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+
+      - name: Gates (lint + tests + bundle)
+        id: gates
+        run: npm run lint && npm test && npx remotion bundle --out-dir /tmp/rbundle
+
+      - name: Still check (one frame per shot)
+        id: stills
+        run: |
+          while read -r shot; do
+            npx remotion still /tmp/rbundle "${{ steps.slug.outputs.slug }}" "/tmp/s_${shot}.jpg" --frame=10 --gl=vulkan --image-format=jpeg
+            SZ=$(stat -c%s "/tmp/s_${shot}.jpg")
+            if [ "$SZ" -lt 10000 ]; then echo "still for shot $shot too small or missing ($SZ bytes)"; exit 1; fi
+          done < <(node -e "const fs=require('fs'); const t=JSON.parse(fs.readFileSync('src/videos/${{ steps.slug.outputs.slug }}/timeline.json','utf8')); console.log(t.shots.map(s=>s.id).join('\n'));")
+
+      - name: Render
+        id: render
+        run: |
+          npx remotion render /tmp/rbundle "${{ steps.slug.outputs.slug }}" "out/${{ steps.slug.outputs.slug }}.mp4" --gl=vulkan --log=error \
+          || npx remotion render /tmp/rbundle "${{ steps.slug.outputs.slug }}" "out/${{ steps.slug.outputs.slug }}.mp4" --gl=swangle --log=error
+
+      - name: Loudnorm
+        id: loudnorm
+        run: ffmpeg -y -i "out/${{ steps.slug.outputs.slug }}.mp4" -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -ar 48000 -c:a aac -b:a 192k -movflags +faststart "out/${{ steps.slug.outputs.slug }}-final.mp4"
+
+      - name: Publish (Cloudinary → Buffer YT + TikTok → ledger row)
+        id: publish
+        run: npm run publish -- "${{ steps.slug.outputs.slug }}"
+
+      - name: Commit video + ledger, push main
+        if: success()
+        env:
+          SLUG: ${{ steps.slug.outputs.slug }}
+        run: |
+          git config user.name "video-short-ci"
+          git config user.email "ci@video-short.local"
+          TITLE=$(node -p "require('./src/videos/'+process.env.SLUG+'/publish.json').title")
+          git add "src/videos/$SLUG" "public/$SLUG/vo.mp3" src/videos/registry.ts docs/ledger.md
+          git commit -m "$SLUG: $TITLE"
+          git push origin HEAD:main
+
+      - name: Success report (Slack #social)
+        if: success()
+        run: npm run report -- "${{ steps.slug.outputs.slug }}"
+
+      - name: Failure report (Slack #social)
+        if: failure()
+        run: npm run report -- "${{ steps.slug.outputs.slug }}" --step ci --error "run gagal — lihat https://github.com/hendra/video-short/actions/runs/${{ github.run_id }}"
