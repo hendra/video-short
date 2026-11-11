@@ -9,8 +9,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ffmpeg } from "./align-core.mts";
-import { type TimedWord } from "./lib.mts";
+import { analyzeAlignment, ffmpeg } from "./align-core.mts";
+import { type TimedWord, publicDir, videoDir } from "./lib.mts";
 
 export type TtsProvider = "gemini" | "gcloud" | "azure" | "elevenlabs";
 export type SynthResult = { audio: Buffer; ext: "mp3" | "wav"; words?: TimedWord[] };
@@ -153,4 +153,79 @@ export const stageToMp3 = (audio: Buffer, ext: "mp3" | "wav", destPath: string):
   } finally {
     fs.rmSync(wavPath, { force: true });
   }
+};
+
+export type RunResult =
+  | { ok: true; provider: TtsProvider; bytes: number; wordCount: number }
+  | { ok: false; attempts: string[]; analysisFailure?: { failedPath: string; reason: string } };
+export type SynthByProvider = Record<TtsProvider, (text: string) => Promise<SynthResult>>;
+
+/**
+ * Synthesize the voiceover, stage it, analyze the timing, and only then replace
+ * public/<id>/vo.mp3 + src/videos/<id>/alignment.json (always together).
+ * On timing-analysis failure the committed pair is left untouched and the fresh
+ * audio is kept at os.tmpdir()/vo-<id>-failed.mp3 (never published silently).
+ */
+export const synthesizeAndPublish = async ({ videoId, lines, provider, synthByProvider }: {
+  videoId: string;
+  lines: string[];
+  provider: "auto" | TtsProvider;
+  synthByProvider?: SynthByProvider;
+}): Promise<RunResult> => {
+  const synth: SynthByProvider = synthByProvider ?? {
+    gemini: synthesizeGemini, gcloud: synthesizeGcloud, azure: synthesizeAzure, elevenlabs: synthesizeElevenLabs,
+  };
+  const order: TtsProvider[] = provider === "auto" ? ["gemini", "gcloud", "azure"] : [provider];
+  const attempts: string[] = [];
+  const text = lines.join("\n\n");
+  const staging = path.join(os.tmpdir(), `vo-${videoId}-staging.mp3`);
+  const target = path.join(publicDir(videoId), "vo.mp3");
+
+  for (const p of order) {
+    const env = hasProviderEnv(p);
+    if (!env.ok) {
+      attempts.push(`${p}: skipped (missing ${env.missing})`);
+      console.log(`skipping ${p}: missing ${env.missing}`);
+      continue;
+    }
+    let result: SynthResult;
+    try {
+      result = await synth[p](text);
+    } catch (e) {
+      attempts.push(`${p}: ${(e as Error).message}`);
+      console.error(`${p} failed: ${(e as Error).message}`);
+      continue;
+    }
+    try {
+      stageToMp3(result.audio, result.ext, staging);
+    } catch (e) {
+      attempts.push(`${p}: ${(e as Error).message}`);
+      console.error(`${p} failed while staging audio: ${(e as Error).message}`);
+      continue;
+    }
+    let words: TimedWord[];
+    let source: "tts" | "estimated";
+    if (p === "elevenlabs" && result.words) {
+      words = result.words;
+      source = "tts";
+    } else {
+      try {
+        words = analyzeAlignment(staging, lines).words;
+      } catch (e) {
+        const failed = path.join(os.tmpdir(), `vo-${videoId}-failed.mp3`);
+        fs.renameSync(staging, failed);
+        return { ok: false, attempts, analysisFailure: { failedPath: failed, reason: (e as Error).message } };
+      }
+      source = "estimated";
+    }
+    fs.mkdirSync(publicDir(videoId), { recursive: true });
+    // Publish atomically: same-dir temp file + rename (rename across /tmp -> repo is EXDEV).
+    const tmpTarget = path.join(publicDir(videoId), `.vo.mp3.${process.pid}.tmp`);
+    fs.copyFileSync(staging, tmpTarget);
+    fs.renameSync(tmpTarget, target);
+    fs.rmSync(staging, { force: true });
+    fs.writeFileSync(path.join(videoDir(videoId), "alignment.json"), JSON.stringify({ source, words }, null, 1));
+    return { ok: true, provider: p, bytes: fs.statSync(target).size, wordCount: words.length };
+  }
+  return { ok: false, attempts };
 };
