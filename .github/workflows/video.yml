@@ -88,6 +88,9 @@ jobs:
           TITLE=$(node -p "require('./src/videos/'+process.env.SLUG+'/publish.json').title")
           git add "src/videos/$SLUG" "public/$SLUG/vo.mp3" src/videos/registry.ts docs/ledger.md
           git commit -m "$SLUG: $TITLE"
+          # main can move while the job runs (PRs land mid-run); rebase on latest main instead of failing the push
+          git fetch origin main
+          git rebase origin/main
           git push origin HEAD:main
 
       - name: Success report (Slack #social)
