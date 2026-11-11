@@ -1,64 +1,44 @@
 /**
- * Generate the voiceover AND exact per-character timing in one call:
- *   POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/with-timestamps
- * Writes public/<id>/vo.mp3 and src/videos/<id>/alignment.json.
- *
- *   npm run tts -- rumah-pompa
+ * Generate the voiceover AND word timing in one command.
+ *   npm run tts -- <id> [--provider=auto|gemini|gcloud|azure|elevenlabs]
+ * Default: auto = gemini (Google AI Studio, free) → gcloud → azure; ElevenLabs is
+ * legacy/optional and never part of the automatic chain. Timing comes from the bundled
+ * offline aligner (align-core) — no with-timestamps API needed except for elevenlabs.
  */
-import fs from "node:fs";
-import path from "node:path";
-import { type Alignment, type TimedWord, loadDotenv, publicDir, readScript, requireEnv, videoDir, videoIdArg } from "./lib.mts";
+import { loadDotenv, readScript, videoIdArg } from "./lib.mts";
+import { synthesizeAndPublish, type TtsProvider } from "./lib-tts.mts";
 
 loadDotenv();
 const id = videoIdArg();
-const apiKey = requireEnv("ELEVENLABS_API_KEY");
-const voiceId = requireEnv("ELEVENLABS_VOICE_ID");
-const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_flash_v2_5";
 
-const lines = readScript(id);
-// Blank line between script lines -> natural pause; offsets stay exact because we build the text ourselves.
-const text = lines.join("\n\n");
-
-type Resp = {
-  audio_base64: string;
-  alignment: { characters: string[]; character_start_times_seconds: number[]; character_end_times_seconds: number[] } | null;
-};
-
-const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
-  method: "POST",
-  headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
-  body: JSON.stringify({
-    text,
-    model_id: modelId,
-    voice_settings: process.env.ELEVENLABS_VOICE_SETTINGS ? JSON.parse(process.env.ELEVENLABS_VOICE_SETTINGS) : undefined,
-  }),
-});
-if (!res.ok) {
-  console.error(`ElevenLabs ${res.status}: ${await res.text()}`);
+const VALID = ["auto", "gemini", "gcloud", "azure", "elevenlabs"] as const;
+const inline = process.argv.find((a) => a.startsWith("--provider="));
+const flagIdx = process.argv.indexOf("--provider");
+const providerArg = inline ? inline.slice("--provider=".length) : flagIdx > 0 ? process.argv[flagIdx + 1] : undefined;
+const provider = providerArg ?? process.env.TTS_PROVIDER ?? "auto";
+if (!(VALID as readonly string[]).includes(provider)) {
+  console.error(`Unknown --provider "${provider}". Valid: ${VALID.join(", ")}`);
   process.exit(1);
 }
-const data = (await res.json()) as Resp;
-if (!data.alignment) throw new Error("Response has no alignment");
-const { characters, character_start_times_seconds: st, character_end_times_seconds: en } = data.alignment;
-if (characters.join("") !== text) console.warn("Warning: aligned characters differ from the sent text; word timing uses character order.");
 
-// characters -> words (split on whitespace)
-const words: TimedWord[] = [];
-let cur: TimedWord | null = null;
-characters.forEach((c, i) => {
-  if (/\s/.test(c)) {
-    if (cur) words.push(cur);
-    cur = null;
-    return;
+const lines = readScript(id);
+// Blank line between script lines -> natural pause for the silence detector.
+const text = lines.join("\n\n");
+if (lines.length === 0 || text.trim().length === 0) {
+  console.error("No script lines found in naskah.txt");
+  process.exit(1);
+}
+
+const result = await synthesizeAndPublish({ videoId: id, lines, provider: provider as "auto" | TtsProvider });
+if (!result.ok) {
+  if (result.analysisFailure) {
+    console.error(`Synthesis succeeded but timing analysis failed: ${result.analysisFailure.reason}`);
+    console.error(`Fresh audio kept at ${result.analysisFailure.failedPath}`);
+    console.error(`${id}'s committed vo.mp3/alignment.json were NOT touched.`);
+  } else {
+    console.error("TTS failed on all providers:");
+    for (const a of result.attempts) console.error(`  ${a}`);
   }
-  if (!cur) cur = { text: "", start: st[i], end: en[i] };
-  cur.text += c;
-  cur.end = en[i];
-});
-if (cur) words.push(cur);
-
-fs.mkdirSync(publicDir(id), { recursive: true });
-fs.writeFileSync(path.join(publicDir(id), "vo.mp3"), Buffer.from(data.audio_base64, "base64"));
-const out: Alignment = { source: "tts", words };
-fs.writeFileSync(path.join(videoDir(id), "alignment.json"), JSON.stringify(out, null, 1));
-console.log(`vo.mp3 + alignment.json written (${words.length} words, ${words[words.length - 1].end.toFixed(1)}s). Next: npm run timeline -- ${id}`);
+  process.exit(1);
+}
+console.log(`vo.mp3 + alignment.json written via ${result.provider} (${result.bytes} bytes, ${result.wordCount} words). Next: npm run timeline -- ${id}`);
