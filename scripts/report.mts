@@ -8,8 +8,7 @@ import { loadDotenv } from "./lib.mts";
 loadDotenv();
 
 const args = process.argv.slice(2);
-const slug = args[0];
-if (!slug) { console.error("Usage: npm run report -- <slug> [--links a,b] [--step name --error msg]"); process.exit(1); }
+const slug = args[0] || "ci";
 const iLinks = args.indexOf("--links"), iStep = args.indexOf("--step"), iErr = args.indexOf("--error");
 let links = iLinks >= 0 ? args[iLinks + 1] : "";
 // If --links missing, try to recover the just-published links from docs/ledger.md
