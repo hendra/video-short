@@ -47,7 +47,7 @@ jobs:
       - name: Discover slug
         id: slug
         run: |
-          SLUG="$(git diff --name-only HEAD -- src/videos | grep -oE '^src/videos/[^/]+/' | cut -d/ -f3 | sort | head -1)"
+          SLUG="$(git status --porcelain -- src/videos | awk '{print $2}' | grep -oE '^src/videos/[^/]+/' | cut -d/ -f3 | sort | uniq | head -1)"
           if [ -z "$SLUG" ]; then echo "agent produced no video folder"; exit 1; fi
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
 
