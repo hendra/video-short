@@ -40,7 +40,7 @@ Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test,
 
 ## Publishing & automation
 
-- `docs/AUTOPILOT.md` is the scheduled-task runbook (Mon/Wed/Fri) for end-to-end production → YouTube + TikTok via Buffer + Cloudinary. If asked to "make a video" end-to-end, read it first — it defines the credit gates, topic rules, quality bar, publish metadata (YouTube title must end with ` | 11.ai`, `isAiGenerated: true`, `categoryId: "27"`), and commit/push-to-`main` expectations.
+- `docs/AUTOPILOT.md` is the scheduled-task runbook (Mon/Wed/Fri) for end-to-end production → YouTube + TikTok. If asked to "make a video" end-to-end, read it first — topic rules, quality bar, commit/push-to-`main` expectations. Publishing mechanics (Buffer GraphQL, Cloudinary signed upload, token scopes, poll `post(input:{id})`): **`docs/PUBLISHING.md`** (tested 2026-11-11) — read BEFORE any upload; no "| 11.ai" suffix for Gemini VO (ElevenLabs-Free only).
 - `docs/ledger.md` tracks every produced/published video — add a row when publishing; commit `src/videos/<slug>/*`, `public/<slug>/vo.mp3`, registry, and the ledger (never `out/` or `music.wav`).
 - Reference implementations: `src/videos/terowongan-mrt` (newest, most complete), `src/videos/rumah-pompa` (original template example).
 
