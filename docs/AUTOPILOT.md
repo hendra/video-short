@@ -10,12 +10,13 @@ Dibaca oleh scheduled task (Sen/Rab/Jum). Ikuti persis. Bahasa konten: Indonesia
 | Channel | YouTube **Kali Aja Tau** `6aedb753e29c69a171803f6e` · TikTok **kaliajatau01** `6aedb7fee29c69a171804662` |
 | Buffer org | `6aed53e7ec5c7c6d73f3e437` |
 | Cloudinary | cloud `opqimovw`, folder `shorts/YYYY-MM-DD/<slug>` (resource type **video**) |
+| Publish | Ikuti **`docs/PUBLISHING.md`** (upload → Buffer GraphQL → poll). Env keys wajib: `BUFFER_ACCESS_TOKEN` (scope posts:read + posts:write; tidak bisa list channels), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — kalau .env tidak punya ini, video tidak bisa di-upload/post |
 | TTS | **Gemini TTS** (`gemini-2.5-flash-preview-tts`, voice `Charon`) lewat Google AI Studio — gratis, tanpa billing; env `GEMINI_API_KEY`. Chain `auto`: gemini → gcloud (gratis ≤ 4 jt karakter/bln) → azure (F0, 0,5 jt karakter/bln). Saat ini chain efektif gemini-only sampai `GCLOUD_TTS_KEY`/`AZURE_SPEECH_KEY` dibuat. ElevenLabs = legacy opsional (`--provider=elevenlabs`), tidak termasuk chain. Ganti suara bebas via env `GEMINI_TTS_VOICE` — dengar 1 take dulu |
 | Brand overlay | `{ prefix: "Kali Aja ", accent: "Tau" }` |
 | Laporan | Slack **#social** `C0CDV7Y555K` (`slack_send_message`) |
 | Contoh referensi | `src/videos/terowongan-mrt` (terbaru, paling lengkap) dan `src/videos/rumah-pompa` |
 
-`GEMINI_API_KEY` diberikan oleh prompt scheduled task sebagai env var. **Jangan pernah** mencetak, meng-commit, atau menyertakannya di pesan/memory/Project. Tulis ke `.env` (sudah di-.gitignore) dengan `umask 077`. **Operator juga wajib menambahkan `GEMINI_API_KEY` ke prompt scheduled task** (di luar repo ini) sebelum run berikutnya — kalau tidak, `npm run tts` akan gagal (semua provider skip) dan run berhenti.
+`GEMINI_API_KEY` diberikan oleh prompt scheduled task sebagai env var. **Jangan pernah** mencetak, meng-commit, atau menyertakannya di pesan/memory/Project. Tulis ke `.env` (sudah di-.gitignore) dengan `umask 077`. Keys lain (`BUFFER_ACCESS_TOKEN`, `CLOUDINARY_*`) **tidak** disuntik lewat prompt — di-copy manual oleh operator ke `.env` workspace sekali saja (lihat §1). **Operator juga wajib menambahkan `GEMINI_API_KEY` ke prompt scheduled task** (di luar repo ini) sebelum run berikutnya — kalau tidak, `npm run tts` akan gagal (semua provider skip) dan run berhenti.
 
 ## 1. Setup
 
@@ -26,6 +27,9 @@ npm ci
 # workspace cloud: Node fetch harus lewat proxy + CA bundle (tanpa ini: ENOTFOUND untuk API TTS)
 [ -n "$HTTPS_PROXY" ] && export NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt
 umask 077; printf 'GEMINI_API_KEY=%s\nGEMINI_TTS_VOICE=Charon\n' "$KEY_DARI_PROMPT" > .env
+# Sekali saja per workspace baru (keys tidak dari prompt, jangan dicetak di log):
+printf 'BUFFER_ACCESS_TOKEN=%s\nCLOUDINARY_CLOUD_NAME=opqimovw\nCLOUDINARY_API_KEY=%s\nCLOUDINARY_API_SECRET=%s\n' "$BUFFER_KEY" "$CLOUDINARY_KEY" "$CLOUDINARY_SECRET" >> .env
+# (BUFFER_ACCESS_TOKEN scope: posts:read+posts:write — tanpa account:read, channels tidak bisa di-list; channel ID di §0 / docs/PUBLISHING.md)
 ```
 Render di workspace: `--browser-executable=/usr/bin/google-chrome --gl=swangle` (tanpa GPU, ±0,8 dtk/frame → 85 dtk video ≈ 35–40 menit; jalankan di background).
 
@@ -87,19 +91,19 @@ ffmpeg -i out/<slug>.mp4 -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -ar 48000 -
 ```
 Cek: durasi ≈ `timeline.dur`, 1080×1920, ada audio, loudness ≈ −14 LUFS, 8–12 frame sampel terlihat benar.
 
-## 9. Publish
+## 9. Publish — ikuti `docs/PUBLISHING.md`
 
-1. Cloudinary: `sign-upload` `{public_id: "shorts/YYYY-MM-DD/<slug>"}` → POST ke `/video/upload` dengan semua `upload_params`; pastikan `bytes` = ukuran file.
-2. Buffer YouTube (`mode: shareNow`, `schedulingType: automatic`):
-   - `metadata.youtube`: `title` ≤ 100 karakter, `categoryId: "27"`, `privacy: "public"`, `madeForKids: false`, `isAiGenerated: true`, `notifySubscribers: true`.
-   - `text` = deskripsi: ringkasan 2–3 kalimat, CTA, `Sumber: …`, "Animasi bersifat ilustrasi. Suara: AI (Google AI Studio)", hashtag (`#shorts` + 5–6 topik).
-3. Buffer TikTok: `text` caption (hook + CTA + sumber + `Suara: AI (Google AI Studio)` + hashtag), `metadata.tiktok`: `{isAiGenerated: true, title: "<hook singkat>"}`.
-4. `get_post` sampai `sent` (TikTok bisa beberapa menit). `error` → laporkan.
+Ringkas jalurnya (detail di file itu, sudah teruji 2026-11-11):
+1. Upload MP4 final ke Cloudinary (signed upload, `shorts/YYYY-MM-DD/<slug>`); cek `bytes` == ukuran file.
+2. Buffer **GraphQL** `createPost` (bukan REST — token di .env hanya berlaku GraphQL): YouTube channel `6aedb753e29c69a171803f6e`, TikTok `6aedb7fee29c69a171804662`. `mode: "shareNow"`, `schedulingType: "automatic"`, `needsApproval: false`.
+3. `metadata.youtube`: `title` ≤ 100 karakter (tanpa `| 11.ai` untuk VO Gemini; **diakhiri** `| 11.ai` untuk VO ElevenLabs-Free), `categoryId: "27"`, `privacy: "public"`, `madeForKids: false`, `isAiGenerated: true`, `notifySubscribers: true`. `text` = deskripsi: ringkasan 2–3 kalimat, CTA, `Sumber: …`, "Animasi bersifat ilustrasi. Suara: AI (Google AI Studio)", hashtag (`#shorts` + 5–6 topik).
+4. `metadata.tiktok`: `{isAiGenerated: true, title: "<hook singkat>"}`. Caption: hook + CTA + sumber + `Suara: AI (Google AI Studio)` + hashtag sama.
+5. Verifikasi: `post(input: { id: … })` sampai `status == "sent"` (argumen `input`, bukan `id` langsung — detail di PUBLISHING.md). TikTok bisa beberapa menit. `error` → laporkan, jangan retry buta.
 
 Jika ada keraguan kualitas/fakta tapi video lengkap → `saveToDraft: true` dan laporkan; jika tidak lengkap → jangan posting.
 
 ## 10. Simpan & laporan
 
-- Tambah baris di `docs/ledger.md`.
+- Tambah baris di `docs/ledger.md` (format per PUBLISHING.md §Step 4; commit di branch video, ikut PR).
 - Commit (`src/videos/<slug>/*`, `public/<slug>/vo.mp3`, registry, ledger; bukan `out/` atau `music.wav`) dan push ke `main`.
 - Laporan ke Slack **#social** (`slack_send_message`, channel `C0CDV7Y555K`) untuk **setiap** hasil run — sukses, dilewati, draft (ragu), atau gagal (langkah + error singkat). Isi sukses: judul, link YouTube & TikTok, sumber, provider yang dipakai (dari output `npm run tts`) + error kuota kalau gagal. Jangan pernah menyertakan API key. Jika Slack gagal, pakai `SendUserMessage` sebagai cadangan.
