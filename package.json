@@ -15,7 +15,8 @@
     "render": "remotion render",
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
-    "lint": "eslint src && tsc && tsc -p scripts"
+    "lint": "eslint src && tsc && tsc -p scripts",
+    "test": "tsx --test scripts/*.test.mts"
   },
   "repository": {},
   "license": "UNLICENSED",
