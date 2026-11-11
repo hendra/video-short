@@ -87,6 +87,18 @@ Publish-now vs draft: `mode: "shareNow"` + `schedulingType: "automatic"` publish
 
 IMPORTANT: `Query.post` takes an **input object** (`PostInput { id: PostId! }`), NOT a bare `id:` argument — `post(id: "...")` fails with "Unknown argument \"id\"". Poll until `status == "sent"` (externalLink filled) or `"error"`. For TikTok this typically takes 1–5 minutes.
 
+## Step 3.5 — Notify Slack (optional but usual)
+
+Autopilot uses the `slack_send_message` MCP tool when available. Without it, the Web API works with `SLACK_BOT_TOKEN` (xoxb-…, `chat:write`) and `SLACK_SOCIAL_CHANNEL_ID` (#social, `C0CDV7Y555K`):
+
+```bash
+curl -sS -X POST https://slack.com/api/chat.postMessage \
+  -H "Authorization: Bearer $SLACK_BOT_TOKEN" -H "Content-Type: application/json" \
+  -d '{"channel":"'"$SLACK_SOCIAL_CHANNEL_ID"'","text":"<ringkasan + YouTube + TikTok links>","unfurl_links":false}'
+```
+
+Success: `{ "ok": true, "channel": "C0CDV7Y555K", "ts": "..." }` (a harmless `missing_charset` warning may appear).
+
 ## Step 4 — Ledger + commit
 
 Add one row to `docs/ledger.md`: tanggal · slug · VO chars · kredit (`(Gemini, gratis)` / `(web app, v4)` / …) · YouTube link · TikTok link · catatan (1 baris: sumber, VO, render). Commit the ledger row on the branch that carries the video, not on main — it rides the video PR.
