@@ -1,0 +1,19 @@
+NASKAH VOICEOVER — "Panel Surya Mengapung di Waduk Karangkates, Kok Bisa?"
+Gaya: santai, cerita ke teman, tempo sedang. Target ±75 detik.
+Baca berurutan dalam SATU file audio, jeda ±0,6 detik di antara nomor baris (nomor tidak dibaca).
+
+01  Di Malang, delapan pulau panel surya sedang dibangun mengapung di Waduk Sutami, alias Karangkates.
+02  Kapasitasnya seratus tiga puluh tiga megawatt-peak, terbesar kedua di Indonesia setelah Cirata.
+03  Tapi tunggu. Panel surya kan biasanya di tanah lapang. Kok bisa ngambang di air, tetap stabil, dan listriknya sampai ke PLN?
+04  Begini ringkasnya: tiga langkah, dari matahari sampai stop kontak.
+05  Langkah satu: ribuan panel dipasang di atas ponton, rakit plastik khusus yang dirancang nggak tenggelam.
+06  Langkah dua: tiap pulau dijangkar ke dasar waduk dengan tali tambat, jadi posisinya nggak geser meski muka air naik turun.
+07  Bonusnya, air di bawah panel itu adem. Panel jadi nggak kepanasan, kerjanya lebih stabil.
+08  Langkah tiga: arus searah dari panel diubah lewat inverter jadi arus bolak-balik.
+09  Listriknya menyusur lewat kabel bawah air menuju gardu di tepi waduk, lalu nyambung ke jaringan PLN.
+10  Total investasinya sekitar sembilan puluh juta dolar AS, dan area panel cuma sekitar tujuh puluh satu hektare.
+11  Itu cuma tiga koma tujuh persen dari permukaan waduk pada muka air tertinggi.
+12  Enam dari delapan pulau sudah terpasang, progres konstruksinya sekitar tujuh puluh persen.
+13  Targetnya mulai beroperasi awal Januari dua ribu dua puluh tujuh.
+14  Jadi, lahan daratan tetap produktif, waduk tetap berfungsi, dan listriknya jalan terus.
+15  Mau dibongkar apa lagi? Tulis di komentar.
