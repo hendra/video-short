@@ -219,12 +219,16 @@ export const synthesizeAndPublish = async ({ videoId, lines, provider, synthByPr
       source = "estimated";
     }
     fs.mkdirSync(publicDir(videoId), { recursive: true });
-    // Publish atomically: same-dir temp file + rename (rename across /tmp -> repo is EXDEV).
+    // Publish: prebuild both artifacts, then swap both into place back-to-back (each rename is
+    // atomic within its directory; the gap can't yield new-audio + missing alignment).
+    const json = JSON.stringify({ source, words }, null, 1);
     const tmpTarget = path.join(publicDir(videoId), `.vo.mp3.${process.pid}.tmp`);
+    const tmpAlignment = path.join(videoDir(videoId), `.alignment.json.${process.pid}.tmp`);
     fs.copyFileSync(staging, tmpTarget);
+    fs.writeFileSync(tmpAlignment, json);
     fs.renameSync(tmpTarget, target);
+    fs.renameSync(tmpAlignment, path.join(videoDir(videoId), "alignment.json"));
     fs.rmSync(staging, { force: true });
-    fs.writeFileSync(path.join(videoDir(videoId), "alignment.json"), JSON.stringify({ source, words }, null, 1));
     return { ok: true, provider: p, bytes: fs.statSync(target).size, wordCount: words.length };
   }
   return { ok: false, attempts };
