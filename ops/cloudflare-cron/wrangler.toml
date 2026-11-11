@@ -1,0 +1,6 @@
+name = "video-short-cron"
+main = "worker.js"
+compatibility_date = "2026-11-11"
+
+[triggers]
+crons = ["0 1 * * *", "30 4 * * *", "30 9 * * *"]
