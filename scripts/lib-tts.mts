@@ -126,9 +126,6 @@ export const synthesizeElevenLabs = async (text: string): Promise<SynthResult> =
   return { audio: Buffer.from(data.audio_base64, "base64"), ext: "mp3", words };
 };
 
-export const synthesize = (p: TtsProvider, text: string): Promise<SynthResult> =>
-  p === "gemini" ? synthesizeGemini(text) : p === "gcloud" ? synthesizeGcloud(text) : p === "azure" ? synthesizeAzure(text) : synthesizeElevenLabs(text);
-
 export const hasProviderEnv = (p: TtsProvider): { ok: boolean; missing: string } => {
   const need =
     p === "gemini" ? ["GEMINI_API_KEY"]
