@@ -11,6 +11,7 @@ Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test,
 - `npm run render -- <id> out/<id>.mp4` — `--gl=angle` (GPU) by default. Server/CI without GPU: add `--gl=swangle` (much slower, ~0.8 s/frame).
 - Video pipeline (per `<id>`, in order): `npm run tts -- <id>` *or* `npm run align -- <id> <vo.mp3>` → `npm run timeline -- <id>` → `npm run music -- <id>` (only if duration changed) → dev/render. `npm run tts` defaults to gemini (Google AI Studio free key), auto-falling back to `gcloud` then `azure` if keys exist; pin with `--provider=`. Timing comes from the built-in offline aligner (±0.2 s words) — no timestamps API needed. There is **no word-alignment dependency** for the default path.
 - `npm run credits` — legacy ElevenLabs quota check (only relevant with `--provider=elevenlabs`).
+- CI: `.github/workflows/video.yml` (Cloudflare cron → self-hosted runner → full free pipeline) — runbook: `ops/README.md`.
 - Args always go through `--`: `npm run <script> -- <id>`. Scripts take the video id; folders are in `src/videos/`.
 - Smoke-check a build without rendering: `npx remotion bundle --out-dir /tmp/rbundle`, then `npx remotion still <bundle> <id> <out.jpg> --frame=<f>` and view the image.
 
