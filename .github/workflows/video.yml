@@ -15,6 +15,9 @@ jobs:
   produce:
     runs-on: [self-hosted, linux, x64]
     timeout-minutes: 240
+    env:
+      # Runner is a systemd service: no .bashrc/nvm. Put node + opencode on PATH explicitly.
+      PATH: /home/hendra/.nvm/versions/node/v24.18.0/bin:/home/hendra/.opencode/bin:/home/hendra/.local/bin:/usr/local/bin:/usr/bin:/bin
     steps:
       - uses: actions/checkout@v4
         with:
