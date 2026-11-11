@@ -10,12 +10,12 @@ Dibaca oleh scheduled task (Sen/Rab/Jum). Ikuti persis. Bahasa konten: Indonesia
 | Channel | YouTube **Kali Aja Tau** `6aedb753e29c69a171803f6e` · TikTok **kaliajatau01** `6aedb7fee29c69a171804662` |
 | Buffer org | `6aed53e7ec5c7c6d73f3e437` |
 | Cloudinary | cloud `opqimovw`, folder `shorts/YYYY-MM-DD/<slug>` (resource type **video**) |
-| ElevenLabs | suara **Den – Expressive, Clear, Smooth** `HmwgE8AfbDbaZpgAi4Bn`, model **`eleven_flash_v2_5`**, 1 take |
+| TTS | **Gemini TTS** (`gemini-2.5-flash-preview-tts`, voice `Charon`) lewat Google AI Studio — gratis, tanpa billing; env `GEMINI_API_KEY`. Chain `auto`: gemini → gcloud (gratis ≤ 4 jt karakter/bln) → azure (F0, 0,5 jt karakter/bln). Saat ini chain efektif gemini-only sampai `GCLOUD_TTS_KEY`/`AZURE_SPEECH_KEY` dibuat. ElevenLabs = legacy opsional (`--provider=elevenlabs`), tidak termasuk chain. Ganti suara bebas via env `GEMINI_TTS_VOICE` — dengar 1 take dulu |
 | Brand overlay | `{ prefix: "Kali Aja ", accent: "Tau" }` |
 | Laporan | Slack **#social** `C0CDV7Y555K` (`slack_send_message`) |
 | Contoh referensi | `src/videos/terowongan-mrt` (terbaru, paling lengkap) dan `src/videos/rumah-pompa` |
 
-`ELEVENLABS_API_KEY` diberikan oleh prompt scheduled task sebagai env var. **Jangan pernah** mencetak, meng-commit, atau menyertakannya di pesan/memory/Project. Tulis ke `.env` (sudah di-.gitignore) dengan `umask 077`.
+`GEMINI_API_KEY` diberikan oleh prompt scheduled task sebagai env var. **Jangan pernah** mencetak, meng-commit, atau menyertakannya di pesan/memory/Project. Tulis ke `.env` (sudah di-.gitignore) dengan `umask 077`. **Operator juga wajib menambahkan `GEMINI_API_KEY` ke prompt scheduled task** (di luar repo ini) sebelum run berikutnya — kalau tidak, `npm run tts` akan gagal (semua provider skip) dan run berhenti.
 
 ## 1. Setup
 
@@ -23,19 +23,15 @@ Dibaca oleh scheduled task (Sen/Rab/Jum). Ikuti persis. Bahasa konten: Indonesia
 # add_repo hendra/video-short (access: push), lalu:
 git clone https://github.com/hendra/video-short && cd video-short
 npm ci
-# workspace cloud: Node fetch harus lewat proxy + CA bundle (tanpa ini: ENOTFOUND api.elevenlabs.io)
+# workspace cloud: Node fetch harus lewat proxy + CA bundle (tanpa ini: ENOTFOUND untuk API TTS)
 [ -n "$HTTPS_PROXY" ] && export NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt
-umask 077; printf 'ELEVENLABS_API_KEY=%s\nELEVENLABS_VOICE_ID=HmwgE8AfbDbaZpgAi4Bn\nELEVENLABS_MODEL_ID=eleven_flash_v2_5\n' "$KEY_DARI_PROMPT" > .env
-npm run credits                      # cek kuota (lihat §2)
+umask 077; printf 'GEMINI_API_KEY=%s\nGEMINI_TTS_VOICE=Charon\n' "$KEY_DARI_PROMPT" > .env
 ```
 Render di workspace: `--browser-executable=/usr/bin/google-chrome --gl=swangle` (tanpa GPU, ±0,8 dtk/frame → 85 dtk video ≈ 35–40 menit; jalankan di background).
 
-## 2. Gerbang kredit (wajib, dua kali)
+## 2. Tidak ada gerbang kuota
 
-1. Awal run: `npm run credits -- --need 800`. Exit code 2 → **berhenti**, jangan riset/render. Kirim laporan ke Slack #social (§10): "dilewati, kredit ElevenLabs tidak cukup (sisa X, reset tanggal Y)".
-2. Setelah naskah final: `npm run credits -- --video <slug>` (harga persis naskah). Exit 2 → berhenti & laporkan.
-
-Kuota Free 10k/bulan; flash = 0,5 kredit/karakter; naskah ±1.100–1.400 karakter ≈ 550–700 kredit.
+Tidak ada API kuota gratis untuk Gemini TTS. Kuota AI Studio gratis ±10 request/hari per model — cukup untuk 1–3 video/minggu (1 request = 1 video). Jika `npm run tts` gagal (429, kuota habis, semua provider gagal, atau analisis timing gagal): **berhenti**, jangan riset/render/publish. Laporkan ke Slack #social (§10): langkah gagal + provider yang dicoba + error singkat. Fallback gcloud/azure aktif hanya setelah key-nya dibuat (lihat AGENTS.md / `.env.example`).
 
 ## 3. Topik (riset hari ini)
 
@@ -54,11 +50,11 @@ Kuota Free 10k/bulan; flash = 0,5 kredit/karakter; naskah ±1.100–1.400 karakt
 ## 5. Suara + timing
 
 ```bash
-npm run tts -- <slug>        # vo.mp3 + alignment.json (timestamp per karakter dari API)
+npm run tts -- <slug>        # vo.mp3 + alignment.json (Gemini; timing dari aligner offline, ±0,2 dtk/kata)
 npm run timeline -- <slug>   # caption + rentang shot
 npm run music -- <slug>      # musik orisinal sesuai titik potong
 ```
-Cek `timeline.json`: semua kata ter-match, durasi 60–90 dtk. Jika TTS gagal: jangan coba berulang-ulang (maks 1 kali ulang); laporkan.
+Cek `timeline.json`: semua kata ter-match, durasi 60–90 dtk. Jika TTS gagal di semua provider (atau analisis timing gagal): **berhenti dan laporkan** (§10) — jangan coba berulang-ulang. Audio gagal menyimpan take segar di `os.tmpdir()/vo-<slug>-failed.mp3`; `vo.mp3`/`alignment.json` lama tidak tersentuh.
 
 ## 6. Adegan 3D — salin pola `terowongan-mrt`
 
@@ -77,7 +73,7 @@ Standar kualitas (pelajaran dari video sebelumnya):
 ## 7. Verifikasi sebelum render penuh
 
 ```bash
-npx tsc && npx tsc -p scripts && npx eslint src
+npm run lint && npm test
 npx remotion bundle --out-dir /tmp/rbundle
 npx remotion still /tmp/rbundle <slug> /tmp/s_<f>.jpg --frame=<f> --browser-executable=/usr/bin/google-chrome --gl=swangle --image-format=jpeg
 ```
@@ -95,9 +91,9 @@ Cek: durasi ≈ `timeline.dur`, 1080×1920, ada audio, loudness ≈ −14 LUFS, 
 
 1. Cloudinary: `sign-upload` `{public_id: "shorts/YYYY-MM-DD/<slug>"}` → POST ke `/video/upload` dengan semua `upload_params`; pastikan `bytes` = ukuran file.
 2. Buffer YouTube (`mode: shareNow`, `schedulingType: automatic`):
-   - `metadata.youtube`: `title` ≤ 100 karakter **diakhiri ` | 11.ai`** (atribusi wajib paket Free ElevenLabs; "11.ai" adalah bentuk resmi yang diterima), `categoryId: "27"`, `privacy: "public"`, `madeForKids: false`, `isAiGenerated: true`, `notifySubscribers: true`.
-   - `text` = deskripsi: ringkasan 2–3 kalimat, CTA, `Sumber: …`, "Animasi bersifat ilustrasi. Suara: 11.ai", hashtag (`#shorts` + 5–6 topik).
-3. Buffer TikTok: `text` caption (hook + CTA + sumber + `Suara: 11.ai` + hashtag), `metadata.tiktok`: `{isAiGenerated: true, title: "<hook singkat> | 11.ai"}`.
+   - `metadata.youtube`: `title` ≤ 100 karakter, `categoryId: "27"`, `privacy: "public"`, `madeForKids: false`, `isAiGenerated: true`, `notifySubscribers: true`.
+   - `text` = deskripsi: ringkasan 2–3 kalimat, CTA, `Sumber: …`, "Animasi bersifat ilustrasi. Suara: AI (Google AI Studio)", hashtag (`#shorts` + 5–6 topik).
+3. Buffer TikTok: `text` caption (hook + CTA + sumber + `Suara: AI (Google AI Studio)` + hashtag), `metadata.tiktok`: `{isAiGenerated: true, title: "<hook singkat>"}`.
 4. `get_post` sampai `sent` (TikTok bisa beberapa menit). `error` → laporkan.
 
 Jika ada keraguan kualitas/fakta tapi video lengkap → `saveToDraft: true` dan laporkan; jika tidak lengkap → jangan posting.
@@ -106,4 +102,4 @@ Jika ada keraguan kualitas/fakta tapi video lengkap → `saveToDraft: true` dan 
 
 - Tambah baris di `docs/ledger.md`.
 - Commit (`src/videos/<slug>/*`, `public/<slug>/vo.mp3`, registry, ledger; bukan `out/` atau `music.wav`) dan push ke `main`.
-- Laporan ke Slack **#social** (`slack_send_message`, channel `C0CDV7Y555K`) untuk **setiap** hasil run — sukses, dilewati (kredit), draft (ragu), atau gagal (langkah + error singkat). Isi sukses: judul, link YouTube & TikTok, sumber, kredit terpakai/sisa (`npm run credits`). Jangan pernah menyertakan API key. Jika Slack gagal, pakai `SendUserMessage` sebagai cadangan.
+- Laporan ke Slack **#social** (`slack_send_message`, channel `C0CDV7Y555K`) untuk **setiap** hasil run — sukses, dilewati, draft (ragu), atau gagal (langkah + error singkat). Isi sukses: judul, link YouTube & TikTok, sumber, provider yang dipakai (dari output `npm run tts`) + error kuota kalau gagal. Jangan pernah menyertakan API key. Jika Slack gagal, pakai `SendUserMessage` sebagai cadangan.
