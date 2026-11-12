@@ -167,7 +167,7 @@ if (process.env.PUBLISH_COMMIT === "1") {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       git(["fetch", "origin", "main"]);
-      git(["rebase", "origin/main"]);
+      git(["rebase", "--autostash", "origin/main"]); // tree still has the uncommitted video files + registry.ts
       git(["push", "origin", "HEAD:main"]);
       break;
     } catch (e) {
@@ -175,6 +175,7 @@ if (process.env.PUBLISH_COMMIT === "1") {
         console.error(`publish: ledger committed but PUSH FAILED after 3 attempts — the workflow will fail; the ledger line that must land on main:\n${row}`);
         throw e;
       }
+      try { execFileSync("git", ["rebase", "--abort"], { cwd: ROOT, stdio: "ignore" }); } catch { /* no rebase in progress */ }
       console.error(`publish: push attempt ${attempt} failed — retrying after rebase`);
     }
   }
