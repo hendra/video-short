@@ -8,7 +8,7 @@ Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test,
 
 - `npm run dev` — Remotion Studio. `predev` auto-synthesizes missing `public/<id>/music.wav` (local, no API key needed).
 - `npm run lint` — the only static check: `eslint src && tsc && tsc -p scripts`. Run this after any change. (`scripts/` has its own tsconfig because it uses `allowImportingTsExtensions`; root `tsc` covers only `src/`.)
-- `npm run render -- <id> out/<id>.mp4` — `--gl=angle` (GPU) by default. Server/CI without GPU: add `--gl=swangle` (much slower, ~0.8 s/frame).
+- `npm run render -- <id> out/<id>.mp4` — `--gl=angle` (GPU) by default. Server/CI without GPU: add `--gl=swangle` (much slower, ~0.8 s/frame). CI (`.github/workflows/video.yml`) uses `--gl=vulkan` with swangle fallback (verified on the self-hosted runner).
 - Video pipeline (per `<id>`, in order): `npm run tts -- <id>` *or* `npm run align -- <id> <vo.mp3>` → `npm run timeline -- <id>` → `npm run music -- <id>` (only if duration changed) → dev/render. `npm run tts` defaults to gemini (Google AI Studio free key), auto-falling back to `gcloud` then `azure` if keys exist; pin with `--provider=`. Timing comes from the built-in offline aligner (±0.2 s words) — no timestamps API needed. There is **no word-alignment dependency** for the default path.
 - `npm run credits` — legacy ElevenLabs quota check (only relevant with `--provider=elevenlabs`).
 - CI: `.github/workflows/video.yml` (Cloudflare cron → self-hosted runner → full free pipeline) — runbook: `ops/README.md`.

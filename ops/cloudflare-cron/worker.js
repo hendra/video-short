@@ -22,18 +22,28 @@ export default {
     if (res.ok) return; // dispatch diterima (HTTP 204)
     const detail = (await res.text()).slice(0, 200);
     ctx.waitUntil(
-      fetch("https://slack.com/api/chat.postMessage", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.SLACK_BOT_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          channel: env.SLACK_SOCIAL_CHANNEL_ID,
-          text: `:warning: [video-short-cron] repository_dispatch gagal (${res.status}): ${detail}`,
-          unfurl_links: false,
-        }),
-      }),
+      (async () => {
+        try {
+          const slackRes = await fetch("https://slack.com/api/chat.postMessage", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${env.SLACK_BOT_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              channel: env.SLACK_SOCIAL_CHANNEL_ID,
+              text: `:warning: [video-short-cron] repository_dispatch gagal (${res.status}): ${detail}`,
+              unfurl_links: false,
+            }),
+          });
+          const body = await slackRes.json().catch(() => null);
+          if (!slackRes.ok || !body?.ok) {
+            console.log(`slack warning post failed: HTTP ${slackRes.status} ${body?.error ?? ""}`);
+          }
+        } catch (e) {
+          console.log(`slack warning post threw: ${e?.message ?? e}`);
+        }
+      })(),
     );
   },
 };
