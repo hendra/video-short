@@ -8,21 +8,31 @@ concurrency:
   group: video-run
   cancel-in-progress: false
 
-permissions:
-  contents: write
-
 jobs:
   produce:
     runs-on: [self-hosted, linux, x64]
     timeout-minutes: 240
+    # Single job => the GITHUB_TOKEN must be write-scoped here (used by the final
+    # push). Deliberate trade-off: all steps share it. Mitigated by giving the
+    # *agent* only GEMINI_API_KEY (below), not the publish secrets.
+    permissions:
+      contents: write
     env:
-      # Runner is a systemd service: no .bashrc/nvm. Put node + opencode on PATH explicitly.
-      PATH: /home/hendra/.nvm/versions/node/v24.18.0/bin:/home/hendra/.opencode/bin:/home/hendra/.local/bin:/usr/local/bin:/usr/bin:/bin
+      # opencode (the agent) lives next to the runner; node comes from setup-node.
+      PATH: /home/hendra/.opencode/bin:/home/hendra/.local/bin:/usr/local/bin:/usr/bin:/bin
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Mark start for slug discovery
+        id: marker
+        run: touch "$RUNNER_TEMP/.ci-start"
 
       - name: Preflight
         run: |
@@ -30,12 +40,14 @@ jobs:
           /home/hendra/.opencode/bin/opencode --version
           which google-chrome || true
 
-      - name: Write .env from secrets
+      # The agent only needs GEMINI_API_KEY (TTS) + publish.json conventions.
+      # Publish secrets are written LATER (see "Write publish .env"), AFTER the
+      # agent/render steps, so the agent never sees them.
+      - name: Write agent .env from secrets
+        shell: bash
         run: |
           umask 077
-          printf 'GEMINI_API_KEY=%s\nCLOUDINARY_CLOUD_NAME=%s\nCLOUDINARY_API_KEY=%s\nCLOUDINARY_API_SECRET=%s\nBUFFER_ACCESS_TOKEN=%s\nSLACK_BOT_TOKEN=%s\nSLACK_SOCIAL_CHANNEL_ID=%s\n' \
-            "${{ secrets.GEMINI_API_KEY }}" "${{ secrets.CLOUDINARY_CLOUD_NAME }}" "${{ secrets.CLOUDINARY_API_KEY }}" "${{ secrets.CLOUDINARY_API_SECRET }}" \
-            "${{ secrets.BUFFER_ACCESS_TOKEN }}" "${{ secrets.SLACK_BOT_TOKEN }}" "${{ secrets.SLACK_SOCIAL_CHANNEL_ID }}" > .env
+          printf 'GEMINI_API_KEY=%s\n' "${{ secrets.GEMINI_API_KEY }}" > .env
 
       - name: Dependencies
         run: npm ci
@@ -51,11 +63,20 @@ jobs:
           mkdir -p "$XDG_CONFIG_HOME"
           /home/hendra/.opencode/bin/opencode run --auto --standalone --model opencode/inkling-2-small-free --file AGENTS.md --file docs/AUTOPILOT.md --file ops/ci-prompt.md "You are in CI. Follow AGENTS.md and docs/AUTOPILOT.md. Follow ops/ci-prompt.md exactly. Stop before any publish/upload/render step."
 
+      # Slug candidates = folders under src/videos created since the marker.
+      # Fail on ZERO or MULTIPLE candidates; validate the slug charset so it can
+      # be safely interpolated downstream.
       - name: Discover slug
         id: slug
         run: |
-          SLUG="$(git status --porcelain -- src/videos | awk '{print $2}' | grep -oE '^src/videos/[^/]+/' | cut -d/ -f3 | sort | uniq | head -1)"
-          if [ -z "$SLUG" ]; then echo "agent produced no video folder"; exit 1; fi
+          set -e
+          CANDIDATES="$(find src/videos -mindepth 2 -maxdepth 2 -type d -newer "$RUNNER_TEMP/.ci-start" -printf '%f\n')"
+          N="$(printf '%s\n' "$CANDIDATES" | grep -c . || true)"
+          if [ "$N" -eq 0 ]; then echo "agent produced no new video folder"; exit 1; fi
+          if [ "$N" -gt 1 ]; then echo "ambiguous slug (multiple new folders):"; echo "$CANDIDATES"; exit 1; fi
+          SLUG="$CANDIDATES"
+          [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "slug fails charset check: $SLUG"; exit 1; }
+          echo "SLUG=$SLUG" >> "$GITHUB_ENV"
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
 
       # music.wav is gitignored and synthesized by predev/prerender, which the direct
@@ -67,48 +88,95 @@ jobs:
         id: gates
         run: npm run lint && npm test && npx remotion bundle --out-dir /tmp/rbundle
 
+      # One still per shot, frame = shot span start (fps=30 from src/Root.tsx).
+      # Slug passed via env, not interpolated into the JS expression.
       - name: Still check (one frame per shot)
         id: stills
         run: |
-          while read -r shot; do
-            npx remotion still /tmp/rbundle "${{ steps.slug.outputs.slug }}" "/tmp/s_${shot}.jpg" --frame=10 --gl=vulkan --image-format=jpeg
+          while read -r shot frame; do
+            npx remotion still /tmp/rbundle "$SLUG" "/tmp/s_${shot}.jpg" --frame="$frame" --gl=vulkan --image-format=jpeg
             SZ=$(stat -c%s "/tmp/s_${shot}.jpg")
             if [ "$SZ" -lt 10000 ]; then echo "still for shot $shot too small or missing ($SZ bytes)"; exit 1; fi
-          done < <(node -e "const fs=require('fs'); const t=JSON.parse(fs.readFileSync('src/videos/${{ steps.slug.outputs.slug }}/timeline.json','utf8')); console.log(t.shots.map(s=>s.id).join('\n'));")
+          done < <(node -e 'const fs=require("fs"); const t=JSON.parse(fs.readFileSync(`src/videos/${process.env.SLUG}/timeline.json`,"utf8")); console.log(t.shots.map(s=>s.id+" "+(Math.floor(s.s*30)+1)).join("\n"));')
 
       - name: Render
         id: render
         run: |
-          npx remotion render /tmp/rbundle "${{ steps.slug.outputs.slug }}" "out/${{ steps.slug.outputs.slug }}.mp4" --gl=vulkan --concurrency=2 --log=error \
-          || npx remotion render /tmp/rbundle "${{ steps.slug.outputs.slug }}" "out/${{ steps.slug.outputs.slug }}.mp4" --gl=swangle --concurrency=2 --log=error
+          npx remotion render /tmp/rbundle "$SLUG" "out/$SLUG.mp4" --gl=vulkan --concurrency=2 --log=error \
+          || npx remotion render /tmp/rbundle "$SLUG" "out/$SLUG.mp4" --gl=swangle --concurrency=2 --log=error
 
       - name: Loudnorm
         id: loudnorm
-        run: ffmpeg -y -i "out/${{ steps.slug.outputs.slug }}.mp4" -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -ar 48000 -c:a aac -b:a 192k -movflags +faststart "out/${{ steps.slug.outputs.slug }}-final.mp4"
+        run: ffmpeg -y -i "out/$SLUG.mp4" -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -ar 48000 -c:a aac -b:a 192k -movflags +faststart "out/$SLUG-final.mp4"
 
-      - name: Publish (Cloudinary → Buffer YT + TikTok → ledger row)
+      # Only now does the full credential set exist in the workspace.
+      - name: Write publish .env from secrets
+        run: |
+          umask 077
+          printf 'GEMINI_API_KEY=%s\nCLOUDINARY_CLOUD_NAME=%s\nCLOUDINARY_API_KEY=%s\nCLOUDINARY_API_SECRET=%s\nBUFFER_ACCESS_TOKEN=%s\nSLACK_BOT_TOKEN=%s\nSLACK_SOCIAL_CHANNEL_ID=%s\n' \
+            "${{ secrets.GEMINI_API_KEY }}" "${{ secrets.CLOUDINARY_CLOUD_NAME }}" "${{ secrets.CLOUDINARY_API_KEY }}" "${{ secrets.CLOUDINARY_API_SECRET }}" \
+            "${{ secrets.BUFFER_ACCESS_TOKEN }}" "${{ secrets.SLACK_BOT_TOKEN }}" "${{ secrets.SLACK_SOCIAL_CHANNEL_ID }}" > .env
+
+      # PUBLISH_COMMIT=1 → publish.mts commits+pushes the ledger row (rebase retry,
+      # 3 attempts) BEFORE this step ends, so the idempotency record survives any
+      # failure below. The remaining video/registry files are committed by the
+      # Commit step. If either fails after the video went live, the Slack failure
+      # message carries the ledger row to commit manually.
+      - name: Publish (Cloudinary → Buffer YT + TikTok → ledger row + push)
         id: publish
-        run: npm run publish -- "${{ steps.slug.outputs.slug }}"
+        run: PUBLISH_COMMIT=1 npm run publish -- "$SLUG"
 
       - name: Commit video + ledger, push main
+        id: commit
         if: success()
-        env:
-          SLUG: ${{ steps.slug.outputs.slug }}
         run: |
+          set -e
+          TITLE=$(node -p "require('./src/videos/'+process.env.SLUG+'/publish.json').title")
           git config user.name "video-short-ci"
           git config user.email "ci@video-short.local"
-          TITLE=$(node -p "require('./src/videos/'+process.env.SLUG+'/publish.json').title")
           git add "src/videos/$SLUG" "public/$SLUG/vo.mp3" src/videos/registry.ts docs/ledger.md
-          git commit -m "$SLUG: $TITLE"
-          # main can move while the job runs (PRs land mid-run); rebase on latest main instead of failing the push
-          git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+          if git diff --cached --quiet; then
+            echo "nothing to commit (ledger already pushed by publish step?)"
+          else
+            git commit -m "$SLUG: $TITLE"
+          fi
+          # main can move while the job runs (PRs land mid-run, publish pushed the ledger);
+          # rebase on latest main with retry instead of failing the push.
+          for attempt in 1 2 3; do
+            if git fetch origin main && git rebase origin/main && git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "push attempt $attempt failed; retrying…"; sleep 5
+          done
+          echo "push failed after 3 attempts — the video is LIVE; the ledger row must be committed manually."
+          exit 1
 
       - name: Success report (Slack #social)
         if: success()
-        run: npm run report -- "${{ steps.slug.outputs.slug }}"
+        run: npm run report -- "$SLUG"
 
+      # Derive the real failing step from the steps context.
       - name: Failure report (Slack #social)
         if: failure()
-        run: npm run report -- "${{ steps.slug.outputs.slug }}" --step ci --error "run gagal — lihat https://github.com/hendra/video-short/actions/runs/${{ github.run_id }}"
+        env:
+          JOB_STATUS: ${{ job.status }}
+          AGENT_O: ${{ steps.agent.outcome }}
+          SLUG_O: ${{ steps.slug.outcome }}
+          GATES_O: ${{ steps.gates.outcome }}
+          STILLS_O: ${{ steps.stills.outcome }}
+          RENDER_O: ${{ steps.render.outcome }}
+          LOUDNORM_O: ${{ steps.loudnorm.outcome }}
+          PUBLISH_O: ${{ steps.publish.outcome }}
+          COMMIT_O: ${{ steps.commit.outcome }}
+        run: |
+          FAILSTEP=ci
+          for pair in "agent:$AGENT_O" "slug:$SLUG_O" "gates:$GATES_O" "stills:$STILLS_O" "render:$RENDER_O" "loudnorm:$LOUDNORM_O" "publish:$PUBLISH_O" "commit:$COMMIT_O"; do
+            name="${pair%%:*}"; outcome="${pair##*:}"
+            if [ "$outcome" = "failure" ]; then FAILSTEP="$name"; break; fi
+          done
+          npm run report -- "${SLUG:-ci}" --step "$FAILSTEP" --error "run gagal di step $FAILSTEP — lihat https://github.com/hendra/video-short/actions/runs/${{ github.run_id }}" || true
+
+      # The runner is persistent — never leave secrets on disk.
+      - name: Cleanup secrets
+        if: always()
+        run: rm -f .env
