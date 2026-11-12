@@ -1,14 +1,9 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { describe, test } from "node:test";
+import { ledgerHas, cloudinarySign, validatePublishJson, extractBufferError } from "./publish-lib.mts";
 
-// re-implement the two pure helpers for unit testing (kept in sync with publish.mts)
-const ledgerHas = (ledger: string, s: string) =>
-  new RegExp(`^\\|[^\\n]*\\|\\s*${s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\|`, "m").test(ledger);
-const sign = (public_id: string, ts: number, secret: string) =>
-  crypto.createHash("sha1").update(`public_id=${public_id}&timestamp=${ts}${secret}`).digest("hex");
-
-describe("ledger presence check", () => {
+describe("ledger presence check (shipped helper)", () => {
   const ledger = `# Ledger\n| Tanggal | Slug | ...\n|---|---|\n| 2026-11-07 | jembatan-raksasa | 1.101 | (Gemini, gratis) | a | b | c |\n`;
   test("detects existing slug", () => assert.equal(ledgerHas(ledger, "jembatan-raksasa"), true));
   test("missing slug returns false", () => assert.equal(ledgerHas(ledger, "lain"), false));
@@ -16,11 +11,50 @@ describe("ledger presence check", () => {
   test("slug embedded in another slug does not match", () => assert.equal(ledgerHas(ledger, "jembat"), false));
 });
 
-describe("cloudinary signature", () => {
-  test("matches sha1 of sorted params + secret", () => {
+describe("cloudinary signature (shipped helper)", () => {
+  test("sorts params alphabetically", () => {
+    // keys deliberately out of order; sorted -> overwrite, public_id, timestamp
     assert.equal(
-      sign("shorts/2026-11-11/x", 1234567890, "s3cr3t"),
-      crypto.createHash("sha1").update("public_id=shorts/2026-11-11/x&timestamp=1234567890s3cr3t").digest("hex"),
+      cloudinarySign({ public_id: "shorts/x", timestamp: 123, overwrite: "true" }, "s3cr3t"),
+      crypto.createHash("sha1").update("overwrite=true&public_id=shorts/x&timestamp=123s3cr3t").digest("hex"),
     );
+  });
+  test("sign is independent of key order", () => {
+    assert.equal(cloudinarySign({ a: "1", b: "2" }, "k"), cloudinarySign({ b: "2", a: "1" }, "k"));
+  });
+});
+
+describe("validatePublishJson", () => {
+  const ok = { title: "Judul", description: "desc", tiktokTitle: "tt", tiktokCaption: "tc" };
+  test("valid metadata has no problems", () => assert.deepEqual(validatePublishJson(ok), []));
+  test("missing required keys is reported", () => {
+    assert.ok(validatePublishJson({ title: "x" }).length >= 3);
+    assert.deepEqual(validatePublishJson(null), ["publish.json: not an object"]);
+  });
+  test("empty strings count as missing", () => {
+    assert.ok(validatePublishJson({ ...ok, description: "   " }).join().includes("description"));
+  });
+  test("length caps enforced", () => {
+    assert.ok(validatePublishJson({ ...ok, title: "x".repeat(101) }).join().includes("title > 100"));
+    assert.ok(validatePublishJson({ ...ok, tiktokTitle: "x".repeat(91) }).join().includes("tiktokTitle > 90"));
+  });
+});
+
+describe("extractBufferError", () => {
+  test("returns empty string for a successful createPost", () => {
+    assert.equal(extractBufferError({ data: { createPost: { __typename: "PostActionSuccess", post: { id: "p1" } } } }), "");
+  });
+  test("extracts HTTP-level errors array", () => {
+    assert.equal(extractBufferError({ errors: [{ message: "bad token" }] }), "bad token");
+  });
+  test("extracts typed error union member message", () => {
+    assert.equal(
+      extractBufferError({ data: { createPost: { __typename: "LimitReachedError", message: "daily limit" } } }),
+      "LimitReachedError: daily limit",
+    );
+  });
+  test("reports null payload instead of crashing", () => {
+    assert.match(extractBufferError(null), /no createPost payload/);
+    assert.match(extractBufferError({}), /no createPost payload/);
   });
 });

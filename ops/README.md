@@ -9,7 +9,7 @@ Chain: **Cloudflare Worker** (cron 08:00/11:30/16:30 WIB) → `repository_dispat
 | Worker (weker) | `ops/cloudflare-cron/worker.js` — ter-deploy di akun CF; crons di `wrangler.toml` |
 | Runner | `ops/runner-install.sh` — install sekali di PC ini |
 | Workflow | `.github/workflows/video.yml` — `repository_dispatch[video-run]` + `workflow_dispatch` (manual) |
-| Publish | `scripts/publish.mts` (`npm run publish -- <slug>`) — Cloudinary signed upload → Buffer GraphQL → ledger row (idempotent via ledger presence) |
+| Publish | `scripts/publish.mts` (`npm run publish -- <slug>`; CI sets `PUBLISH_COMMIT=1`) — Cloudinary signed upload → Buffer GraphQL → ledger row; publish.mts commits+pushes the ledger itself (rebase retry) so the idempotency record survives the job |
 | Report | `scripts/report.mts` (`npm run report -- <slug>`) — Slack #social; otomatis membaca links dari `docs/ledger.md` bila `--links` kosong |
 | Agent | `ops/ci-prompt.md` — opencode, `--model opencode/inkling-2-small-free` |
 
@@ -46,5 +46,5 @@ atau dari UI: Actions → video-run → Run workflow.
 - **Quota**: opencode free model menolak/rate-limit → publish tidak terjadi; coba lagi lewat `workflow_dispatch` nanti.
 - **Render gagal vulkan**: fallback swangle otomatis (lebih lambat). Render dipatok `--concurrency=2` karena PC runner juga dipakai kerja normal — default Remotion (½ core) bikin Chrome tabs menumpuk dan kena OOM killer (run 2026-11-11, megathrust-jakarta).
 - **Runner kena OOM killer saat render**: job dibatalkan GitHub ("runner received a shutdown signal"), langkah sesudahnya (termasuk Slack report) tidak jalan. Cek `journalctl --user -u video-runner.service` untuk konfirmasi `oom-kill`; kosongkan memori (tutup Chrome) lalu re-run. Folder video yang setengah jadi tertinggal di `_work/video-short/video-short` — hapus manual sebelum re-run agar "Discover slug" tidak mengambil folder basi.
-- **Publish gagal setelah buffer terpost** (rare): ledger TIDAK akan ditulis (publish.mts baru menulis setelah semua sukses) — re-run aman; ledger presence check mencegah double-post.
+- **Publish gagal di tengah job setelah video live** (rare): publish.mts menulis + mem-push baris ledger (`PUBLISH_COMMIT=1`) sebelum job bisa berlanjut; bila belum sempat, Slack failure report menyertakan baris ledger persisnya — commit manual sebelum cron berikutnya. Re-run aman; publish.mts skip bila ledger sudah berisi slug.
 - **Rollback**: hapus baris ledger + `git revert` commit CI; out/ tidak tercommit.
