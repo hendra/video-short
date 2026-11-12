@@ -143,9 +143,10 @@ jobs:
           # main can move while the job runs (PRs land mid-run, publish pushed the ledger);
           # rebase on latest main with retry instead of failing the push.
           for attempt in 1 2 3; do
-            if git fetch origin main && git rebase origin/main && git push origin HEAD:main; then
+            if git fetch origin main && git rebase --autostash origin/main && git push origin HEAD:main; then
               exit 0
             fi
+            git rebase --abort 2>/dev/null || true
             echo "push attempt $attempt failed; retrying…"; sleep 5
           done
           echo "push failed after 3 attempts — the video is LIVE; the ledger row must be committed manually."
