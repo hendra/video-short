@@ -8,6 +8,7 @@ import { terowonganMrt } from "./terowongan-mrt";
 import { jembatanRaksasa } from "./jembatan-raksasa";
 import { pltsKarangkates } from "./plts-karangkates";
 import { satelitSwift } from "./satelit-swift";
+import { pulauBaruKrakatau } from "./pulau-baru-krakatau";
 
 // Register every video here. Composition props must be JSON, so compositions only carry the id.
 export const VIDEOS: Record<string, VideoDef> = {
@@ -20,4 +21,5 @@ export const VIDEOS: Record<string, VideoDef> = {
   [jembatanRaksasa.id]: jembatanRaksasa,
   [pltsKarangkates.id]: pltsKarangkates,
   [satelitSwift.id]: satelitSwift,
+  [pulauBaruKrakatau.id]: pulauBaruKrakatau,
 };
