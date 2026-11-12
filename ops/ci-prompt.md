@@ -4,6 +4,7 @@ You are an autonomous agent running inside GitHub Actions on a **self-hosted** r
 Your task: produce a **complete new vertical 3D explainer Short** end-to-end, EXCEPT the final publish/upload steps — the workflow does those after you.
 
 ## Hard rules
+- Always build a **brand-new** video with a new slug. A slug already in `src/videos/registry.ts` or `docs/ledger.md` is already published — never treat existing committed work as "this run's output". The workflow fails if `git status` shows no new/changed files under `src/videos/`.
 - Follow `AGENTS.md` and `docs/AUTOPILOT.md` as if reading them for the first time today.
 - You MAY create/edit only files under `src/videos/<your-slug>/` and register the video in `src/videos/registry.ts`.
 - You MUST produce, before stopping:
