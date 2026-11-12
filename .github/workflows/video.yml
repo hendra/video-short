@@ -42,7 +42,14 @@ jobs:
 
       - name: Agent builds the video
         id: agent
-        run: /home/hendra/.opencode/bin/opencode run --auto --standalone --model opencode/inkling-2-small-free --file AGENTS.md --file docs/AUTOPILOT.md --file ops/ci-prompt.md "You are in CI. Follow AGENTS.md and docs/AUTOPILOT.md. Follow ops/ci-prompt.md exactly. Stop before any publish/upload/render step."
+        # Isolate the agent from the runner user's global opencode config (~/.config/opencode):
+        # its claude-mem plugin injected memories of the previous run ("video committed, tree clean"),
+        # so the agent re-verified the old video and produced nothing new.
+        run: |
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/opencode-config"
+          export OPENCODE_DISABLE_CLAUDE_CODE=1
+          mkdir -p "$XDG_CONFIG_HOME"
+          /home/hendra/.opencode/bin/opencode run --auto --standalone --model opencode/inkling-2-small-free --file AGENTS.md --file docs/AUTOPILOT.md --file ops/ci-prompt.md "You are in CI. Follow AGENTS.md and docs/AUTOPILOT.md. Follow ops/ci-prompt.md exactly. Stop before any publish/upload/render step."
 
       - name: Discover slug
         id: slug
