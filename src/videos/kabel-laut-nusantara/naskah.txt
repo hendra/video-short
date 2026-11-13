@@ -1,0 +1,20 @@
+NASKAH VOICEOVER — "Internet Antarpulau 112 Ribu Kilometer, Kok Bisa?"
+Gaya: santai, cerita ke teman, tempo sedang. Target ±75 detik.
+Baca berurutan dalam SATU file audio, jeda ±0,6 detik di antara nomor baris (nomor tidak dibaca).
+
+01  Hari ini, InfraNexia menambah seribu empat ratus delapan kilometer fiber optik lagi.
+02  Totalnya seratus dua belas ribu kilometer. Dua puluh enam ribu di antaranya kabel laut.
+03  Tapi tunggu — kok bisa internet melaju ribuan kilometer di bawah laut?
+04  Rahasianya: datamu bukan listrik, tapi kilatan cahaya.
+05  Langkah satu. Angka satu nol dari foto, chat, dan video kamu diubah jadi pulsa laser.
+06  Pulsa ditembakkan ke serat kaca — setipis rambut manusia.
+07  Langkah dua. Cahaya dipantulkan terus oleh dinding serat — namanya pantulan internal total.
+08  Nggak ada cahaya yang bocor, meski melesat hampir secepat cahaya.
+09  Langkah tiga. Ribuan serat dibundel, dibalut kawat baja, ditanam di dasar laut jadi kabel.
+10  Di ujung-ujungnya berdiri stasiun pantai, lalu sinyal diteruskan ke darat lewat titik akses.
+11  Analoginya kayak selang cahaya sepanjang laut — dindingnya cermin, isinya kilat.
+12  Kalau satu jalur terganggu, trafik antar pusat data dialihkan — targetnya kurang dari lima puluh milidetik.
+13  Total jaringnya seratus dua belas ribu kilometer — sekitar tiga kali keliling bumi.
+14  Didukung satu koma sembilan juta titik akses, trafik AI diprediksi naik sepuluh sampai dua puluh kali lipat.
+15  Jadi… internet antarpulau itu cahaya yang dijaga ketat di dasar laut.
+16  Mau dibongkar apa lagi? Tulis di komentar.
