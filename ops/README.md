@@ -1,6 +1,6 @@
 # ops — CI: Cloudflare cron → GitHub Actions (hosted) → pipeline video
 
-Chain: **Cloudflare Worker** (cron 08:00/11:30/16:30 WIB) → `repository_dispatch` → **GitHub-hosted `ubuntu-latest`** → workflow `.github/workflows/video.yml` → fetch katalog Buffer ke `/tmp/published-videos.json` → agent (opencode, free model) + duplicate gate → gates (lint/test/bundle/still-per-shot) → render (`--gl=swangle`, 4 runner paralel) → gabung + audio + loudnorm → publish (Cloudinary → Buffer YouTube + TikTok) → Slack #social. Video source tidak di-commit; katalog tidak di-commit dan hanya di-fetch ke `/tmp` saat CI.
+Chain: **Cloudflare Worker** (cron 08:00/11:30/16:30 WIB) → `repository_dispatch` → **GitHub-hosted `ubuntu-26.04`** → workflow `.github/workflows/video.yml` → fetch katalog Buffer ke `/tmp/published-videos.json` → agent (opencode, free model) + duplicate gate → gates (lint/test/bundle/still-per-shot) → render (`--gl=swangle`, 4 runner paralel) → gabung + audio + loudnorm → publish (Cloudinary → Buffer YouTube + TikTok) → Slack #social. Video source tidak di-commit; katalog tidak di-commit dan hanya di-fetch ke `/tmp` saat CI.
 
 Repo **public** (wajib untuk free hosted minutes; unlimited). Tidak ada runner self-hosted — PC lokal bebas.
 
@@ -20,7 +20,7 @@ Kenapa dipecah: render CPU sudah memakai semua core (`--concurrency` tidak berpe
 | Apa | Di mana |
 |---|---|
 | Worker (weker) | `ops/cloudflare-cron/worker.js` — ter-deploy di akun CF; crons di `wrangler.toml` |
-| Runner | GitHub-hosted `ubuntu-latest` (swangle-only, tidak ada GPU); render dibagi ke 4 runner paralel |
+| Runner | GitHub-hosted `ubuntu-26.04` (swangle-only, tidak ada GPU); render dibagi ke 4 runner paralel |
 | Workflow | `.github/workflows/video.yml` — `repository_dispatch[video-run]` + `workflow_dispatch` (manual, opsional input `slug` dan `dry_run`) |
 | Publish | `scripts/publish.mts` (`npm run publish -- <slug>`) — Cloudinary signed upload → Buffer GraphQL; publish fetch Buffer lagi sebelum upload dan menolak kandidat yang sudah dekat dengan post live |
 | Report | `scripts/report.mts` (`npm run report -- <slug>`) — Slack #social; otomatis membaca links dari `/tmp/publish-result.json` bila `--links` kosong |

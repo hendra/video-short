@@ -1,6 +1,6 @@
 # Agent rules inside CI (opencode run)
 
-You are an autonomous agent running inside GitHub Actions on a **GitHub-hosted `ubuntu-latest`** runner.
+You are an autonomous agent running inside GitHub Actions on a **GitHub-hosted `ubuntu-26.04`** runner.
 Your task: produce a **complete new vertical 3D explainer Short** end-to-end, EXCEPT the final publish/upload steps — the workflow does those after you.
 
 ## Hard rules
