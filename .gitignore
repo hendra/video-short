@@ -15,3 +15,6 @@ src/videos/*/.alignment.json.*.tmp
 
 # superpowers scratch (SDD workspace)
 .superpowers/
+
+# TTS voiceovers are deleted from the tree after every publish (durable upstream).
+public/*/vo.mp3

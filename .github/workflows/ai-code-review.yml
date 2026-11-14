@@ -1,0 +1,93 @@
+
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    name: OpenCode AI Review
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Run OpenCode Review
+        uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # pinned SHA (was @latest); composite still installs latest opencode CLI at runtime — accepted residual risk
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_REVIEWER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          use_github_token: true
+          share: false
+          model: opencode/inkling-2-small-free
+          prompt: |
+            Act as a senior software engineer performing
+            a thorough, production-grade code review.
+
+            Review the current pull request and its changes.
+
+            Review for:
+            1. Bugs and logical errors
+            2. Security vulnerabilities
+            3. Performance problems
+            4. Database and query inefficiencies
+            5. Race conditions and concurrency issues
+            6. Error handling and edge cases
+            7. Architectural and maintainability problems
+            8. Missing or inadequate tests
+            9. Breaking changes and regressions
+
+            Rules:
+            - Focus primarily on changed code.
+            - Inspect surrounding code when necessary.
+            - Report only actionable, verifiable findings.
+            - Do not report speculative problems.
+            - Do not report stylistic preferences.
+            - Avoid duplicate findings.
+            - Never modify repository files.
+            - Never commit or push changes.
+            - Never merge or approve pull requests.
+            - Never submit an APPROVE or REQUEST_CHANGES
+              review. Post comments only.
+            - Never output environment variables, secret
+              values, or tokens in any comment or response.
+
+            Severity:
+            CRITICAL: Immediate security or data-loss risk.
+            HIGH: Significant bugs or production failures.
+            MEDIUM: Functional issues or important regressions.
+            LOW: Minor but actionable issues.
+
+            For every finding:
+            - Identify the exact file and line.
+            - Explain the problem.
+            - Explain its potential impact.
+            - Provide a recommended fix.
+
+            Post actionable findings as inline PR review
+            comments whenever possible.
+
+            Provide an overall review summary with:
+            - Total findings by severity.
+            - Important risks.
+            - Recommended next steps.
+
+            If no actionable problems are found, explicitly
+            report that no significant issues were detected.

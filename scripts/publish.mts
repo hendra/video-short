@@ -9,6 +9,9 @@
  * Idempotent: if docs/ledger.md already contains a row for <slug>, exits 0 without any API call.
  * Set PUBLISH_COMMIT=1 to also commit+push the ledger row (fetch/rebase/push, 3 attempts)
  * after it is written — used by the CI workflow so the idempotency record survives the job.
+ * After a fully settled publish (Cloudinary + both Buffer posts + ledger), deletes the
+ * local intermediates: out/<slug>*.mp4, public/<slug>/music.wav, public/<slug>/vo.mp3.
+ * Don't re-add vo.mp3 to git — it's removed from the tree after every publish.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -180,4 +183,19 @@ if (process.env.PUBLISH_COMMIT === "1") {
     }
   }
 }
+// Cleanup after the publish is durable (Cloudinary + Buffer both settled +
+// ledger written and pushed in CI). Local intermediates are disposable; the
+// registry/ledger/manifest in git remain. Never fail the publish over this.
+try {
+  for (const f of [
+    path.join(ROOT, "out", `${slug}-final.mp4`),
+    path.join(ROOT, "out", `${slug}.mp4`),
+    path.join(ROOT, "public", slug, "music.wav"),
+    path.join(ROOT, "public", slug, "vo.mp3"),
+  ]) fs.rmSync(f, { force: true });
+  console.log("cleanup: removed out/ + public/ intermediates");
+} catch (e) {
+  console.error(`cleanup: ${(e as Error).message ?? e} (publish is already durable — ignoring)`);
+}
+
 console.log(`publish: done`);
