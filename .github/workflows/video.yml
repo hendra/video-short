@@ -190,7 +190,7 @@ jobs:
             name="${pair%%:*}"; outcome="${pair##*:}"
             if [ "$outcome" = "failure" ]; then FAILSTEP="$name"; break; fi
           done
-          npm run report -- "${SLUG:-ci}" --step "$FAILSTEP" --error "run gagal di step $FAILSTEP — lihat https://github.com/hendra/video-short/actions/runs/${{ github.run_id }}" || true
+          npm run report -- "${SLUG:-ci}" --step "$FAILSTEP" --error "run gagal di step $FAILSTEP — lihat https://github.com/hendra/yt-video-short-generator/actions/runs/${{ github.run_id }}" || true
 
       # Hosted runners are ephemeral; keep cleanup anyway (harmless, and covers forks/self-hosted reuse).
       - name: Cleanup secrets

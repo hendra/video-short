@@ -1,4 +1,6 @@
-# explainer-3d
+# yt-video-short-generator
+
+**yt = YouTube & TikTok video short generator** — [hendra/yt-video-short-generator](https://github.com/hendra/yt-video-short-generator).
 
 Template video **explainer 3D vertikal** (YouTube Shorts / Reels / TikTok, 1080×1920) dengan **Remotion + React Three Fiber**:
 animasi 3D low-poly, voiceover **AI** (Google AI Studio TTS, gratis — lihat `.env.example`) dengan timing per kata, caption karaoke, callout berlabel, chip angka, dan musik latar orisinal.

@@ -6,7 +6,7 @@
  */
 export default {
   async scheduled(event, env, ctx) {
-    const res = await fetch("https://api.github.com/repos/hendra/video-short/dispatches", {
+    const res = await fetch("https://api.github.com/repos/hendra/yt-video-short-generator/dispatches", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${env.VIDEO_SHORT_PAT}`,
