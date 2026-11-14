@@ -23,14 +23,13 @@ concurrency:
   group: video-run
   cancel-in-progress: false
 
-# Default token is read-only; the publish job overrides it to `contents: write` so it can
-# commit only data/published-videos.json after a settled publish.
+# Default token is read-only; no job pushes to the repository.
 permissions:
   contents: read
 
 # build (agent + gates + bundle) -> render (N shards in parallel, video only) -> publish (concat + audio + upload)
-# Secrets: `build` only ever holds GEMINI_API_KEY. Publish/Slack secrets exist only in `publish` and
-# `report-failure`, which run on fresh checkouts and never execute agent-written code outside the browser.
+# Publish/Slack secrets are scoped to the publish/report-failure jobs. The build job uses a
+# step-scoped BUFFER_ACCESS_TOKEN only to fetch public post metadata into /tmp; it is never written to .env or the repo.
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -72,8 +71,8 @@ jobs:
           echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
           "$HOME/.opencode/bin/opencode" --version
 
-      # The build job reads data/published-videos.json from the checkout. No Buffer token is
-      # needed here; only public, already-committed catalog metadata is available to the agent.
+      # The agent gets GEMINI_API_KEY only. The published-video lookup uses a step-scoped
+      # BUFFER_ACCESS_TOKEN and writes only public metadata to /tmp; no .env or repo data is used.
       # Publish secrets are written LATER (see "Write publish .env"), AFTER the
       # agent/render steps, so the agent never sees them.
       - name: Write agent .env from secrets
@@ -100,14 +99,18 @@ jobs:
           [ -f "src/videos/$SLUG/timeline.json" ] || { echo "timeline.json missing for $SLUG"; exit 1; }
           [ -f "src/videos/$SLUG/publish.json" ] || { echo "publish.json missing for $SLUG"; exit 1; }
           [ -f "public/$SLUG/vo.mp3" ] || { echo "public/$SLUG/vo.mp3 missing"; exit 1; }
-          # The git-tracked catalog now prevents accidental republishing; no generated video source/VO is committed.
+          # No generated video source/VO is committed.
           echo "SLUG=$SLUG" >> "$GITHUB_ENV"
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
 
       - name: Dependencies
         run: npm ci
 
-      # No Buffer prefetch is needed: the git-tracked catalog is the source of truth for duplicates.
+      - name: Fetch published-video catalog from Buffer
+        id: catalog
+        env:
+          BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
+        run: npx tsx scripts/fetch-published-videos.mts --out /tmp/published-videos.json
 
       - name: Agent builds the video
         id: agent
@@ -149,10 +152,10 @@ jobs:
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
 
       # Deterministic near-duplicate gate: fail before music/render/publish when the candidate
-      # topic/title is too close to anything Buffer has ever shipped (up to 10,000 newest posts).
+      # topic/title is too close to anything previously published, using the Buffer snapshot from this job.
       - name: Duplicate gate
         id: duplicates
-        run: npx tsx scripts/check-duplicates.mts "$SLUG" --db data/published-videos.json
+        run: npx tsx scripts/check-duplicates.mts "$SLUG" --db /tmp/published-videos.json
 
       # music.wav is gitignored and synthesized by predev/prerender, which the direct
       # `npx remotion bundle` below never triggers — synthesize it here or the render 404s on the asset.
@@ -208,13 +211,14 @@ jobs:
         env:
           AGENT_O: ${{ steps.agent.outcome }}
           INSTALL_O: ${{ steps.install.outcome }}
+          CATALOG_O: ${{ steps.catalog.outcome }}
           DUPLICATES_O: ${{ steps.duplicates.outcome }}
           SLUG_O: ${{ steps.slug.outcome }}
           MANUALSLUG_O: ${{ steps.manualslug.outcome }}
           GATES_O: ${{ steps.gates.outcome }}
           STILLS_O: ${{ steps.stills.outcome }}
         run: |
-          for pair in "install:$INSTALL_O" "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "duplicates:$DUPLICATES_O" "gates:$GATES_O" "stills:$STILLS_O"; do
+          for pair in "install:$INSTALL_O" "catalog:$CATALOG_O" "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "duplicates:$DUPLICATES_O" "gates:$GATES_O" "stills:$STILLS_O"; do
             if [ "${pair##*:}" = "failure" ]; then echo "step=${pair%%:*}" >> "$GITHUB_OUTPUT"; break; fi
           done
 
@@ -275,8 +279,6 @@ jobs:
     needs: [build, render]
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    permissions:
-      contents: write
     outputs:
       failed_step: ${{ steps.failed.outputs.step }}
     env:
@@ -286,7 +288,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }} # the triggering commit: main for the cron, the chosen branch for manual runs
-          fetch-depth: 0
+          fetch-depth: 1
 
       - uses: actions/setup-node@v4
         with:
@@ -346,7 +348,7 @@ jobs:
           path: out/${{ env.SLUG }}-final.mp4
           retention-days: 3
 
-      # Video source is still not committed; publish.mts updates only the public-metadata catalog.
+      # Video source is not committed; publishing fetches Buffer history directly.
       # Secrets are passed as step env (the scripts read process.env); no .env file is written.
       - name: Publish (Cloudinary → Buffer YT + TikTok)
         id: publish
@@ -357,32 +359,6 @@ jobs:
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
           BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
         run: npm run publish -- "$SLUG"
-
-      # Publish already succeeded, so persist the catalog before reporting. This commits
-      # data/published-videos.json only — never video source, VO, or render output.
-      - name: Commit published-videos database
-        id: catalog
-        if: ${{ !inputs.dry_run }}
-        env:
-          BRANCH: ${{ github.ref_name }}
-        run: |
-          set -e
-          if [ "${GITHUB_REF_TYPE}" != "branch" ]; then
-            echo "not a branch (${GITHUB_REF_TYPE}); data/published-videos.json was updated locally but cannot be committed"
-            exit 0
-          fi
-          [[ "$BRANCH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] || { echo "branch fails charset check: $BRANCH"; exit 1; }
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/published-videos.json
-          if git diff --cached --quiet; then
-            echo "published-videos database unchanged"
-            exit 0
-          fi
-          git commit -m "chore(data): record published videos"
-          git fetch origin "$BRANCH"
-          git rebase "origin/$BRANCH"
-          git push origin "HEAD:$BRANCH"
 
       - name: Success report (Slack #social)
         if: ${{ success() && !inputs.dry_run }}
@@ -398,9 +374,8 @@ jobs:
           AUDIO_O: ${{ steps.audio.outcome }}
           ASSEMBLE_O: ${{ steps.assemble.outcome }}
           PUBLISH_O: ${{ steps.publish.outcome }}
-          CATALOG_O: ${{ steps.catalog.outcome }}
         run: |
-          for pair in "audio:$AUDIO_O" "assemble:$ASSEMBLE_O" "publish:$PUBLISH_O" "catalog:$CATALOG_O"; do
+          for pair in "audio:$AUDIO_O" "assemble:$ASSEMBLE_O" "publish:$PUBLISH_O"; do
             if [ "${pair##*:}" = "failure" ]; then echo "step=${pair%%:*}" >> "$GITHUB_OUTPUT"; break; fi
           done
 

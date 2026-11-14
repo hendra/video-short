@@ -1,9 +1,12 @@
 export type RecentPost = {
   id?: string;
   platform?: string;
+  date?: string;
   createdAt?: string;
   title?: string | null;
   text: string;
+  link?: string | null;
+  source?: string;
 };
 export type CandidatePost = {
   title: string;

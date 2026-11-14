@@ -47,8 +47,8 @@ Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test,
 
 ## Publishing & automation
 
-- `docs/AUTOPILOT.md` is the scheduled-task runbook (Mon/Wed/Fri) for end-to-end production → YouTube + TikTok. If asked to "make a video" end-to-end, read it first — topic rules, quality bar, commit expectations (CI commits only `data/published-videos.json` after publish). Publishing mechanics (Buffer GraphQL, Cloudinary signed upload, token scopes, poll `post(input:{id})`): **`docs/PUBLISHING.md`** (tested 2026-11-11) — read BEFORE any upload; no "| 11.ai" suffix for Gemini VO (ElevenLabs-Free only).
-- **Nothing generated lands in git except `data/published-videos.json`.** That file is the intentional, git-tracked database of published-video metadata for duplicate/republication protection; source, VO, alignment, and render output are never committed. After a settled publish, CI commits/pushes only that data file. Re-run protection exists via its slug records, but check YouTube/TikTok before any manual re-run.
+- `docs/AUTOPILOT.md` is the scheduled-task runbook (Mon/Wed/Fri) for end-to-end production → YouTube + TikTok. If asked to "make a video" end-to-end, read it first — topic rules, quality bar, commit expectations (CI commits nothing after publish). Publishing mechanics (Buffer GraphQL, Cloudinary signed upload, token scopes, poll `post(input:{id})`): **`docs/PUBLISHING.md`** (tested 2026-11-11) — read BEFORE any upload; no "| 11.ai" suffix for Gemini VO (ElevenLabs-Free only).
+- **Nothing generated lands in git.** The duplicate/republication lookup is fetched from Buffer into `/tmp/published-videos.json` during CI; no catalog is committed. Buffer remains the source of truth; source, VO, alignment, and render output are never committed.
 
 ## Gotchas
 

@@ -12,12 +12,15 @@ const args = process.argv.slice(2);
 const slug = args[0] || "ci";
 const iLinks = args.indexOf("--links"), iStep = args.indexOf("--step"), iErr = args.indexOf("--error");
 let links = iLinks >= 0 ? args[iLinks + 1] : "";
-// If --links missing, recover the just-published links from the git-tracked catalog
+// If --links missing, recover the just-published links from the same-run temporary result
 if (!links) {
   try {
-    const { readPublishedDb } = await import("./published-db.mts");
-    const videos = readPublishedDb().videos.filter((video) => video.slug === slug);
-    links = ["youtube", "tiktok"].map((platform) => videos.find((video) => video.platform === platform)?.link).filter(Boolean).join(",");
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const resultPath = path.join(os.tmpdir(), "publish-result.json");
+    const result = JSON.parse(fs.readFileSync(resultPath, "utf8")) as { slug?: string; links?: { youtube?: string | null; tiktok?: string | null } };
+    if (result.slug === slug) links = [result.links?.youtube, result.links?.tiktok].filter(Boolean).join(",");
   } catch { /* leave links empty */ }
 }
 const step = iStep >= 0 ? args[iStep + 1] : "";

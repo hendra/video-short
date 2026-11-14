@@ -1,26 +1,34 @@
 /**
  * Deterministic near-duplicate gate for generated videos.
- *   npx tsx scripts/check-duplicates.mts <slug> [--db data/published-videos.json]
+ *   npx tsx scripts/check-duplicates.mts <slug> [--db /tmp/published-videos.json]
  * Exits non-zero before render/publish when the candidate is too close to a published video.
  */
 import fs from "node:fs";
 import path from "node:path";
-import { videoDir, readScript, ROOT } from "./lib.mts";
-import { findDuplicate, type CandidatePost } from "./duplicate-core.mts";
-import { PUBLISHED_DB_PATH, readPublishedDb } from "./published-db.mts";
+import { videoDir, readScript } from "./lib.mts";
+import { findDuplicate, type CandidatePost, type RecentPost } from "./duplicate-core.mts";
+import { PUBLISHED_VIDEOS_PATH } from "./fetch-published-videos.mts";
 
 const slug = process.argv[2];
 const inline = process.argv.find((a) => a.startsWith("--db="));
 const flagIdx = process.argv.indexOf("--db");
-const dbPath = inline ? inline.slice("--db=".length) : flagIdx > 0 ? process.argv[flagIdx + 1] : PUBLISHED_DB_PATH;
+const requestedPath = inline ? inline.slice("--db=".length) : flagIdx > 0 ? process.argv[flagIdx + 1] : PUBLISHED_VIDEOS_PATH;
+const dbPath = path.isAbsolute(requestedPath) ? requestedPath : path.resolve(requestedPath);
 if (!slug) {
-  console.error("Usage: npx tsx scripts/check-duplicates.mts <slug> [--db data/published-videos.json]");
+  console.error("Usage: npx tsx scripts/check-duplicates.mts <slug> [--db /tmp/published-videos.json]");
   process.exit(1);
 }
-const absoluteDbPath = path.isAbsolute(dbPath) ? dbPath : path.join(ROOT, dbPath);
-let db;
+if (!fs.existsSync(dbPath)) {
+  console.error(`published-video catalog not found at ${dbPath} — run scripts/fetch-published-videos.mts first or let the workflow fetch it`);
+  process.exit(1);
+}
+let recent: RecentPost[];
 try {
-  db = readPublishedDb(absoluteDbPath);
+  const parsed = JSON.parse(fs.readFileSync(dbPath, "utf8")) as unknown;
+  recent = Array.isArray(parsed)
+    ? parsed as RecentPost[]
+    : (parsed as { videos?: RecentPost[] }).videos ?? [];
+  if (!Array.isArray(recent) || recent.some((post) => typeof post?.text !== "string")) throw new Error("expected an array of Buffer post records");
 } catch (e) {
   console.error(`duplicate gate: ${(e as Error).message}`);
   process.exit(1);
@@ -44,11 +52,11 @@ if (readScript(slug).length === 0) {
   process.exit(1);
 }
 const candidate = publish as CandidatePost;
-const match = findDuplicate(candidate, db.videos);
+const match = findDuplicate(candidate, recent);
 if (match) {
   const summary = (match.post.title ?? match.post.text).replace(/\s+/g, " ").slice(0, 90);
   console.error(`duplicate gate: candidate ${match.field} is too close to a published ${match.post.platform ?? ""} video (containment=${match.containment.toFixed(2)}, jaccard=${match.jaccard.toFixed(2)}): ${summary}`);
   console.error("choose a new topic, angle, or title; then re-run the gate");
   process.exit(1);
 }
-console.log(`duplicate gate: ${db.videos.length} published catalog entries checked; no close match for ${slug}`);
+console.log(`duplicate gate: ${recent.length} published catalog entries checked; no close match for ${slug}`);

@@ -101,7 +101,7 @@ Success: `{ "ok": true, "channel": "C0CDV7Y555K", "ts": "..." }` (a harmless `mi
 
 ## Step 4 — Done — committed catalog
 
-Video source is not committed: source lives only in the CI VM and is discarded when the job ends. The only git-tracked record is `data/published-videos.json` (minimal public metadata and links). The publish step updates it; the CI publish job commits and pushes only that file after the posts settle. The catalog also makes re-running a slug a no-op; off-catalog/manual publishes must still be checked on YouTube/TikTok.
+Video source is not committed: source lives only in the CI VM and is discarded when the job ends. CI fetches Buffer history into `/tmp/published-videos.json` for duplicate/republication checks; nothing from it is committed or preserved. The publish command fetches Buffer again before uploading and refuses a candidate that matches a live post.
 
 ## Content requirements (not negotiable for this channel)
 
