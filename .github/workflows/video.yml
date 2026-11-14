@@ -18,11 +18,9 @@ jobs:
   produce:
     runs-on: ubuntu-latest
     timeout-minutes: 240
-    # Single job => the GITHUB_TOKEN must be write-scoped here (used by the final
-    # push). Deliberate trade-off: all steps share it. Mitigated by giving the
-    # *agent* only GEMINI_API_KEY (below), not the publish secrets.
+    # GITHUB_TOKEN is read-only: the job never pushes to the repo.
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,12 +78,8 @@ jobs:
           [ -f "src/videos/$SLUG/timeline.json" ] || { echo "timeline.json missing for $SLUG"; exit 1; }
           [ -f "src/videos/$SLUG/publish.json" ] || { echo "publish.json missing for $SLUG"; exit 1; }
           [ -f "public/$SLUG/vo.mp3" ] || { echo "public/$SLUG/vo.mp3 missing"; exit 1; }
-          # Ledger rows are `| DATE | slug | …`; match slug as a whole field.
-          test -f docs/ledger.md || { echo "docs/ledger.md missing — cannot verify slug is unpublished"; exit 1; }
-          if grep -Eq "^\\|[^|]*\\| *${SLUG} *\\|" docs/ledger.md; then
-            echo "$SLUG already in docs/ledger.md — refusing to republish"
-            exit 1
-          fi
+          # No git record is kept — video source and ledger are never committed,
+          # so there is no repo-side republish guard. Check YouTube/TikTok first.
           echo "SLUG=$SLUG" >> "$GITHUB_ENV"
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
 
@@ -165,40 +159,10 @@ jobs:
             "$GEMINI_API_KEY" "$CLOUDINARY_CLOUD_NAME" "$CLOUDINARY_API_KEY" "$CLOUDINARY_API_SECRET" \
             "$BUFFER_ACCESS_TOKEN" "$SLACK_BOT_TOKEN" "$SLACK_SOCIAL_CHANNEL_ID" > .env
 
-      # PUBLISH_COMMIT=1 → publish.mts commits+pushes the ledger row (rebase retry,
-      # 3 attempts) BEFORE this step ends, so the idempotency record survives any
-      # failure below. The remaining video/registry files are committed by the
-      # Commit step. If either fails after the video went live, the Slack failure
-      # message carries the ledger row to commit manually.
-      - name: Publish (Cloudinary → Buffer YT + TikTok → ledger row + push)
+      # Video source and ledger are never committed — nothing here lands in git.
+      - name: Publish (Cloudinary → Buffer YT + TikTok)
         id: publish
-        run: PUBLISH_COMMIT=1 npm run publish -- "$SLUG"
-
-      - name: Commit video + ledger, push main
-        id: commit
-        if: success()
-        run: |
-          set -e
-          TITLE=$(node -p "require('./src/videos/'+process.env.SLUG+'/publish.json').title")
-          git config user.name "video-short-ci"
-          git config user.email "ci@video-short.local"
-          git add "src/videos/$SLUG" src/videos/registry.ts docs/ledger.md
-          if git diff --cached --quiet; then
-            echo "nothing to commit (ledger already pushed by publish step?)"
-          else
-            git commit -m "$SLUG: $TITLE"
-          fi
-          # main can move while the job runs (PRs land mid-run, publish pushed the ledger);
-          # rebase on latest main with retry instead of failing the push.
-          for attempt in 1 2 3; do
-            if git fetch origin main && git rebase --autostash origin/main && git push origin HEAD:main; then
-              exit 0
-            fi
-            git rebase --abort 2>/dev/null || true
-            echo "push attempt $attempt failed; retrying…"; sleep 5
-          done
-          echo "push failed after 3 attempts — the video is LIVE; the ledger row must be committed manually."
-          exit 1
+        run: npm run publish -- "$SLUG"
 
       - name: Success report (Slack #social)
         if: success()
@@ -218,10 +182,9 @@ jobs:
           RENDER_O: ${{ steps.render.outcome }}
           LOUDNORM_O: ${{ steps.loudnorm.outcome }}
           PUBLISH_O: ${{ steps.publish.outcome }}
-          COMMIT_O: ${{ steps.commit.outcome }}
         run: |
           FAILSTEP=ci
-          for pair in "install:$INSTALL_O" "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "gates:$GATES_O" "stills:$STILLS_O" "render:$RENDER_O" "loudnorm:$LOUDNORM_O" "publish:$PUBLISH_O" "commit:$COMMIT_O"; do
+          for pair in "install:$INSTALL_O" "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "gates:$GATES_O" "stills:$STILLS_O" "render:$RENDER_O" "loudnorm:$LOUDNORM_O" "publish:$PUBLISH_O"; do
             name="${pair%%:*}"; outcome="${pair##*:}"
             if [ "$outcome" = "failure" ]; then FAILSTEP="$name"; break; fi
           done

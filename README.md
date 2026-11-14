@@ -3,14 +3,14 @@
 Template video **explainer 3D vertikal** (YouTube Shorts / Reels / TikTok, 1080×1920) dengan **Remotion + React Three Fiber**:
 animasi 3D low-poly, voiceover **AI** (Google AI Studio TTS, gratis — lihat `.env.example`) dengan timing per kata, caption karaoke, callout berlabel, chip angka, dan musik latar orisinal.
 
-Berbasis [`remotion-dev/template-three`](https://github.com/remotion-dev/template-three). Contoh bawaan: **"Kota lebih rendah dari sungai, kok bisa nggak tenggelam?"** (`src/videos/rumah-pompa`).
+Repo ini adalah **pipeline** — tidak ada video generated yang tersimpan di git (source maupun ledger diproduksi di CI VM, gitignored).
 
 ## Mulai cepat
 
 ```bash
 npm install
 npm run dev          # Remotion Studio: preview + scrub timeline
-npm run render -- rumah-pompa out/rumah-pompa.mp4
+npm run render -- <id> out/<id>.mp4
 ```
 
 Butuh Node ≥ 20.19. `predev`/`prerender` otomatis membuat `public/<id>/music.wav` kalau belum ada.
@@ -49,13 +49,13 @@ src/
     math.ts               # ramp/smooth, PRNG deterministik, kamera keyframe/orbit, proyeksi 3D→2D
     types.ts              # VideoDef, ShotDef, Timeline
   videos/
-    registry.ts           # daftar video (id → VideoDef)
-    rumah-pompa/
+    registry.ts           # daftar video (id → VideoDef); kosong di git — diisi saat generate
+    <id>/                 # generated di CI, gitignored
       naskah.txt          # naskah voiceover
       config.json         # urutan shot + baris pertama tiap shot
       alignment.json      # timing kata (hasil tts/align)
-      timeline.json       # hasil build-timeline (di-commit)
-      state.ts            # cerita sebagai fungsi waktu: level air, pintu, pompa…
+      timeline.json       # hasil build-timeline (gitignored)
+      state.ts            # cerita sebagai fungsi waktu
       world.ts            # dunia 3D (dibuat sekali, diupdate tiap frame)
       shots.ts            # judul, kamera, callout, chip per shot
 scripts/                  # tts.mts (+lib-tts.mts), align.mts, align-core.mts, align-local.mts, build-timeline.mts, music.mts
@@ -64,7 +64,7 @@ public/fonts              # Inter + DejaVu Sans Mono (OFL / Bitstream Vera), dib
 
 ## Video baru
 
-1. Salin `src/videos/rumah-pompa` → `src/videos/<id-baru>`, lalu ganti `naskah.txt` dan `config.json` (`shots: [["A", 1], ["B", 4], …]`).
+1. Buat `src/videos/<id>/` dari nol (ikuti `AGENTS.md` untuk pola `state.ts`/`world.ts`/`shots.ts`), mulai dari `naskah.txt` dan `config.json` (`shots: [["A", 1], ["B", 4], …]`).
 2. Ubah `state.ts`, `world.ts`, dan `shots.ts`. Ikat semua waktu ke baris naskah lewat `L(n).s` / `L(n).e`, bukan detik mentah. Dengan begitu, kalau VO di-generate ulang, animasi otomatis ikut.
 3. Daftarkan di `src/videos/registry.ts`.
 4. Jalankan alur di atas.
@@ -88,4 +88,4 @@ public/fonts              # Inter + DejaVu Sans Mono (OFL / Bitstream Vera), dib
 
 - **YouTube:** suara AI → centang *Altered or synthetic content* saat upload.
 - **Lisensi:** kode template MIT (lihat `LICENSE.md`). **Remotion** gratis untuk individu, tapi perusahaan tertentu wajib lisensi berbayar: [remotion.dev/license](https://www.remotion.dev/license). Font: OFL (Inter) dan Bitstream Vera (DejaVu), lisensi ada di `public/fonts`. Musik di-synthesize dari nol oleh `scripts/music.mts`, jadi bebas royalti.
-- Fakta di contoh rumah pompa bersumber dari Suara Surabaya (6 Nov 2026), CNN Indonesia, dan Antara Jatim. Diorama peta bersifat ilustrasi.
+

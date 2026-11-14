@@ -6,16 +6,15 @@
  *   - out/<slug>-final.mp4 must exist (run render + loudnorm first)
  *   - src/videos/<slug>/publish.json must exist: { title, description, tiktokTitle, tiktokCaption, catatan? }
  *   - .env keys: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, BUFFER_ACCESS_TOKEN
- * Idempotent: if docs/ledger.md already contains a row for <slug>, exits 0 without any API call.
- * Set PUBLISH_COMMIT=1 to also commit+push the ledger row (fetch/rebase/push, 3 attempts)
- * after it is written — used by the CI workflow so the idempotency record survives the job.
+ * No git record is kept: docs/ledger.md (VM-local, gitignored) feeds only the
+ * same-run Slack report — it does not survive the job and is never committed.
+ * Publishing is NOT idempotent across runs — check YouTube/TikTok before re-running.
  * After a fully settled publish (Cloudinary + both Buffer posts + ledger), deletes the
  * local intermediates: out/<slug>*.mp4, public/<slug>/music.wav, public/<slug>/vo.mp3.
  * Don't re-add vo.mp3 to git — it's removed from the tree after every publish.
  */
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { ROOT, loadDotenv, readScript } from "./lib.mts";
 import { ledgerHas, cloudinarySign, validatePublishJson, extractBufferError } from "./publish-lib.mts";
 
@@ -34,7 +33,7 @@ const publishPath = path.join(ROOT, "src", "videos", slug, "publish.json");
 
 if (!fs.existsSync(mp4Path)) fail(`No final mp4 at ${mp4Path} — render + loudnorm first.`);
 if (!fs.existsSync(publishPath)) fail(`Missing ${publishPath} — the agent must write publish.json (see ops/ci-prompt.md).`);
-if (!fs.existsSync(ledgerPath)) fail(`No ${ledgerPath}`);
+const ledgerContent = fs.existsSync(ledgerPath) ? fs.readFileSync(ledgerPath, "utf8") : "";
 
 const PUB = JSON.parse(fs.readFileSync(publishPath, "utf8")) as { title: string; description: string; tiktokTitle: string; tiktokCaption: string; catatan?: string };
 {
@@ -42,8 +41,8 @@ const PUB = JSON.parse(fs.readFileSync(publishPath, "utf8")) as { title: string;
   if (problems.length) fail(`publish.json: ${problems.join("; ")}`);
 }
 
-// ---------- ledger-first idempotency: never double-publish
-if (ledgerHas(fs.readFileSync(ledgerPath, "utf8"), slug)) {
+// ---------- ledger-first idempotency, same VM only: never double-publish in one run
+if (ledgerHas(ledgerContent, slug)) {
   console.log(`publish: ledger already has ${slug} — skipping (no API calls).`);
   process.exit(0);
 }
@@ -149,43 +148,16 @@ const [ytP, ttP] = await Promise.all([poll(yt.id), poll(tt.id)]);
 const ytLink = ytP.link, ttLink = ttP.link;
 if (!ytLink || !ttLink) fail(`post settled with error or timeout (yt=${ytP.status}/${ytLink ?? "pending"}, tt=${ttP.status}/${ttLink ?? "pending"}) — do NOT retry blindly; check Buffer UI.`);
 
-// ---------- 4. Ledger row
+// ---------- 4. VM-local record (gitignored, ephemeral) — feeds the Slack report
 const chars = videoChars();
 const row = `| ${today()} | ${slug} | ${chars.toLocaleString("id-ID")} | (Gemini, gratis) | ${ytLink} | ${ttLink} | ${PUB.catatan ?? "autopilot CI"} |`;
 fs.appendFileSync(ledgerPath, row + "\n");
 console.log(`ledger: ${row}`);
 
-// Two-phase idempotency (CI): commit+push the ledger row right now so the
-// publish is durable before the workflow's commit step even starts. Rebase onto
-// origin/main with retry — main can move mid-run.
-if (process.env.PUBLISH_COMMIT === "1") {
-  const git = (args: string[]) => {
-    console.log(`git ${args.join(" ")}`);
-    return execFileSync("git", args, { cwd: ROOT, stdio: "inherit" });
-  };
-  git(["config", "user.name", "video-short-ci"]);
-  git(["config", "user.email", "ci@video-short.local"]);
-  git(["add", "docs/ledger.md"]);
-  git(["commit", "-m", `ledger: ${slug} published`]);
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      git(["fetch", "origin", "main"]);
-      git(["rebase", "--autostash", "origin/main"]); // tree still has the uncommitted video files + registry.ts
-      git(["push", "origin", "HEAD:main"]);
-      break;
-    } catch (e) {
-      if (attempt === 3) {
-        console.error(`publish: ledger committed but PUSH FAILED after 3 attempts — the workflow will fail; the ledger line that must land on main:\n${row}`);
-        throw e;
-      }
-      try { execFileSync("git", ["rebase", "--abort"], { cwd: ROOT, stdio: "ignore" }); } catch { /* no rebase in progress */ }
-      console.error(`publish: push attempt ${attempt} failed — retrying after rebase`);
-    }
-  }
-}
-// Cleanup after the publish is durable (Cloudinary + Buffer both settled +
-// ledger written and pushed in CI). Local intermediates are disposable; the
-// registry/ledger/manifest in git remain. Never fail the publish over this.
+// Nothing is committed to git — the row above is VM-local and ephemeral.
+// Cleanup after the publish is durable (Cloudinary + Buffer both settled).
+// Local intermediates are disposable; nothing of the publish is committed anyway.
+// Never fail the publish over this.
 try {
   for (const f of [
     path.join(ROOT, "out", `${slug}-final.mp4`),

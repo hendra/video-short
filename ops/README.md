@@ -1,6 +1,6 @@
 # ops — CI: Cloudflare cron → GitHub Actions (hosted) → pipeline video
 
-Chain: **Cloudflare Worker** (cron 08:00/11:30/16:30 WIB) → `repository_dispatch` → **GitHub-hosted `ubuntu-latest`** → workflow `.github/workflows/video.yml` → agent (opencode, free model) → gates (lint/test/bundle/still-per-shot) → render (`--gl=swangle`) → loudnorm → publish (Cloudinary → Buffer YouTube + TikTok) → ledger commit → push ke `main` → Slack #social.
+Chain: **Cloudflare Worker** (cron 08:00/11:30/16:30 WIB) → `repository_dispatch` → **GitHub-hosted `ubuntu-latest`** → workflow `.github/workflows/video.yml` → agent (opencode, free model) → gates (lint/test/bundle/still-per-shot) → render (`--gl=swangle`) → loudnorm → publish (Cloudinary → Buffer YouTube + TikTok) → Slack #social. Tidak ada commit/push ke repo — video source & ledger hanya ada di VM CI.
 
 Repo **public** (wajib untuk free hosted minutes; unlimited). Tidak ada runner self-hosted — PC lokal bebas.
 
@@ -11,7 +11,7 @@ Repo **public** (wajib untuk free hosted minutes; unlimited). Tidak ada runner s
 | Worker (weker) | `ops/cloudflare-cron/worker.js` — ter-deploy di akun CF; crons di `wrangler.toml` |
 | Runner | GitHub-hosted `ubuntu-latest` (swangle-only, ~35–45 min/video; tidak ada GPU) |
 | Workflow | `.github/workflows/video.yml` — `repository_dispatch[video-run]` + `workflow_dispatch` (manual, opsional input `slug`) |
-| Publish | `scripts/publish.mts` (`npm run publish -- <slug>`; CI sets `PUBLISH_COMMIT=1`) — Cloudinary signed upload → Buffer GraphQL → ledger row; publish.mts commits+pushes the ledger itself (rebase retry) so the idempotency record survives the job |
+| Publish | `scripts/publish.mts` (`npm run publish -- <slug>`) — Cloudinary signed upload → Buffer GraphQL → VM-local ledger row (ephemeral, dipakai report Slack saja); tidak ada yang di-commit |
 | Report | `scripts/report.mts` (`npm run report -- <slug>`) — Slack #social; otomatis membaca links dari `docs/ledger.md` bila `--links` kosong |
 | Agent | `ops/ci-prompt.md` — opencode, `--model opencode/inkling-2-small-free` |
 
@@ -37,7 +37,7 @@ Render+publish video yang **sudah di-commit & push ke main** (mis. video yang ka
 gh workflow run video-run --ref main -f slug=<slug>
 ```
 
-Prasyarat manual path: `src/videos/<slug>/` ter-commit (termasuk `timeline.json`, `publish.json`), `public/<slug>/vo.mp3` **ada di tree** (tidak lagi disimpan di git — dihapus setelah setiap publish), slug **belum** ada di `docs/ledger.md` (kalau ada → job gagal sebelum render, tidak akan re-publish). Catatan: karena vo.mp3 tidak lagi di-commit, video lama tidak bisa di-render ulang lewat manual path — hanya untuk video yang audio-nya masih ada di tree. Jalankan gates lokal dulu (`npm run lint && npm test`). Manual path tetap publish **for real** ke YouTube + TikTok — tidak ada mode dry-run.
+Prasyarat manual path: video source `src/videos/<slug>/` harus ada di tree (tidak di-commit lagi — generated di CI; untuk manual path kamu tambahkan sendiri sementara, boleh lewat `git add -f`, lalu hapus lagi), `public/<slug>/vo.mp3` ada di tree, tidak ada pengecekan re-publish (tidak ada ledger) — cek manual YouTube/TikTok sebelum publish. Jalankan gates lokal dulu (`npm run lint && npm test`). Manual path tetap publish **for real** ke YouTube + TikTok — tidak ada mode dry-run.
 
 Tidak ada dry-run untuk `repository_dispatch` juga: **cron berikutnya adalah live run**.
 
@@ -47,8 +47,7 @@ Tidak ada dry-run untuk `repository_dispatch` juga: **cron berikutnya adalah liv
 - **Agent install gagal**: step "Install opencode" gagal → failure report ke Slack, publish tidak jalan. Installer upstream `opencode.ai/v2/install` berubah/mati → pin ulang URL atau pasang via npm `@opencode/cli`.
 - **Quota**: opencode free model menolak/rate-limit → publish tidak terjadi; coba lagi lewat `workflow_dispatch` nanti.
 - **Render swangle lambat** (~35–45 min) — normal; job timeout 240 min.
-- **Publish gagal di tengah job setelah video live** (rare): publish.mts menulis + mem-push baris ledger (`PUBLISH_COMMIT=1`) sebelum job bisa berlanjut; bila belum sempat, Slack failure report menyertakan baris ledger persisnya — commit manual sebelum cron berikutnya. Re-run aman; publish.mts skip bila ledger sudah berisi slug.
-- **Rollback**: hapus baris ledger + `git revert` commit CI; out/ tidak tercommit.
+- **Publish gagal di tengah job setelah video live** (rare): tidak ada ledger/penjaga di git. Jangan re-run buta — cek status video di YouTube/TikTok & post Buffer dulu; publish.mts tidak bisa mendeteksi slug yang sudah live.
 
 ## Regenerate
 

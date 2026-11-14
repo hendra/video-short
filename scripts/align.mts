@@ -2,8 +2,8 @@
  * Already have the voiceover (e.g. made in the ElevenLabs web app)? Get exact word timing with
  * Forced Alignment:  POST https://api.elevenlabs.io/v1/forced-alignment  (multipart: file, text)
  *
- *   npm run align -- rumah-pompa                # uses public/<id>/vo.mp3
- *   npm run align -- rumah-pompa path/to/vo.mp3 # stages it; public/<id>/vo.mp3 is only replaced after the alignment succeeds
+ *   npm run align -- <id>                # uses public/<id>/vo.mp3
+ *   npm run align -- <id> path/to/vo.mp3 # stages it; public/<id>/vo.mp3 is only replaced after the alignment succeeds
  */
 import fs from "node:fs";
 import path from "node:path";

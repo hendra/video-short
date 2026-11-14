@@ -99,9 +99,9 @@ curl -sS -X POST https://slack.com/api/chat.postMessage \
 
 Success: `{ "ok": true, "channel": "C0CDV7Y555K", "ts": "..." }` (a harmless `missing_charset` warning may appear).
 
-## Step 4 — Ledger + commit
+## Step 4 — Done — no git record
 
-Add one row to `docs/ledger.md`: tanggal · slug · VO chars · kredit (`(Gemini, gratis)` / `(web app, v4)` / …) · YouTube link · TikTok link · catatan (1 baris: sumber, VO, render). Commit the ledger row on the branch that carries the video, not on main — it rides the video PR.
+Nothing about the video is committed: source lives only in the CI VM and is discarded when the job ends. No ledger is kept in git (a VM-local `docs/ledger.md` is appended during the job for the Slack report, then lost). Check YouTube/TikTok directly for what shipped — re-running a slug publishes it again.
 
 ## Content requirements (not negotiable for this channel)
 
