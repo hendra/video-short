@@ -6,7 +6,7 @@ export const buildReportText = (opts: { slug: string; links?: string; step?: str
   }
   if (links) {
     const [yt, tt] = links.split(",");
-    return `:rocket: *[Kali Aja Tau] Video baru live*\n*Judul:* lihat di ${yt ?? ""}\n▶️ ${yt ?? "?"}\n🎵 ${tt ?? "?"}\nProject: \`${slug}\` — diproduksi otomatis oleh video-short CI (self-hosted runner).`;
+    return `:rocket: *[Kali Aja Tau] Video baru live*\n*Judul:* lihat di ${yt ?? ""}\n▶️ ${yt ?? "?"}\n🎵 ${tt ?? "?"}\nProject: \`${slug}\` — diproduksi oleh pipeline video-short (GitHub-hosted).`;
   }
   return `:information_source: *[video-short CI]* \`${slug}\` — report (tidak ada links/error diberikan)`;
 };

@@ -46,6 +46,7 @@ jobs:
       # Autopilot-only: the agent needs the opencode CLI, which the hosted
       # runner doesn't have. Install latest v2 via the official installer.
       - name: Install opencode
+        id: install
         if: github.event.inputs.slug == ''
         run: |
           curl -fsSL https://opencode.ai/v2/install | bash
@@ -99,9 +100,11 @@ jobs:
       - name: Validate manual slug
         id: manualslug
         if: github.event.inputs.slug != ''
+        env:
+          SLUG_INPUT: ${{ github.event.inputs.slug }}
         run: |
           set -e
-          SLUG="${{ github.event.inputs.slug }}"
+          SLUG="$SLUG_INPUT"
           [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "slug fails charset check: $SLUG"; exit 1; }
           [ -d "src/videos/$SLUG" ] || { echo "src/videos/$SLUG does not exist"; exit 1; }
           [ -f "src/videos/$SLUG/timeline.json" ] || { echo "timeline.json missing for $SLUG"; exit 1; }
@@ -196,6 +199,7 @@ jobs:
         env:
           JOB_STATUS: ${{ job.status }}
           AGENT_O: ${{ steps.agent.outcome }}
+          INSTALL_O: ${{ steps.install.outcome }}
           SLUG_O: ${{ steps.slug.outcome }}
           MANUALSLUG_O: ${{ steps.manualslug.outcome }}
           GATES_O: ${{ steps.gates.outcome }}
@@ -206,7 +210,7 @@ jobs:
           COMMIT_O: ${{ steps.commit.outcome }}
         run: |
           FAILSTEP=ci
-          for pair in "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "gates:$GATES_O" "stills:$STILLS_O" "render:$RENDER_O" "loudnorm:$LOUDNORM_O" "publish:$PUBLISH_O" "commit:$COMMIT_O"; do
+          for pair in "install:$INSTALL_O" "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "gates:$GATES_O" "stills:$STILLS_O" "render:$RENDER_O" "loudnorm:$LOUDNORM_O" "publish:$PUBLISH_O" "commit:$COMMIT_O"; do
             name="${pair%%:*}"; outcome="${pair##*:}"
             if [ "$outcome" = "failure" ]; then FAILSTEP="$name"; break; fi
           done
