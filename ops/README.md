@@ -37,7 +37,7 @@ Render+publish video yang **sudah di-commit & push ke main** (mis. video yang ka
 gh workflow run video-run --ref main -f slug=<slug>
 ```
 
-Prasyarat manual path: `src/videos/<slug>/` ter-commit (termasuk `timeline.json`, `publish.json`), `public/<slug>/vo.mp3` ter-commit, slug **belum** ada di `docs/ledger.md` (kalau ada → job gagal sebelum render, tidak akan re-publish). Jalankan gates lokal dulu (`npm run lint && npm test`). Manual path tetap publish **for real** ke YouTube + TikTok — tidak ada mode dry-run.
+Prasyarat manual path: `src/videos/<slug>/` ter-commit (termasuk `timeline.json`, `publish.json`), `public/<slug>/vo.mp3` **ada di tree** (tidak lagi disimpan di git — dihapus setelah setiap publish), slug **belum** ada di `docs/ledger.md` (kalau ada → job gagal sebelum render, tidak akan re-publish). Catatan: karena vo.mp3 tidak lagi di-commit, video lama tidak bisa di-render ulang lewat manual path — hanya untuk video yang audio-nya masih ada di tree. Jalankan gates lokal dulu (`npm run lint && npm test`). Manual path tetap publish **for real** ke YouTube + TikTok — tidak ada mode dry-run.
 
 Tidak ada dry-run untuk `repository_dispatch` juga: **cron berikutnya adalah live run**.
 

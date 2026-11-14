@@ -107,5 +107,5 @@ Jika ada keraguan kualitas/fakta tapi video lengkap → `saveToDraft: true` dan 
 ## 10. Simpan & laporan
 
 - Tambah baris di `docs/ledger.md` (format per PUBLISHING.md §Step 4; commit di branch video, ikut PR).
-- Commit (`src/videos/<slug>/*`, `public/<slug>/vo.mp3`, registry, ledger; bukan `out/` atau `music.wav`) dan push ke `main`.
+- Commit (`src/videos/<slug>/*`, registry, ledger; bukan `out/`, `music.wav`, atau `vo.mp3`) dan push ke `main`.
 - Laporan ke Slack **#social** (`slack_send_message`, channel `C0CDV7Y555K`) untuk **setiap** hasil run — sukses, dilewati, draft (ragu), atau gagal (langkah + error singkat). Isi sukses: judul, link YouTube & TikTok, sumber, provider yang dipakai (dari output `npm run tts`) + error kuota kalau gagal. Jangan pernah menyertakan API key. Jika Slack gagal, pakai `SendUserMessage` sebagai cadangan.
