@@ -3,6 +3,12 @@ on:
   repository_dispatch:
     types: [video-run]
   workflow_dispatch:
+    inputs:
+      slug:
+        description: "Video slug to render+publish from the repo (skip the agent). Empty = autopilot builds a new video."
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: video-run
@@ -29,6 +35,7 @@ jobs:
 
       - name: Mark start for slug discovery
         id: marker
+        if: github.event.inputs.slug == ''
         run: touch "$RUNNER_TEMP/.ci-start"
 
       - name: Preflight
@@ -49,6 +56,7 @@ jobs:
       # Publish secrets are written LATER (see "Write publish .env"), AFTER the
       # agent/render steps, so the agent never sees them.
       - name: Write agent .env from secrets
+        if: github.event.inputs.slug == ''
         shell: bash
         run: |
           umask 077
@@ -59,6 +67,7 @@ jobs:
 
       - name: Agent builds the video
         id: agent
+        if: github.event.inputs.slug == ''
         # Isolate the agent from the runner user's global opencode config (~/.config/opencode):
         # its claude-mem plugin injected memories of the previous run ("video committed, tree clean"),
         # so the agent re-verified the old video and produced nothing new.
@@ -73,6 +82,7 @@ jobs:
       # be safely interpolated downstream.
       - name: Discover slug
         id: slug
+        if: github.event.inputs.slug == ''
         run: |
           set -e
           CANDIDATES="$(find src/videos -mindepth 1 -maxdepth 1 -type d -newer "$RUNNER_TEMP/.ci-start" -printf '%f\n')"
@@ -81,6 +91,27 @@ jobs:
           if [ "$N" -gt 1 ]; then echo "ambiguous slug (multiple new folders):"; echo "$CANDIDATES"; exit 1; fi
           SLUG="$CANDIDATES"
           [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "slug fails charset check: $SLUG"; exit 1; }
+          echo "SLUG=$SLUG" >> "$GITHUB_ENV"
+          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+
+      # Manual path (workflow_dispatch -f slug=<slug>): the video is already
+      # committed; skip the agent and refuse to republish or run half-built videos.
+      - name: Validate manual slug
+        id: manualslug
+        if: github.event.inputs.slug != ''
+        run: |
+          set -e
+          SLUG="${{ github.event.inputs.slug }}"
+          [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "slug fails charset check: $SLUG"; exit 1; }
+          [ -d "src/videos/$SLUG" ] || { echo "src/videos/$SLUG does not exist"; exit 1; }
+          [ -f "src/videos/$SLUG/timeline.json" ] || { echo "timeline.json missing for $SLUG"; exit 1; }
+          [ -f "src/videos/$SLUG/publish.json" ] || { echo "publish.json missing for $SLUG"; exit 1; }
+          [ -f "public/$SLUG/vo.mp3" ] || { echo "public/$SLUG/vo.mp3 missing"; exit 1; }
+          # Ledger rows are `| DATE | slug | …`; match slug as a whole field.
+          if grep -Eq "^\\|[^|]*\\| *${SLUG} *\\|" docs/ledger.md; then
+            echo "$SLUG already in docs/ledger.md — refusing to republish"
+            exit 1
+          fi
           echo "SLUG=$SLUG" >> "$GITHUB_ENV"
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
 
@@ -166,6 +197,7 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           AGENT_O: ${{ steps.agent.outcome }}
           SLUG_O: ${{ steps.slug.outcome }}
+          MANUALSLUG_O: ${{ steps.manualslug.outcome }}
           GATES_O: ${{ steps.gates.outcome }}
           STILLS_O: ${{ steps.stills.outcome }}
           RENDER_O: ${{ steps.render.outcome }}
@@ -174,13 +206,13 @@ jobs:
           COMMIT_O: ${{ steps.commit.outcome }}
         run: |
           FAILSTEP=ci
-          for pair in "agent:$AGENT_O" "slug:$SLUG_O" "gates:$GATES_O" "stills:$STILLS_O" "render:$RENDER_O" "loudnorm:$LOUDNORM_O" "publish:$PUBLISH_O" "commit:$COMMIT_O"; do
+          for pair in "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "gates:$GATES_O" "stills:$STILLS_O" "render:$RENDER_O" "loudnorm:$LOUDNORM_O" "publish:$PUBLISH_O" "commit:$COMMIT_O"; do
             name="${pair%%:*}"; outcome="${pair##*:}"
             if [ "$outcome" = "failure" ]; then FAILSTEP="$name"; break; fi
           done
           npm run report -- "${SLUG:-ci}" --step "$FAILSTEP" --error "run gagal di step $FAILSTEP — lihat https://github.com/hendra/video-short/actions/runs/${{ github.run_id }}" || true
 
-      # The runner is persistent — never leave secrets on disk.
+      # Hosted runners are ephemeral; keep cleanup anyway (harmless, and covers forks/self-hosted reuse).
       - name: Cleanup secrets
         if: always()
         run: rm -f .env
