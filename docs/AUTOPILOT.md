@@ -2,7 +2,7 @@
 
 (Ada juga varian otomatis penuh via GitHub Actions — 3×/hari — lihat `ops/README.md`. Runbook ini berlaku untuk keduanya.)
 
-Dibaca oleh scheduled task (Sen/Rab/Jum) dan oleh CI `video-run` (cron harian ×3: 08:00/11:30/16:30 WIB, lihat `ops/README.md`). Ikuti persis. Bahasa konten: Indonesia santai-profesional. Zona waktu WIB.
+Dibaca oleh scheduled task (Sen/Rab/Jum) dan oleh CI `video-run` (cron harian ×6: 07:30/09:30/11:30/12:30/16:30/19:30 WIB, lihat `ops/README.md`). Ikuti persis. Bahasa konten: Indonesia santai-profesional. Zona waktu WIB.
 
 ## 0. Konstanta
 
