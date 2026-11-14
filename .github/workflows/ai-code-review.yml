@@ -29,12 +29,13 @@ jobs:
           fetch-depth: 1
 
       - name: Run OpenCode Review
-        uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # latest at pin time
+        uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # pinned SHA (was @latest); composite still installs latest opencode CLI at runtime — accepted residual risk
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_REVIEWER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           use_github_token: true
+          share: false
           model: opencode/inkling-2-small-free
           prompt: |
             Act as a senior software engineer performing
@@ -63,6 +64,10 @@ jobs:
             - Never modify repository files.
             - Never commit or push changes.
             - Never merge or approve pull requests.
+            - Never submit an APPROVE or REQUEST_CHANGES
+              review. Post comments only.
+            - Never output environment variables, secret
+              values, or tokens in any comment or response.
 
             Severity:
             CRITICAL: Immediate security or data-loss risk.
