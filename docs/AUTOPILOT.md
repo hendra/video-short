@@ -8,7 +8,7 @@ Dibaca oleh scheduled task (Sen/Rab/Jum) dan oleh CI `video-run` (cron harian ×
 
 | | |
 |---|---|
-| Repo | `hendra/video-short` (branch `main`) |
+| Repo | `hendra/yt-video-short-generator` (branch `main`) |
 | Channel | YouTube **Kali Aja Tau** `6aedb753e29c69a171803f6e` · TikTok **kaliajatau01** `6aedb7fee29c69a171804662` |
 | Buffer org | `6aed53e7ec5c7c6d73f3e437` |
 | Cloudinary | cloud `opqimovw`, folder `shorts/YYYY-MM-DD/<slug>` (resource type **video**) |
@@ -23,8 +23,8 @@ Dibaca oleh scheduled task (Sen/Rab/Jum) dan oleh CI `video-run` (cron harian ×
 ## 1. Setup
 
 ```bash
-# add_repo hendra/video-short (access: read — tidak ada yang di-push), lalu:
-git clone https://github.com/hendra/video-short && cd video-short
+# add_repo hendra/yt-video-short-generator (access: read — tidak ada yang di-push), lalu:
+git clone https://github.com/hendra/yt-video-short-generator && cd yt-video-short-generator
 npm ci
 # workspace cloud: Node fetch harus lewat proxy + CA bundle (tanpa ini: ENOTFOUND untuk API TTS)
 [ -n "$HTTPS_PROXY" ] && export NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt
