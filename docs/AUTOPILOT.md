@@ -16,14 +16,14 @@ Dibaca oleh scheduled task (Sen/Rab/Jum) dan oleh CI `video-run` (cron harian ×
 | TTS | **Gemini TTS** (`gemini-2.5-flash-preview-tts`, voice `Charon`) lewat Google AI Studio — gratis, tanpa billing; env `GEMINI_API_KEY`. Chain `auto`: gemini → gcloud (gratis ≤ 4 jt karakter/bln) → azure (F0, 0,5 jt karakter/bln). Saat ini chain efektif gemini-only sampai `GCLOUD_TTS_KEY`/`AZURE_SPEECH_KEY` dibuat. ElevenLabs = legacy opsional (`--provider=elevenlabs`), tidak termasuk chain. Ganti suara bebas via env `GEMINI_TTS_VOICE` — dengar 1 take dulu |
 | Brand overlay | `{ prefix: "Kali Aja ", accent: "Tau" }` |
 | Laporan | Slack **#social** `C0CDV7Y555K` (`slack_send_message`) |
-| Contoh referensi | `src/videos/terowongan-mrt` (terbaru, paling lengkap) dan `src/videos/rumah-pompa` |
+| Contoh referensi | tidak ada — seluruh `src/videos/*/` digenerate di CI |
 
 `GEMINI_API_KEY` diberikan oleh prompt scheduled task sebagai env var. **Jangan pernah** mencetak, meng-commit, atau menyertakannya di pesan/memory/Project. Tulis ke `.env` (sudah di-.gitignore) dengan `umask 077`. Keys lain (`BUFFER_ACCESS_TOKEN`, `CLOUDINARY_*`) **tidak** disuntik lewat prompt — di-copy manual oleh operator ke `.env` workspace sekali saja (lihat §1). **Operator juga wajib menambahkan `GEMINI_API_KEY` ke prompt scheduled task** (di luar repo ini) sebelum run berikutnya — kalau tidak, `npm run tts` akan gagal (semua provider skip) dan run berhenti.
 
 ## 1. Setup
 
 ```bash
-# add_repo hendra/video-short (access: push), lalu:
+# add_repo hendra/video-short (access: read — tidak ada yang di-push), lalu:
 git clone https://github.com/hendra/video-short && cd video-short
 npm ci
 # workspace cloud: Node fetch harus lewat proxy + CA bundle (tanpa ini: ENOTFOUND untuk API TTS)
@@ -62,7 +62,7 @@ npm run music -- <slug>      # musik orisinal sesuai titik potong
 ```
 Cek `timeline.json`: semua kata ter-match, durasi 60–90 dtk. Jika TTS gagal di semua provider (atau analisis timing gagal): **berhenti dan laporkan** (§10) — jangan coba berulang-ulang. Audio gagal menyimpan take segar di `os.tmpdir()/vo-<slug>-failed.mp3`; `vo.mp3`/`alignment.json` lama tidak tersentuh.
 
-## 6. Adegan 3D — salin pola `terowongan-mrt`
+## 6. Adegan 3D — pola scene
 
 File: `config.json` (shot → baris pertama), `state.ts` (semua animasi = fungsi murni dari `t`, terikat `L(n)`), `world.ts` (diorama dibuat sekali, `update(t)` per frame), `shots.ts` (label, judul `*hijau*`, kamera keyframe, callout, chip), `index.ts`, lalu daftarkan di `src/videos/registry.ts`.
 
@@ -106,6 +106,5 @@ Jika ada keraguan kualitas/fakta tapi video lengkap → `saveToDraft: true` dan 
 
 ## 10. Simpan & laporan
 
-- Tambah baris di `docs/ledger.md` (format per PUBLISHING.md §Step 4; commit di branch video, ikut PR).
-- Commit (`src/videos/<slug>/*`, registry, ledger; bukan `out/`, `music.wav`, atau `vo.mp3`) dan push ke `main`.
+- Tidak ada commit/push. Source video + ledger VM-local (gitignored) hilang saat job selesai; repo tetap bersih dari file generated. Kalau mau arsip, simpan di luar repo.
 - Laporan ke Slack **#social** (`slack_send_message`, channel `C0CDV7Y555K`) untuk **setiap** hasil run — sukses, dilewati, draft (ragu), atau gagal (langkah + error singkat). Isi sukses: judul, link YouTube & TikTok, sumber, provider yang dipakai (dari output `npm run tts`) + error kuota kalau gagal. Jangan pernah menyertakan API key. Jika Slack gagal, pakai `SendUserMessage` sebagai cadangan.

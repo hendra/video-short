@@ -2,7 +2,7 @@
  * Original, royalty-free lo-fi bed (A minor, 92 BPM) synthesised from scratch, with a soft riser
  * before every shot cut. Writes public/<id>/music.wav (16-bit stereo, 44.1 kHz).
  *
- *   npm run music -- rumah-pompa
+ *   npm run music -- <id>
  */
 import fs from "node:fs";
 import path from "node:path";

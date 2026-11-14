@@ -18,3 +18,8 @@ src/videos/*/.alignment.json.*.tmp
 
 # TTS voiceovers are deleted from the tree after every publish (durable upstream).
 public/*/vo.mp3
+
+# Generated video source and the VM-local publish ledger stay out of git
+# (produced in CI VMs; never committed).
+src/videos/*/
+docs/ledger.md

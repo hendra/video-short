@@ -2,7 +2,7 @@
  * naskah.txt + alignment.json + config.json  ->  src/videos/<id>/timeline.json
  * (lines, karaoke caption chunks with per-word timing, and shot spans).
  *
- *   npm run timeline -- rumah-pompa
+ *   npm run timeline -- <id>
  */
 import fs from "node:fs";
 import path from "node:path";
