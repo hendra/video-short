@@ -39,12 +39,12 @@ jobs:
       frames: ${{ steps.frames.outputs.frames }}
       failed_step: ${{ steps.failed.outputs.step }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }} # the triggering commit: main for the cron, the chosen branch for manual runs
           fetch-depth: 1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -187,7 +187,7 @@ jobs:
 
       # The bundle is self-contained (compiled video + public/ assets): render shards need nothing else.
       - name: Upload bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundle
           path: /tmp/rbundle
@@ -196,7 +196,7 @@ jobs:
 
       # publish.mts reads publish.json + naskah.txt from here.
       - name: Upload video metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: meta
           path: |
@@ -240,12 +240,12 @@ jobs:
       FRAMES: ${{ needs.build.outputs.frames }}
       SHARD: ${{ matrix.shard }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }} # the triggering commit: main for the cron, the chosen branch for manual runs
           fetch-depth: 1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -253,7 +253,7 @@ jobs:
       - name: Dependencies
         run: npm ci
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: bundle
           path: /tmp/rbundle
@@ -268,7 +268,7 @@ jobs:
           echo "shard $SHARD: frames $FROM-$TO of $FRAMES"
           npx remotion render /tmp/rbundle "$SLUG" "out/chunk-$SHARD.mp4" --frames="$FROM-$TO" --muted --gl=swangle --concurrency=2 --log=error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: chunk-${{ matrix.shard }}
           path: out/chunk-${{ matrix.shard }}.mp4
@@ -285,12 +285,12 @@ jobs:
       SLUG: ${{ needs.build.outputs.slug }}
       FRAMES: ${{ needs.build.outputs.frames }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }} # the triggering commit: main for the cron, the chosen branch for manual runs
           fetch-depth: 1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -303,17 +303,17 @@ jobs:
       - name: Dependencies
         run: npm ci
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: bundle
           path: /tmp/rbundle
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: meta
           path: src/videos/${{ env.SLUG }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           pattern: chunk-*
           path: out
@@ -342,7 +342,7 @@ jobs:
 
       - name: Keep final MP4 (dry run)
         if: ${{ inputs.dry_run }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: final-video
           path: out/${{ env.SLUG }}-final.mp4
@@ -386,12 +386,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }} # the triggering commit: main for the cron, the chosen branch for manual runs
           fetch-depth: 1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
