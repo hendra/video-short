@@ -32,7 +32,7 @@ permissions:
 # step-scoped BUFFER_ACCESS_TOKEN only to fetch public post metadata into /tmp; it is never written to .env or the repo.
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 180
     outputs:
       slug: ${{ steps.slug.outputs.slug || steps.manualslug.outputs.slug }}
@@ -56,7 +56,7 @@ jobs:
 
       - name: Preflight
         run: |
-          # ubuntu-latest migrated to Ubuntu 26 — ffmpeg no longer preinstalled
+          # Ubuntu 26 runner — ffmpeg no longer preinstalled
           sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
           node -v; npm -v
           which google-chrome ffmpeg
@@ -230,7 +230,7 @@ jobs:
   # Video only (--muted): AAC cannot be joined gaplessly, so the sound is rendered once in `publish`.
   render:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 90
     strategy:
       matrix:
@@ -277,7 +277,7 @@ jobs:
 
   publish:
     needs: [build, render]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
     outputs:
       failed_step: ${{ steps.failed.outputs.step }}
@@ -383,7 +383,7 @@ jobs:
   report-failure:
     needs: [build, render, publish]
     if: ${{ failure() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
