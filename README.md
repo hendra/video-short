@@ -5,7 +5,7 @@
 Template video **explainer 3D vertikal** (YouTube Shorts / Reels / TikTok, 1080×1920) dengan **Remotion + React Three Fiber**:
 animasi 3D low-poly, voiceover **AI** (Google AI Studio TTS, gratis — lihat `.env.example`) dengan timing per kata, caption karaoke, callout berlabel, chip angka, dan musik latar orisinal.
 
-Repo ini adalah **pipeline** — video generated tidak tersimpan di git. Satu-satunya metadata video di-track adalah `data/published-videos.json` (judul, teks publik, link, format, tanggal) untuk duplicate/re-publish protection; source, VO, dan render output tetap tidak di-commit.
+Repo ini adalah **pipeline** — video generated tidak tersimpan di git, dan tidak ada katalog video yang di-commit. Duplicate/re-publish lookup diambil dari Buffer di CI ke `/tmp/published-videos.json`; source, VO, dan render output tetap tidak di-commit.
 
 ## Mulai cepat
 
@@ -19,10 +19,10 @@ Butuh Node ≥ 20.19. `predev`/`prerender` otomatis membuat `public/<id>/music.w
 
 ## Published-video catalog
 
-`data/published-videos.json` adalah database publik di git untuk video yang sudah tayang/di-publish. Duplicate gate dan anti re-publish memakainya. Setelah publish sukses, CI update file ini dan melakukan commit/push hanya file ini (bukan source video). Untuk backfill/sinkronisasi dari Buffer:
+CI fetches Buffer's public sent-post history into `/tmp/published-videos.json` at the start of each run. Duplicate gate and publish-time near-duplicate checks use that temporary file; nothing from it is committed. To create the same local snapshot manually:
 
 ```bash
-BUFFER_ACCESS_TOKEN=... npx tsx scripts/sync-published-videos.mts
+BUFFER_ACCESS_TOKEN=... npx tsx scripts/fetch-published-videos.mts --out /tmp/published-videos.json
 ```
 
 ## Alur membuat video
@@ -69,7 +69,7 @@ src/
       state.ts            # cerita sebagai fungsi waktu
       world.ts            # dunia 3D (dibuat sekali, diupdate tiap frame)
       shots.ts            # judul, kamera, callout, chip per shot
-scripts/                  # tts.mts (+lib-tts.mts), align.mts, align-core.mts, align-local.mts, build-timeline.mts, music.mts, pick-format.mts, sync-published-videos.mts, published-db.mts, check-duplicates.mts (+*-core/test.mts)
+scripts/                  # tts.mts (+lib-tts.mts), align.mts, align-core.mts, align-local.mts, build-timeline.mts, music.mts, pick-format.mts, fetch-published-videos.mts, check-duplicates.mts (+*-core/test.mts)
 public/fonts              # Inter + DejaVu Sans Mono (OFL / Bitstream Vera), dibundel supaya render identik offline
 ```
 

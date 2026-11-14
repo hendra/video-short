@@ -43,7 +43,7 @@ Tidak ada API kuota gratis untuk Gemini TTS. Kuota AI Studio gratis ±10 request
 
 - Cari topik "**kok bisa?**" sains/teknik/infrastruktur yang **ramai di Indonesia 1–3 hari terakhir** (berita proyek, fenomena alam, teknologi, rekor). **Jangan panggil WebSearch** — tool itu tidak tersedia dan akan membatalkan run setelah agent selesai. Gunakan `WebFetch` ke sumber asli (ANTARA, Kompas, Detik, CNBC Indonesia, dsb.). Kalau sumber yang dibutuhkan tidak bisa di-fetch, ganti topik atau berhenti.
 - Bisa divisualkan sebagai **diorama 3D potongan/cutaway** dengan mekanisme bertahap (langkah 1-2-3).
-- **Jangan membuat ulang video**: `data/published-videos.json` adalah database video yang sudah tayang/di-publish. Alihkan ke topik/angle/title yang jelas berbeda; gate deterministik `npx tsx scripts/check-duplicates.mts <slug> --db data/published-videos.json` wajib lolos sebelum render/publish. Kalau hampir mirip, jangan "sedikit ubah judul" — ganti topik atau sudut pandang.
+- **Jangan membuat ulang video**: `/tmp/published-videos.json` adalah snapshot seluruh sent post YouTube + TikTok dari Buffer yang dibuat CI sebelum agent. Alihkan ke topik/angle/title yang jelas berbeda; gate deterministik `npx tsx scripts/check-duplicates.mts <slug> --db /tmp/published-videos.json` wajib lolos sebelum render/publish. Kalau hampir mirip, jangan "sedikit ubah judul" — ganti topik atau sudut pandang.
 - **Aman:** tidak ada tragedi/korban, politik partisan, SARA, klaim medis/keuangan. Bencana boleh hanya sebagai sains netral tanpa korban.
 - Setiap angka harus dari sumber yang dibaca; angka turunan dihitung dengan Python. Fakta tak terverifikasi → buang atau ganti topik.
 
@@ -116,5 +116,5 @@ Jika ada keraguan kualitas/fakta tapi video lengkap → `saveToDraft: true` dan 
 
 ## 10. Simpan & laporan
 
-- Source video, `vo.mp3`, `alignment.json`, dan render output **tidak di-commit**. Satu-satunya pengecualian yang disengaja adalah `data/published-videos.json` (judul, teks publik, link, format, tanggal) untuk duplicate/re-publish protection; setelah publish sukses, CI melakukan commit/push hanya file ini. Tidak ada commit/push manual atau source video ke repo.
+- Source video, `vo.mp3`, `alignment.json`, dan render output **tidak di-commit**. Tidak ada katalog video atau metadata publish di-commit. CI fetch data Buffer hanya ke `/tmp`; Buffer tetap sebagai source of truth. Tidak ada commit/push manual atau source video ke repo.
 - Laporan ke Slack **#social** (`slack_send_message`, channel `C0CDV7Y555K`) untuk **setiap** hasil run — sukses, dilewati, draft (ragu), atau gagal (langkah + error singkat). Isi sukses: judul, link YouTube & TikTok, sumber, provider/voice yang dipakai (Gemini 3.8 Flash TTS / `id-id-podcaster-1`), format naskah yang dipilih (`format:` dari `catatan`), dan konfirmasi duplicate gate lolos. Jangan pernah menyertakan API key. Jika Slack gagal, pakai `SendUserMessage` sebagai cadangan.

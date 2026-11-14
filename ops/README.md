@@ -1,6 +1,6 @@
 # ops — CI: Cloudflare cron → GitHub Actions (hosted) → pipeline video
 
-Chain: **Cloudflare Worker** (cron 08:00/11:30/16:30 WIB) → `repository_dispatch` → **GitHub-hosted `ubuntu-latest`** → workflow `.github/workflows/video.yml` → agent (opencode, free model) + duplicate gate dari `data/published-videos.json` → gates (lint/test/bundle/still-per-shot) → render (`--gl=swangle`, 4 runner paralel) → gabung + audio + loudnorm → publish (Cloudinary → Buffer YouTube + TikTok) → commit `data/published-videos.json` → Slack #social. Video source tidak di-commit; hanya katalog metadata publik yang disengaja di-track.
+Chain: **Cloudflare Worker** (cron 08:00/11:30/16:30 WIB) → `repository_dispatch` → **GitHub-hosted `ubuntu-latest`** → workflow `.github/workflows/video.yml` → fetch katalog Buffer ke `/tmp/published-videos.json` → agent (opencode, free model) + duplicate gate → gates (lint/test/bundle/still-per-shot) → render (`--gl=swangle`, 4 runner paralel) → gabung + audio + loudnorm → publish (Cloudinary → Buffer YouTube + TikTok) → Slack #social. Video source tidak di-commit; katalog tidak di-commit dan hanya di-fetch ke `/tmp` saat CI.
 
 Repo **public** (wajib untuk free hosted minutes; unlimited). Tidak ada runner self-hosted — PC lokal bebas.
 
@@ -8,9 +8,9 @@ Repo **public** (wajib untuk free hosted minutes; unlimited). Tidak ada runner s
 
 | Job | Isi | Secret |
 |---|---|---|
-| `build` | agent membuat video, duplicate gate dari `data/published-videos.json`, gates, still per shot, bundle → artifact `bundle` (situs Remotion lengkap + `public/`) dan `meta` (`publish.json`, `naskah.txt`) | hanya `GEMINI_API_KEY` |
+| `build` | fetch katalog Buffer ke `/tmp/published-videos.json`, agent membuat video, duplicate gate dari file itu, gates, still per shot, bundle → artifact `bundle` (situs Remotion lengkap + `public/`) dan `meta` (`publish.json`, `naskah.txt`) | agent hanya `GEMINI_API_KEY`; `BUFFER_ACCESS_TOKEN` hanya untuk step fetch katalog |
 | `render` ×4 (matrix `shard`) | tiap runner merender seperempat frame, **tanpa audio** (`--frames=a-b --muted`) → artifact `chunk-<i>` | tidak ada |
-| `publish` | render audio sekali (`audioOnly`, < 1 menit), sambung chunk tanpa encode ulang + audio + loudnorm, cek jumlah frame, publish, commit `data/published-videos.json`, lalu laporan sukses | Cloudinary, Buffer, Slack; `GITHUB_TOKEN` job scoped `contents: write` untuk commit katalog |
+| `publish` | render audio sekali (`audioOnly`, < 1 menit), sambung chunk tanpa encode ulang + audio + loudnorm, cek jumlah frame, Fetch Buffer lagi lalu tolak near-duplicate, publish, lalu laporan sukses | Cloudinary, Buffer, Slack |
 | `report-failure` | jalan hanya kalau ada job gagal; checkout bersih → Slack #social dengan nama step/job yang gagal | Slack |
 
 Kenapa dipecah: render CPU sudah memakai semua core (`--concurrency` tidak berpengaruh), jadi satu-satunya cara mempercepat adalah menambah mesin. Jumlah shard = `env.SHARDS` **dan** daftar `matrix.shard` di workflow — ubah keduanya bersamaan. Audio dirender terpisah karena potongan AAC tidak bisa disambung tanpa celah.
@@ -22,10 +22,9 @@ Kenapa dipecah: render CPU sudah memakai semua core (`--concurrency` tidak berpe
 | Worker (weker) | `ops/cloudflare-cron/worker.js` — ter-deploy di akun CF; crons di `wrangler.toml` |
 | Runner | GitHub-hosted `ubuntu-latest` (swangle-only, tidak ada GPU); render dibagi ke 4 runner paralel |
 | Workflow | `.github/workflows/video.yml` — `repository_dispatch[video-run]` + `workflow_dispatch` (manual, opsional input `slug` dan `dry_run`) |
-| Publish | `scripts/publish.mts` (`npm run publish -- <slug>`) — Cloudinary signed upload → Buffer GraphQL → update `data/published-videos.json`; CI job commit/push file ini setelah publish berhasil |
-| Report | `scripts/report.mts` (`npm run report -- <slug>`) — Slack #social; otomatis membaca links dari `data/published-videos.json` bila `--links` kosong |
-| Published catalog | `data/published-videos.json` — database publik berisi `slug` (kalau ada dari publish), platform, tanggal, judul, teks caption publik, link, format, dan sumber; dipakai duplicate gate + anti re-publish |
-| Buffer backfill | `scripts/sync-published-videos.mts` — merge seluruh post Buffer sent ke `data/published-videos.json` secara idempotent; dipakai manual bila katalog perlu disinkronkan |
+| Publish | `scripts/publish.mts` (`npm run publish -- <slug>`) — Cloudinary signed upload → Buffer GraphQL; publish fetch Buffer lagi sebelum upload dan menolak kandidat yang sudah dekat dengan post live |
+| Report | `scripts/report.mts` (`npm run report -- <slug>`) — Slack #social; otomatis membaca links dari `/tmp/publish-result.json` bila `--links` kosong |
+| Publikasi history | `scripts/fetch-published-videos.mts` — fetch seluruh post Buffer sent ke `/tmp/published-videos.json`; dipakai duplicate gate dan publish-time check; tidak di-commit |
 | Agent | `ops/ci-prompt.md` — opencode, `--model opencode/inkling-2-small-free` |
 
 ## Setup sekali jalan (baru)
@@ -50,7 +49,7 @@ Render+publish video yang **sudah di-commit & push ke main** (mis. video yang ka
 gh workflow run video-run --ref main -f slug=<slug>
 ```
 
-Prasyarat manual path: video source `src/videos/<slug>/` harus ada di tree (tidak di-commit — generated di CI; untuk manual path kamu tambahkan sendiri sementara, boleh lewat `git add -f`, lalu hapus lagi), `public/<slug>/vo.mp3` ada di tree, `data/published-videos.json` ideally sudah berisi semua publish sebelumnya. Duplicate gate dan re-publish guard memakai file itu; publikasi di luar pipeline/Buffer sebelum katalog di-backfill tidak terdeteksi, jadi tetap cek YouTube/TikTok sebelum publish. Jalankan gates lokal dulu (`npm run lint && npm test`). Manual path tetap publish **for real** ke YouTube + TikTok kecuali `dry_run` dinyalakan; commit katalog tetap di-push ke branch target bila berjalan lewat Actions.
+Prasyarat manual path: video source `src/videos/<slug>/` harus ada di tree (tidak di-commit — generated di CI; untuk manual path kamu tambahkan sendiri sementara, boleh lewat `git add -f`, lalu hapus lagi), `public/<slug>/vo.mp3` ada di tree, Buffer harus berisi publish sebelumnya karena duplicate/re-publish lookup di-fetch dari sana. Jalankan gates lokal dulu (`npm run lint && npm test`). Manual path tetap publish **for real** ke YouTube + TikTok kecuali `dry_run` dinyalakan; tidak ada katalog yang di-commit atau di-push.
 
 Dry-run (semua langkah kecuali Publish + laporan sukses; MP4 final disimpan sebagai artifact `final-video` selama 3 hari):
 
@@ -68,7 +67,7 @@ Pakai ini untuk menguji perubahan workflow sebelum merge. `repository_dispatch` 
 - **Quota**: opencode free model menolak/rate-limit → publish tidak terjadi; coba lagi lewat `workflow_dispatch` nanti.
 - **Satu shard render gagal** → shard lain dibatalkan (fail-fast), `publish` dilewati, Slack melaporkan `render`. Re-run job yang gagal saja dari UI Actions selama artifact `bundle` masih ada (1 hari).
 - **`assemble` gagal dengan "assembled video has N frames, expected M"** → ada chunk yang tidak lengkap; jangan publish manual, re-run job `render`.
-- **Catalog push gagal setelah publish live**: video sudah tayang tetapi `data/published-videos.json` tidak ter-persist. Jangan re-run manual sampai `data/published-videos.json` diperbaiki (pakai `scripts/sync-published-videos.mts`) atau link/status di YouTube/TikTok diperiksa.
+- **Publish selesai tetapi laporan/network gagal**: video sudah tayang; publish step menulis `/tmp/publish-result.json` untuk report. Jangan re-run buta; cek YouTube/TikTok dan Buffer. Publish juga menolak kandidat yang terlalu mirip dengan post live sebelum upload.
 
 ## Regenerate
 

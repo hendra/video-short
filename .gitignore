@@ -19,5 +19,5 @@ src/videos/*/.alignment.json.*.tmp
 # TTS voiceovers are deleted from the tree after every publish (durable upstream).
 public/*/vo.mp3
 
-# Generated video source stays out of git. The public-metadata catalog under data/ is intentionally committed.
+# Generated video source stays out of git. CI fetches published-post metadata to /tmp only.
 src/videos/*/
