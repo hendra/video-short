@@ -17,6 +17,10 @@ describe("buildReportText (Slack payload, shipped helper)", () => {
     assert.match(t, /https:\/\/tt\/2/);
     assert.match(t, /`video-id`/);
   });
+  test("success report does not claim a self-hosted runner", () => {
+    const t = buildReportText({ slug: "video-id", links: "https://yt/1,https://tt/2" });
+    assert.doesNotMatch(t, /self-hosted/);
+  });
   test("empty links and no error yields the informational fallback", () => {
     assert.match(buildReportText({ slug: "x" }), /tidak ada links\/error/);
   });
