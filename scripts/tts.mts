@@ -1,9 +1,9 @@
 /**
  * Generate the voiceover AND word timing in one command.
- *   npm run tts -- <id> [--provider=auto|gemini|gcloud|azure|elevenlabs]
- * Default: auto = gemini (Google AI Studio, free) → gcloud → azure; ElevenLabs is
- * legacy/optional and never part of the automatic chain. Timing comes from the bundled
- * offline aligner (align-core) — no with-timestamps API needed except for elevenlabs.
+ *   npm run tts -- <id> [--provider=auto|gemini]
+ * Default: Gemini 3.8 Flash TTS pinned to `id-id-podcaster-1` (natural Indonesian male).
+ * There is no automatic or manual voice switch through this command; a failed run stops and reports. Timing comes
+ * from the bundled offline aligner — no with-timestamps API needed.
  */
 import { loadDotenv, readScript, videoIdArg } from "./lib.mts";
 import { synthesizeAndPublish, type TtsProvider } from "./lib-tts.mts";
@@ -11,11 +11,11 @@ import { synthesizeAndPublish, type TtsProvider } from "./lib-tts.mts";
 loadDotenv();
 const id = videoIdArg();
 
-const VALID = ["auto", "gemini", "gcloud", "azure", "elevenlabs"] as const;
+const VALID = ["auto", "gemini"] as const;
 const inline = process.argv.find((a) => a.startsWith("--provider="));
 const flagIdx = process.argv.indexOf("--provider");
 const providerArg = inline ? inline.slice("--provider=".length) : flagIdx > 0 ? process.argv[flagIdx + 1] : undefined;
-const provider = providerArg ?? process.env.TTS_PROVIDER ?? "auto";
+const provider = providerArg ?? "auto"; // TTS_PROVIDER is intentionally ignored: production identity is locked.
 if (!(VALID as readonly string[]).includes(provider)) {
   console.error(`Unknown --provider "${provider}". Valid: ${VALID.join(", ")}`);
   process.exit(1);

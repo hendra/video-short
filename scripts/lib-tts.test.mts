@@ -62,18 +62,19 @@ describe("synthesizeGemini", () => {
   test("happy path: PCM wrapped in WAV, correct request shape, voice/language pinned", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     const calls = mockFetch(() => Promise.resolve(jsonResponse(200, {
-      candidates: [{ content: { parts: [{ inlineData: { data: pcmTone(0.5, 440).toString("base64") } }] } }],
+      candidates: [{ content: { parts: [{ inlineData: { data: wavOf(pcmTone(0.5, 440)).toString("base64") } }] } }],
     })));
     const out = await synthesizeGemini("halo dunia");
     assert.equal(out.ext, "wav");
     assert.equal(out.audio.subarray(0, 4).toString(), "RIFF");
-    assert.equal(out.audio.length, 44 + pcmTone(0.5, 440).length);
+    assert.equal(out.audio.length, wavOf(pcmTone(0.5, 440)).length);
     assert.equal(calls.length, 1);
-    assert.ok(calls[0].url.includes("gemini-2.5-flash-preview-tts"));
+    assert.ok(calls[0].url.includes("gemini-3.8-flash-tts"));
     assert.equal(calls[0].init?.headers?.["x-goog-api-key"], "test-key");
     const body = JSON.parse(calls[0].init?.body ?? "{}");
     assert.equal(body.generationConfig.speechConfig.languageCode, "id-ID");
-    assert.equal(body.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, "Charon");
+    assert.equal(body.generationConfig.speechConfig.voiceConfig.voice, "id-id-podcaster-1");
+    assert.equal(body.contents[0].parts[0].speechMetadata.style, "natural, warm, conversational");
     assert.ok(body.contents[0].parts[0].text.includes("halo dunia"));
   });
 

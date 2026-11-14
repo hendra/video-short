@@ -13,12 +13,12 @@ Dibaca oleh scheduled task (Sen/Rab/Jum) dan oleh CI `video-run` (cron harian ×
 | Buffer org | `6aed53e7ec5c7c6d73f3e437` |
 | Cloudinary | cloud `opqimovw`, folder `shorts/YYYY-MM-DD/<slug>` (resource type **video**) |
 | Publish | Ikuti **`docs/PUBLISHING.md`** (upload → Buffer GraphQL → poll). Env keys wajib: `BUFFER_ACCESS_TOKEN` (scope posts:read + posts:write; tidak bisa list channels), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — kalau .env tidak punya ini, video tidak bisa di-upload/post |
-| TTS | **Gemini TTS** (`gemini-2.5-flash-preview-tts`, voice `Charon`) lewat Google AI Studio — gratis, tanpa billing; env `GEMINI_API_KEY`. Chain `auto`: gemini → gcloud (gratis ≤ 4 jt karakter/bln) → azure (F0, 0,5 jt karakter/bln). Saat ini chain efektif gemini-only sampai `GCLOUD_TTS_KEY`/`AZURE_SPEECH_KEY` dibuat. ElevenLabs = legacy opsional (`--provider=elevenlabs`), tidak termasuk chain. Ganti suara bebas via env `GEMINI_TTS_VOICE` — dengar 1 take dulu |
+| TTS | **Gemini 3.8 Flash TTS** (`gemini-3.8-flash-tts`) lewat Google AI Studio — gratis, tanpa billing; env `GEMINI_API_KEY`. **Dikunci** ke voice library Indonesian male `id-id-podcaster-1` (Podcaster 1: Standard Indonesian, clear, confident, natural) dengan style pendek tetap `natural, warm, conversational`. Tidak ada fallback otomatis — kalau voice/model tidak tersedia, run berhenti dan lapor. `--provider` hanya menerima `auto|gemini`; voice tidak bisa diganti lewat `npm run tts`. `auto` = Gemini saja |
 | Brand overlay | `{ prefix: "Kali Aja ", accent: "Tau" }` |
 | Laporan | Slack **#social** `C0CDV7Y555K` (`slack_send_message`) |
 | Contoh referensi | tidak ada — seluruh `src/videos/*/` digenerate di CI |
 
-`GEMINI_API_KEY` diberikan oleh prompt scheduled task sebagai env var. **Jangan pernah** mencetak, meng-commit, atau menyertakannya di pesan/memory/Project. Tulis ke `.env` (sudah di-.gitignore) dengan `umask 077`. Keys lain (`BUFFER_ACCESS_TOKEN`, `CLOUDINARY_*`) **tidak** disuntik lewat prompt — di-copy manual oleh operator ke `.env` workspace sekali saja (lihat §1). **Operator juga wajib menambahkan `GEMINI_API_KEY` ke prompt scheduled task** (di luar repo ini) sebelum run berikutnya — kalau tidak, `npm run tts` akan gagal (semua provider skip) dan run berhenti.
+`GEMINI_API_KEY` diberikan oleh prompt scheduled task sebagai env var. **Jangan pernah** mencetak, meng-commit, atau menyertakannya di pesan/memory/Project. Tulis ke `.env` (sudah di-.gitignore) dengan `umask 077`. Keys lain (`BUFFER_ACCESS_TOKEN`, `CLOUDINARY_*`) **tidak** disuntik lewat prompt — di-copy manual oleh operator ke `.env` workspace sekali saja (lihat §1). **Operator juga wajib menambahkan `GEMINI_API_KEY` ke prompt scheduled task** (di luar repo ini) sebelum run berikutnya — kalau tidak, `npm run tts` akan gagal dan run berhenti.
 
 ## 1. Setup
 
@@ -28,7 +28,7 @@ git clone https://github.com/hendra/yt-video-short-generator && cd yt-video-shor
 npm ci
 # workspace cloud: Node fetch harus lewat proxy + CA bundle (tanpa ini: ENOTFOUND untuk API TTS)
 [ -n "$HTTPS_PROXY" ] && export NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt
-umask 077; printf 'GEMINI_API_KEY=%s\nGEMINI_TTS_VOICE=Charon\n' "$KEY_DARI_PROMPT" > .env
+umask 077; printf 'GEMINI_API_KEY=%s\n' "$KEY_DARI_PROMPT" > .env
 # Sekali saja per workspace baru (keys tidak dari prompt, jangan dicetak di log):
 printf 'BUFFER_ACCESS_TOKEN=%s\nCLOUDINARY_CLOUD_NAME=opqimovw\nCLOUDINARY_API_KEY=%s\nCLOUDINARY_API_SECRET=%s\n' "$BUFFER_KEY" "$CLOUDINARY_KEY" "$CLOUDINARY_SECRET" >> .env
 # (BUFFER_ACCESS_TOKEN scope: posts:read+posts:write — tanpa account:read, channels tidak bisa di-list; channel ID di §0 / docs/PUBLISHING.md)
@@ -37,34 +37,44 @@ Render di workspace: `--browser-executable=/usr/bin/google-chrome --gl=swangle` 
 
 ## 2. Tidak ada gerbang kuota
 
-Tidak ada API kuota gratis untuk Gemini TTS. Kuota AI Studio gratis ±10 request/hari per model — cukup untuk 1–3 video/minggu (1 request = 1 video). Jika `npm run tts` gagal (429, kuota habis, semua provider gagal, atau analisis timing gagal): **berhenti**, jangan riset/render/publish. Laporkan ke Slack #social (§10): langkah gagal + provider yang dicoba + error singkat. Fallback gcloud/azure aktif hanya setelah key-nya dibuat (lihat AGENTS.md / `.env.example`).
+Tidak ada API kuota gratis untuk Gemini TTS. Kuota AI Studio gratis ±10 request/hari per model — cukup untuk 1–3 video/minggu (1 request = 1 video). Jika `npm run tts` gagal (429, kuota habis, voice/model tidak tersedia, atau analisis timing gagal): **berhenti**, jangan riset/render/publish. Jangan ganti voice, model, atau provider untuk memecahkan kegagalan. Laporkan ke Slack #social (§10): langkah gagal + error singkat.
 
 ## 3. Topik (riset hari ini)
 
 - Cari topik "**kok bisa?**" sains/teknik/infrastruktur yang **ramai di Indonesia 1–3 hari terakhir** (berita proyek, fenomena alam, teknologi, rekor). WebSearch + WebFetch sumber asli.
 - Bisa divisualkan sebagai **diorama 3D potongan/cutaway** dengan mekanisme bertahap (langkah 1-2-3).
-- Tidak mengulang: cek `src/videos/*` dan post Buffer 30 hari terakhir di kedua channel.
+- **Jangan membuat ulang video**: `data/published-videos.json` adalah database video yang sudah tayang/di-publish. Alihkan ke topik/angle/title yang jelas berbeda; gate deterministik `npx tsx scripts/check-duplicates.mts <slug> --db data/published-videos.json` wajib lolos sebelum render/publish. Kalau hampir mirip, jangan "sedikit ubah judul" — ganti topik atau sudut pandang.
 - **Aman:** tidak ada tragedi/korban, politik partisan, SARA, klaim medis/keuangan. Bencana boleh hanya sebagai sains netral tanpa korban.
 - Setiap angka harus dari sumber yang dibaca; angka turunan dihitung dengan Python. Fakta tak terverifikasi → buang atau ganti topik.
 
 ## 4. Naskah — `src/videos/<slug>/naskah.txt`
 
-- Format baris `NN  teks` (13–16 baris), total 1.100–1.400 karakter (≈ 70–85 detik).
-- Pola: **hook berita** (angka/kejadian) → **"Tapi tunggu… kok bisa…?"** → **langkah 1/2/3** → **analogi** sehari-hari → **angka** → penutup "Jadi…" → CTA persis: `Mau dibongkar apa lagi? Tulis di komentar.`
+- Format baris `NN  teks` (13–16 baris), total 1.100–1.400 karakter (≈ 70–85 detik). Baris `NN  teks` tetap sama; **format naratif** tidak boleh dikunci ke satu pola.
+- **Format harus diacak setiap run**: sebelum menulis, jalankan `npx tsx scripts/pick-format.mts` dan pakai format yang dipilih. Jangan mengganti pilihan karena "lebih enak". Di `publish.json`, tulis `catatan` dimulai dengan `format: <id>;`.
+- Pool yang dipakai (format populer/favorit YouTube Shorts + TikTok 2026; dibobot sesuai performa): `expert-explainer` (paling kuat untuk edukasi), `how-to-tutorial`, `numbered-listicle`, `myth-buster`, `mystery-story`, `before-after`, `storytime`, `qa-rapid`, `viewer-challenge`, `problem-solution`, `mini-documentary`.
+- Semua format tetap membuka dengan hook spesifik dalam 2–3 detik, satu ide per video, konteks Indonesia, payoff yang jelas, dan CTA di akhir. Jangan pakai template lama `hook → "Tapi tunggu… kok bisa…?" → langkah 1/2/3 → "Jadi…"` setiap kali; variasikan sintaks kalimat, urutan bukti, dan jenis opening sesuai format.
+- `expert-explainer`: authority/number hook → mekanisme → implikasi. `how-to-tutorial`: janji hasil → 3 langkah → kesalahan umum. `numbered-listicle`: janji angka → 3 poin bukti → punchline. `myth-buster`: miskonsepsi → bukti → kenapa salah. `mystery-story`: fakta mustahil → petunjuk → reveal. `before-after`: asumsi → bukti mengejutkan → mekanisme → mental model baru. `storytime`: turning point → urutan fakta → pelajaran/konsekuensi. `qa-rapid`: pertanyaan → jawaban salah yang menggoda → jawaban benar. `viewer-challenge`: tebakan nyata → jawaban → aturan berpikir. `problem-solution`: masalah → mekanisme → benefit/batasan. `mini-documentary`: scene → turning point → consequence.
 - Kalimat lisan, santai ("nggak", "kayak"), angka ditulis dengan kata ("dua puluh delapan meter"). Kata hati-hati untuk temuan awal ("diduga", "menurut…").
 
 ## 5. Suara + timing
 
 ```bash
-npm run tts -- <slug>        # vo.mp3 + alignment.json (Gemini; timing dari aligner offline, ±0,2 dtk/kata)
+npm run tts -- <slug>        # vo.mp3 + alignment.json (Gemini 3.8 locked voice; timing dari aligner offline, ±0,2 dtk/kata)
 npm run timeline -- <slug>   # caption + rentang shot
 npm run music -- <slug>      # musik orisinal sesuai titik potong
 ```
-Cek `timeline.json`: semua kata ter-match, durasi 60–90 dtk. Jika TTS gagal di semua provider (atau analisis timing gagal): **berhenti dan laporkan** (§10) — jangan coba berulang-ulang. Audio gagal menyimpan take segar di `os.tmpdir()/vo-<slug>-failed.mp3`; `vo.mp3`/`alignment.json` lama tidak tersentuh.
+Cek `timeline.json`: semua kata ter-match, durasi 60–90 dtk. Jika TTS gagal (kunci salah, 429, kuota habis, voice/model tidak tersedia, atau analisis timing gagal): **berhenti dan laporkan** (§10) — jangan coba berulang-ulang, jangan ganti voice/model/provider. Audio gagal menyimpan take segar di `os.tmpdir()/vo-<slug>-failed.mp3`; `vo.mp3`/`alignment.json` lama tidak tersentuh.
 
 ## 6. Adegan 3D — pola scene
 
 File: `config.json` (shot → baris pertama), `state.ts` (semua animasi = fungsi murni dari `t`, terikat `L(n)`), `world.ts` (diorama dibuat sekali, `update(t)` per frame), `shots.ts` (label, judul `*hijau*`, kamera keyframe, callout, chip), `index.ts`, lalu daftarkan di `src/videos/registry.ts`.
+
+Supaya setiap objek tampak nyata (bukan kotak polos), bangun adegan dari `Kit` (`src/engine/kit.ts`):
+- **Cahaya:** panggil `kit.lights()` sekali di `createWorld` (matahari hangat + bayangan lembut + langit/pantulan tanah). Jangan menambah `AmbientLight`/`DirectionalLight` sendiri. `reach` = setengah lebar area yang perlu bayangan (default 16).
+- **Bentuk:** `kit.box(...)` (tepi membulat), `kit.cyl(x, y0, z, r, h, mat)` untuk pipa/tiang/tangki, `kit.ball(x, y, z, r, mat)`; prefab `kit.house/tree/worker`. Bentuk khusus boleh `new Mesh(...)`, tapi benda bulat minimal 16 segmen.
+- **Material:** `kit.mat(warna, "matte" | "gloss" | "metal" | "glass" | "water")` — beton/tanah/kayu = `matte` (default, bertekstur halus), plastik/cat = `gloss`, baja/pipa = `metal`, kaca/panel = `glass`, air = `water`.
+- **Gerak:** benda yang mendarat/muncul pakai `spring(u)`, benda jatuh pakai `drop(u)`, goyangan diam (daun, kabel, benda mengapung) pakai `sway(t, seed)` — semuanya di `engine/math.ts`, murni fungsi `t`. Hindari gerak linear kaku.
+- Jangan pakai environment map, bump map, atau post-processing: di render CPU (CI) biayanya 3× lipat.
 
 Standar kualitas (pelajaran dari video sebelumnya):
 - **Potongan tanah (cut face) di z = 0**, tanah dalam (BOT ≈ −11) supaya separuh bawah frame tidak kosong; strata warna + titik air.
@@ -106,5 +116,5 @@ Jika ada keraguan kualitas/fakta tapi video lengkap → `saveToDraft: true` dan 
 
 ## 10. Simpan & laporan
 
-- Tidak ada commit/push. Source video + ledger VM-local (gitignored) hilang saat job selesai; repo tetap bersih dari file generated. Kalau mau arsip, simpan di luar repo.
-- Laporan ke Slack **#social** (`slack_send_message`, channel `C0CDV7Y555K`) untuk **setiap** hasil run — sukses, dilewati, draft (ragu), atau gagal (langkah + error singkat). Isi sukses: judul, link YouTube & TikTok, sumber, provider yang dipakai (dari output `npm run tts`) + error kuota kalau gagal. Jangan pernah menyertakan API key. Jika Slack gagal, pakai `SendUserMessage` sebagai cadangan.
+- Source video, `vo.mp3`, `alignment.json`, dan render output **tidak di-commit**. Satu-satunya pengecualian yang disengaja adalah `data/published-videos.json` (judul, teks publik, link, format, tanggal) untuk duplicate/re-publish protection; setelah publish sukses, CI melakukan commit/push hanya file ini. Tidak ada commit/push manual atau source video ke repo.
+- Laporan ke Slack **#social** (`slack_send_message`, channel `C0CDV7Y555K`) untuk **setiap** hasil run — sukses, dilewati, draft (ragu), atau gagal (langkah + error singkat). Isi sukses: judul, link YouTube & TikTok, sumber, provider/voice yang dipakai (Gemini 3.8 Flash TTS / `id-id-podcaster-1`), format naskah yang dipilih (`format:` dari `catatan`), dan konfirmasi duplicate gate lolos. Jangan pernah menyertakan API key. Jika Slack gagal, pakai `SendUserMessage` sebagai cadangan.

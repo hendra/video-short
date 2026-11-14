@@ -4,10 +4,6 @@
  */
 import crypto from "node:crypto";
 
-/** Ledger presence check: a markdown table row whose slug cell (2nd) matches exactly. */
-export const ledgerHas = (ledger: string, slug: string): boolean =>
-  new RegExp(`^\\|[^\\n]*\\|\\s*${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\|`, "m").test(ledger);
-
 /** Cloudinary signed-upload signature: sha1 of the alphabetically sorted "k=v&…" param string + <secret>. */
 export const cloudinarySign = (params: Record<string, string | number>, secret: string): string =>
   crypto.createHash("sha1")

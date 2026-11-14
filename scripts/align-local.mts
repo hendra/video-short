@@ -3,8 +3,9 @@
  * 1. Detect speech segments with FFmpeg's silencedetect.
  * 2. Dynamic programming: group segments into the script lines so each line's duration matches its
  *    syllable count, preferring to split at long pauses.
- * 3. Spread words over each line's speech time (pauses skipped), weighted by syllables.
- * Accuracy: line boundaries are usually exact; words inside a line are approximate (±0.2 s).
+ * 3. Inside each line, pin the pauses to the punctuation marks, then spread words over each phrase's
+ *    speech time, weighted by syllables.
+ * Accuracy: line and phrase boundaries are usually exact; words inside a phrase are approximate (±0.1 s).
  * Prefer `npm run tts` (which also runs this engine) or `npm run align` (ElevenLabs Forced Alignment)
  * when you have an API key.
  *

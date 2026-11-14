@@ -9,6 +9,26 @@ export const smooth = (x: number) => {
 };
 /** Smoothstep from 0 (t <= s) to 1 (t >= e). */
 export const ramp = (t: number, s: number, e: number) => smooth((t - s) / Math.max(1e-6, e - s));
+
+// ---------- physical motion (all pure functions of progress / time)
+/** 0→1 with a damped overshoot: things that snap, land or pop into place (x = progress 0..1). */
+export const spring = (x: number) => {
+  const c = clamp(x);
+  return c >= 1 ? 1 : 1 - Math.exp(-6 * c) * Math.cos(12 * c);
+};
+/** 0→1 like an object dropped under gravity that bounces to rest (x = progress 0..1). */
+export const drop = (x: number) => {
+  let c = clamp(x);
+  const n = 7.5625, d = 2.75;
+  if (c < 1 / d) return n * c * c;
+  if (c < 2 / d) return n * (c -= 1.5 / d) * c + 0.75;
+  if (c < 2.5 / d) return n * (c -= 2.25 / d) * c + 0.9375;
+  return n * (c -= 2.625 / d) * c + 0.984375;
+};
+/** Organic drift in [-1, 1] (leaves, cables, floating things, water): never visibly repeats, pure in t. */
+export const sway = (t: number, seed = 0) =>
+  (Math.sin(t * 1.13 + seed * 12.9898) + 0.6 * Math.sin(t * 2.37 + seed * 78.233) + 0.3 * Math.sin(t * 4.71 + seed * 37.719)) / 1.9;
+
 export const lerp3 = (a: Vec3, b: Vec3, x: number): Vec3 => [lerp(a[0], b[0], x), lerp(a[1], b[1], x), lerp(a[2], b[2], x)];
 
 /** Deterministic PRNG (mulberry32). Never use Math.random() in a render. */

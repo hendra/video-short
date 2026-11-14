@@ -15,6 +15,11 @@ import { type TimedWord, publicDir, videoDir } from "./lib.mts";
 export type TtsProvider = "gemini" | "gcloud" | "azure" | "elevenlabs";
 export type SynthResult = { audio: Buffer; ext: "mp3" | "wav"; words?: TimedWord[] };
 
+// Locked production identity — do not read from env or swap per-run.
+const GEMINI_TTS_MODEL = "gemini-3.8-flash-tts";
+const GEMINI_TTS_VOICE = "id-id-podcaster-1";
+const GEMINI_TTS_STYLE = "natural, warm, conversational";
+
 const snippet = async (res: Response): Promise<string> => {
   try { return (await res.text()).slice(0, 300); } catch { return ""; }
 };
@@ -22,29 +27,17 @@ const snippet = async (res: Response): Promise<string> => {
 export const xmlEscape = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&apos;").replace(/"/g, "&quot;");
 
-/** 44-byte PCM WAV header + data. */
-const wavHeader = (pcm: Buffer, sampleRate: number): Buffer => {
-  const h = Buffer.alloc(44);
-  h.write("RIFF", 0); h.writeUInt32LE(36 + pcm.length, 4);
-  h.write("WAVE", 8);
-  h.write("fmt ", 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
-  h.writeUInt32LE(sampleRate, 24); h.writeUInt32LE(sampleRate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34);
-  h.write("data", 36); h.writeUInt32LE(pcm.length, 40);
-  return Buffer.concat([h, pcm]);
-};
-
-/** Gemini TTS via Google AI Studio (free API key, no billing account; PCM 24 kHz mono output). */
+/** Gemini TTS via Google AI Studio. Locked to a natural Indonesian male voice. */
 export const synthesizeGemini = async (text: string): Promise<SynthResult> => {
-  const model = process.env.GEMINI_TTS_MODEL ?? "gemini-2.5-flash-preview-tts";
-  const voice = process.env.GEMINI_TTS_VOICE ?? "Charon";
+  const model = GEMINI_TTS_MODEL;
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: { "x-goog-api-key": process.env.GEMINI_API_KEY!, "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: `Say in a warm, clear, conversational Indonesian voice: ${text}` }] }],
+      contents: [{ role: "user", parts: [{ text, speechMetadata: { style: GEMINI_TTS_STYLE } }] }],
       generationConfig: {
         responseModalities: ["AUDIO"],
-        speechConfig: { languageCode: "id-ID", voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
+        speechConfig: { languageCode: "id-ID", voiceConfig: { voice: GEMINI_TTS_VOICE } },
       },
     }),
   });
@@ -52,7 +45,7 @@ export const synthesizeGemini = async (text: string): Promise<SynthResult> => {
   const data = (await res.json()) as { candidates?: { content?: { parts?: { inlineData?: { data?: string } }[] } }[] };
   const b64 = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   if (!b64) throw new Error("gemini: response contained no audio data");
-  return { audio: wavHeader(Buffer.from(b64, "base64"), 24000), ext: "wav" };
+  return { audio: Buffer.from(b64, "base64"), ext: "wav" };
 };
 
 /** Google Cloud Text-to-Speech (API key; 4M WaveNet chars/month free). */
@@ -172,7 +165,7 @@ export const synthesizeAndPublish = async ({ videoId, lines, provider, synthByPr
   const synth: SynthByProvider = synthByProvider ?? {
     gemini: synthesizeGemini, gcloud: synthesizeGcloud, azure: synthesizeAzure, elevenlabs: synthesizeElevenLabs,
   };
-  const order: TtsProvider[] = provider === "auto" ? ["gemini", "gcloud", "azure"] : [provider];
+  const order: TtsProvider[] = provider === "auto" ? ["gemini"] : [provider];
   const attempts: string[] = [];
   const text = lines.join("\n\n");
   const staging = path.join(os.tmpdir(), `vo-${videoId}-staging.mp3`);

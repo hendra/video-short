@@ -12,18 +12,12 @@ const args = process.argv.slice(2);
 const slug = args[0] || "ci";
 const iLinks = args.indexOf("--links"), iStep = args.indexOf("--step"), iErr = args.indexOf("--error");
 let links = iLinks >= 0 ? args[iLinks + 1] : "";
-// If --links missing, try to recover the just-published links from docs/ledger.md
+// If --links missing, recover the just-published links from the git-tracked catalog
 if (!links) {
   try {
-    const { readFileSync } = await import("node:fs");
-    const path = await import("node:path");
-    const { ROOT } = await import("./lib.mts");
-    const lg = readFileSync(path.join(ROOT, "docs", "ledger.md"), "utf8");
-    const row = lg.split("\n").find((l) => l.includes(`| ${slug} |`));
-    if (row) {
-      const cells = row.split("|").map((c) => c.trim());
-      links = [cells[5], cells[6]].filter(Boolean).join(",");
-    }
+    const { readPublishedDb } = await import("./published-db.mts");
+    const videos = readPublishedDb().videos.filter((video) => video.slug === slug);
+    links = ["youtube", "tiktok"].map((platform) => videos.find((video) => video.platform === platform)?.link).filter(Boolean).join(",");
   } catch { /* leave links empty */ }
 }
 const step = iStep >= 0 ? args[iStep + 1] : "";

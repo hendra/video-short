@@ -9,27 +9,46 @@ on:
         required: false
         default: ''
         type: string
+      dry_run:
+        description: "Run everything except Publish + the success report; the final MP4 is kept as a run artifact instead."
+        required: false
+        default: false
+        type: boolean
+
+env:
+  # Render shards = entries in jobs.render.strategy.matrix.shard (keep the two in sync).
+  SHARDS: 4
 
 concurrency:
   group: video-run
   cancel-in-progress: false
 
+# Default token is read-only; the publish job overrides it to `contents: write` so it can
+# commit only data/published-videos.json after a settled publish.
+permissions:
+  contents: read
+
+# build (agent + gates + bundle) -> render (N shards in parallel, video only) -> publish (concat + audio + upload)
+# Secrets: `build` only ever holds GEMINI_API_KEY. Publish/Slack secrets exist only in `publish` and
+# `report-failure`, which run on fresh checkouts and never execute agent-written code outside the browser.
 jobs:
-  produce:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
-    # GITHUB_TOKEN is read-only: the job never pushes to the repo.
-    permissions:
-      contents: read
+    timeout-minutes: 180
+    outputs:
+      slug: ${{ steps.slug.outputs.slug || steps.manualslug.outputs.slug }}
+      frames: ${{ steps.frames.outputs.frames }}
+      failed_step: ${{ steps.failed.outputs.step }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.sha }} # the triggering commit: main for the cron, the chosen branch for manual runs
           fetch-depth: 1
 
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
 
       - name: Mark start for slug discovery
         id: marker
@@ -53,7 +72,8 @@ jobs:
           echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
           "$HOME/.opencode/bin/opencode" --version
 
-      # The agent only needs GEMINI_API_KEY (TTS) + publish.json conventions.
+      # The build job reads data/published-videos.json from the checkout. No Buffer token is
+      # needed here; only public, already-committed catalog metadata is available to the agent.
       # Publish secrets are written LATER (see "Write publish .env"), AFTER the
       # agent/render steps, so the agent never sees them.
       - name: Write agent .env from secrets
@@ -80,13 +100,14 @@ jobs:
           [ -f "src/videos/$SLUG/timeline.json" ] || { echo "timeline.json missing for $SLUG"; exit 1; }
           [ -f "src/videos/$SLUG/publish.json" ] || { echo "publish.json missing for $SLUG"; exit 1; }
           [ -f "public/$SLUG/vo.mp3" ] || { echo "public/$SLUG/vo.mp3 missing"; exit 1; }
-          # No git record is kept — video source and ledger are never committed,
-          # so there is no repo-side republish guard. Check YouTube/TikTok first.
+          # The git-tracked catalog now prevents accidental republishing; no generated video source/VO is committed.
           echo "SLUG=$SLUG" >> "$GITHUB_ENV"
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
 
       - name: Dependencies
         run: npm ci
+
+      # No Buffer prefetch is needed: the git-tracked catalog is the source of truth for duplicates.
 
       - name: Agent builds the video
         id: agent
@@ -117,6 +138,12 @@ jobs:
           echo "SLUG=$SLUG" >> "$GITHUB_ENV"
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
 
+      # Deterministic near-duplicate gate: fail before music/render/publish when the candidate
+      # topic/title is too close to anything Buffer has ever shipped (up to 10,000 newest posts).
+      - name: Duplicate gate
+        id: duplicates
+        run: npx tsx scripts/check-duplicates.mts "$SLUG" --db data/published-videos.json
+
       # music.wav is gitignored and synthesized by predev/prerender, which the direct
       # `npx remotion bundle` below never triggers — synthesize it here or the render 404s on the asset.
       - name: Generate music bed (missing only)
@@ -137,62 +164,271 @@ jobs:
             if [ "$SZ" -lt 10000 ]; then echo "still for shot $shot too small or missing ($SZ bytes)"; exit 1; fi
           done < <(node -e 'const fs=require("fs"); const t=JSON.parse(fs.readFileSync(`src/videos/${process.env.SLUG}/timeline.json`,"utf8")); console.log(t.shots.map(s=>s.id+" "+(Math.floor(s.s*30)+1)).join("\n"));')
 
-      - name: Render
-        id: render
-        run: npx remotion render /tmp/rbundle "$SLUG" "out/$SLUG.mp4" --gl=swangle --concurrency=2 --log=error
-
-      - name: Loudnorm
-        id: loudnorm
-        run: ffmpeg -y -i "out/$SLUG.mp4" -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -ar 48000 -c:a aac -b:a 192k -movflags +faststart "out/$SLUG-final.mp4"
-
-      # Only now does the full credential set exist in the workspace.
-      - name: Write publish .env from secrets
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_SOCIAL_CHANNEL_ID: ${{ secrets.SLACK_SOCIAL_CHANNEL_ID }}
+      # Must equal durationInFrames in src/Root.tsx: ceil(timeline.dur * 30).
+      - name: Count frames
+        id: frames
         run: |
-          umask 077
-          printf 'GEMINI_API_KEY=%s\nCLOUDINARY_CLOUD_NAME=%s\nCLOUDINARY_API_KEY=%s\nCLOUDINARY_API_SECRET=%s\nBUFFER_ACCESS_TOKEN=%s\nSLACK_BOT_TOKEN=%s\nSLACK_SOCIAL_CHANNEL_ID=%s\n' \
-            "$GEMINI_API_KEY" "$CLOUDINARY_CLOUD_NAME" "$CLOUDINARY_API_KEY" "$CLOUDINARY_API_SECRET" \
-            "$BUFFER_ACCESS_TOKEN" "$SLACK_BOT_TOKEN" "$SLACK_SOCIAL_CHANNEL_ID" > .env
+          FRAMES=$(node -e 'const fs=require("fs"); const t=JSON.parse(fs.readFileSync(`src/videos/${process.env.SLUG}/timeline.json`,"utf8")); console.log(Math.ceil(t.dur*30));')
+          [[ "$FRAMES" =~ ^[1-9][0-9]*$ ]] || { echo "bad frame count: $FRAMES"; exit 1; }
+          echo "frames=$FRAMES" >> "$GITHUB_OUTPUT"
 
-      # Video source and ledger are never committed — nothing here lands in git.
-      - name: Publish (Cloudinary → Buffer YT + TikTok)
-        id: publish
-        run: npm run publish -- "$SLUG"
+      # The bundle is self-contained (compiled video + public/ assets): render shards need nothing else.
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle
+          path: /tmp/rbundle
+          retention-days: 1
+          if-no-files-found: error
 
-      - name: Success report (Slack #social)
-        if: success()
-        run: npm run report -- "$SLUG"
+      # publish.mts reads publish.json + naskah.txt from here.
+      - name: Upload video metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: meta
+          path: |
+            src/videos/${{ env.SLUG }}/publish.json
+            src/videos/${{ env.SLUG }}/naskah.txt
+          retention-days: 1
+          if-no-files-found: error
 
-      # Derive the real failing step from the steps context.
-      - name: Failure report (Slack #social)
+      - name: Name the failing step
+        id: failed
         if: failure()
         env:
-          JOB_STATUS: ${{ job.status }}
           AGENT_O: ${{ steps.agent.outcome }}
           INSTALL_O: ${{ steps.install.outcome }}
+          DUPLICATES_O: ${{ steps.duplicates.outcome }}
           SLUG_O: ${{ steps.slug.outcome }}
           MANUALSLUG_O: ${{ steps.manualslug.outcome }}
           GATES_O: ${{ steps.gates.outcome }}
           STILLS_O: ${{ steps.stills.outcome }}
-          RENDER_O: ${{ steps.render.outcome }}
-          LOUDNORM_O: ${{ steps.loudnorm.outcome }}
-          PUBLISH_O: ${{ steps.publish.outcome }}
         run: |
-          FAILSTEP=ci
-          for pair in "install:$INSTALL_O" "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "gates:$GATES_O" "stills:$STILLS_O" "render:$RENDER_O" "loudnorm:$LOUDNORM_O" "publish:$PUBLISH_O"; do
-            name="${pair%%:*}"; outcome="${pair##*:}"
-            if [ "$outcome" = "failure" ]; then FAILSTEP="$name"; break; fi
+          for pair in "install:$INSTALL_O" "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "duplicates:$DUPLICATES_O" "gates:$GATES_O" "stills:$STILLS_O"; do
+            if [ "${pair##*:}" = "failure" ]; then echo "step=${pair%%:*}" >> "$GITHUB_OUTPUT"; break; fi
           done
-          npm run report -- "${SLUG:-ci}" --step "$FAILSTEP" --error "run gagal di step $FAILSTEP — lihat https://github.com/hendra/yt-video-short-generator/actions/runs/${{ github.run_id }}" || true
 
       # Hosted runners are ephemeral; keep cleanup anyway (harmless, and covers forks/self-hosted reuse).
       - name: Cleanup secrets
         if: always()
         run: rm -f .env
+
+  # Video only (--muted): AAC cannot be joined gaplessly, so the sound is rendered once in `publish`.
+  render:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      SLUG: ${{ needs.build.outputs.slug }}
+      FRAMES: ${{ needs.build.outputs.frames }}
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }} # the triggering commit: main for the cron, the chosen branch for manual runs
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Dependencies
+        run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bundle
+          path: /tmp/rbundle
+
+      # Contiguous, non-overlapping ranges that cover 0..FRAMES-1 exactly.
+      - name: Render shard
+        run: |
+          set -e
+          [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "slug fails charset check: $SLUG"; exit 1; }
+          FROM=$(( SHARD * FRAMES / SHARDS ))
+          TO=$(( (SHARD + 1) * FRAMES / SHARDS - 1 ))
+          echo "shard $SHARD: frames $FROM-$TO of $FRAMES"
+          npx remotion render /tmp/rbundle "$SLUG" "out/chunk-$SHARD.mp4" --frames="$FROM-$TO" --muted --gl=swangle --concurrency=2 --log=error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunk-${{ matrix.shard }}
+          path: out/chunk-${{ matrix.shard }}.mp4
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: [build, render]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    outputs:
+      failed_step: ${{ steps.failed.outputs.step }}
+    env:
+      SLUG: ${{ needs.build.outputs.slug }}
+      FRAMES: ${{ needs.build.outputs.frames }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }} # the triggering commit: main for the cron, the chosen branch for manual runs
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Preflight
+        run: |
+          [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "slug fails charset check: $SLUG"; exit 1; }
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Dependencies
+        run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: bundle
+          path: /tmp/rbundle
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: meta
+          path: src/videos/${{ env.SLUG }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: chunk-*
+          path: out
+          merge-multiple: true
+
+      # audioOnly skips the 3D scene (see Explainer.tsx): the whole soundtrack renders in well under a minute.
+      - name: Render audio
+        id: audio
+        run: npx remotion render /tmp/rbundle "$SLUG" out/audio.wav --props="{\"videoId\":\"$SLUG\",\"audioOnly\":true}" --gl=swangle --log=error
+
+      # Join the shards without re-encoding, add the soundtrack, normalise loudness — one pass.
+      - name: Assemble + loudnorm
+        id: assemble
+        run: |
+          set -e
+          : > out/chunks.txt
+          for i in $(seq 0 $(( SHARDS - 1 ))); do
+            [ -s "out/chunk-$i.mp4" ] || { echo "missing out/chunk-$i.mp4"; exit 1; }
+            echo "file 'chunk-$i.mp4'" >> out/chunks.txt
+          done
+          ffmpeg -y -v error -f concat -safe 0 -i out/chunks.txt -i out/audio.wav -map 0:v -map 1:a -c:v copy \
+            -af loudnorm=I=-14:TP=-1.5:LRA=11 -ar 48000 -c:a aac -b:a 192k -movflags +faststart "out/$SLUG-final.mp4"
+          GOT=$(ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of csv=p=0 "out/$SLUG-final.mp4")
+          [ "$GOT" = "$FRAMES" ] || { echo "assembled video has $GOT frames, expected $FRAMES"; exit 1; }
+          ffprobe -v error -show_entries stream=codec_name,duration -of csv=p=0 "out/$SLUG-final.mp4"
+
+      - name: Keep final MP4 (dry run)
+        if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-video
+          path: out/${{ env.SLUG }}-final.mp4
+          retention-days: 3
+
+      # Video source is still not committed; publish.mts updates only the public-metadata catalog.
+      # Secrets are passed as step env (the scripts read process.env); no .env file is written.
+      - name: Publish (Cloudinary → Buffer YT + TikTok)
+        id: publish
+        if: ${{ !inputs.dry_run }}
+        env:
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
+        run: npm run publish -- "$SLUG"
+
+      # Publish already succeeded, so persist the catalog before reporting. This commits
+      # data/published-videos.json only — never video source, VO, or render output.
+      - name: Commit published-videos database
+        id: catalog
+        if: ${{ !inputs.dry_run }}
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -e
+          if [ "${GITHUB_REF_TYPE}" != "branch" ]; then
+            echo "not a branch (${GITHUB_REF_TYPE}); data/published-videos.json was updated locally but cannot be committed"
+            exit 0
+          fi
+          [[ "$BRANCH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] || { echo "branch fails charset check: $BRANCH"; exit 1; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/published-videos.json
+          if git diff --cached --quiet; then
+            echo "published-videos database unchanged"
+            exit 0
+          fi
+          git commit -m "chore(data): record published videos"
+          git fetch origin "$BRANCH"
+          git rebase "origin/$BRANCH"
+          git push origin "HEAD:$BRANCH"
+
+      - name: Success report (Slack #social)
+        if: ${{ success() && !inputs.dry_run }}
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_SOCIAL_CHANNEL_ID: ${{ secrets.SLACK_SOCIAL_CHANNEL_ID }}
+        run: npm run report -- "$SLUG"
+
+      - name: Name the failing step
+        id: failed
+        if: failure()
+        env:
+          AUDIO_O: ${{ steps.audio.outcome }}
+          ASSEMBLE_O: ${{ steps.assemble.outcome }}
+          PUBLISH_O: ${{ steps.publish.outcome }}
+          CATALOG_O: ${{ steps.catalog.outcome }}
+        run: |
+          for pair in "audio:$AUDIO_O" "assemble:$ASSEMBLE_O" "publish:$PUBLISH_O" "catalog:$CATALOG_O"; do
+            if [ "${pair##*:}" = "failure" ]; then echo "step=${pair%%:*}" >> "$GITHUB_OUTPUT"; break; fi
+          done
+
+  # Fresh checkout, so the Slack token never shares a workspace with agent-written files.
+  report-failure:
+    needs: [build, render, publish]
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }} # the triggering commit: main for the cron, the chosen branch for manual runs
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Dependencies
+        run: npm ci
+
+      - name: Failure report (Slack #social)
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_SOCIAL_CHANNEL_ID: ${{ secrets.SLACK_SOCIAL_CHANNEL_ID }}
+          SLUG: ${{ needs.build.outputs.slug }}
+          BUILD_R: ${{ needs.build.result }}
+          RENDER_R: ${{ needs.render.result }}
+          PUBLISH_R: ${{ needs.publish.result }}
+          BUILD_STEP: ${{ needs.build.outputs.failed_step }}
+          PUBLISH_STEP: ${{ needs.publish.outputs.failed_step }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # First failing job, refined to the step when that job reported one.
+          if [ "$BUILD_R" != "success" ]; then FAILSTEP="${BUILD_STEP:-build}"
+          elif [ "$RENDER_R" != "success" ]; then FAILSTEP=render
+          else FAILSTEP="${PUBLISH_STEP:-publish}"; fi
+          [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || SLUG=ci
+          npm run report -- "$SLUG" --step "$FAILSTEP" --error "run gagal di step $FAILSTEP — lihat $RUN_URL" || true

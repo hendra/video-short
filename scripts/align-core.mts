@@ -3,8 +3,9 @@
  * 1. Detect speech segments with FFmpeg's silencedetect.
  * 2. Dynamic programming: group segments into the script lines so each line's duration matches its
  *    syllable count, preferring to split at long pauses.
- * 3. Spread words over each line's speech time (pauses skipped), weighted by syllables.
- * Accuracy: line boundaries are usually exact; words inside a line are approximate (±0.2 s).
+ * 3. Inside each line, pin the pauses to the punctuation marks (same DP), then spread words over each
+ *    phrase's speech time, weighted by syllables.
+ * Accuracy: line and phrase boundaries are usually exact; words inside a phrase are approximate (±0.1 s).
  */
 import { spawnSync } from "node:child_process";
 import { type TimedWord } from "./lib.mts";
@@ -20,22 +21,65 @@ export const ffmpeg = (args: string[]) => {
 
 export type Span = { s: number; e: number; segs: [number, number][] };
 
-const wordsFromSpans = (lines: string[], spans: Span[]): TimedWord[] => {
+/** Tokens with no letters/digits (a lone "—") are never spoken: they take no time. */
+const weight = (w: string) => (/[\p{L}\p{N}]/u.test(w) ? syl(w) + 0.3 : 0);
+const endsPhrase = (w: string) => /[,.;:?!…—–]$/.test(w);
+/** Reward (in cost units) for every pause that is pinned to a punctuation mark. */
+const CUT_REWARD = 0.15;
+
+/**
+ * A speaker pauses at punctuation, so the silences inside a line are anchors: pair the line's phrases
+ * (split at punctuation) with its speech segments so each pause lands on a punctuation mark. Returns blocks
+ * of [first word, word end, first segment, segment end]; words only drift inside one block, never across a pause.
+ * Monotone DP: a block's cost is how far its speech time is from what its syllables predict.
+ */
+export const pairPhrases = (ws: string[], segs: [number, number][]): [number, number, number, number][] => {
+  const ends = ws.flatMap((w, i) => (endsPhrase(w) || i === ws.length - 1 ? [i + 1] : []));
+  const P = ends.length, M = segs.length;
+  const wsum = [0], dsum = [0];
+  ws.forEach((w) => wsum.push(wsum[wsum.length - 1] + weight(w)));
+  segs.forEach(([p, q]) => dsum.push(dsum[dsum.length - 1] + q - p));
+  const rate = dsum[M] / Math.max(1e-6, wsum[ws.length]);
+  const best = Array.from({ length: P + 1 }, () => new Array<number>(M + 1).fill(Infinity));
+  const back = Array.from({ length: P + 1 }, () => new Array<[number, number]>(M + 1).fill([0, 0]));
+  best[0][0] = 0;
+  for (let j = 1; j <= P; j++)
+    for (let i = 1; i <= M; i++)
+      for (let j0 = 0; j0 < j; j0++)
+        for (let i0 = 0; i0 < i; i0++) {
+          if (best[j0][i0] === Infinity) continue;
+          const exp = Math.max(1e-3, (wsum[ends[j - 1]] - wsum[j0 ? ends[j0 - 1] : 0]) * rate);
+          const c = best[j0][i0] + (dsum[i] - dsum[i0] - exp) ** 2 / exp - (j0 ? CUT_REWARD : 0);
+          if (c < best[j][i]) { best[j][i] = c; back[j][i] = [j0, i0]; }
+        }
+  const blocks: [number, number, number, number][] = [];
+  for (let j = P, i = M; j > 0; ) {
+    const [j0, i0] = back[j][i];
+    blocks.unshift([j0 ? ends[j0 - 1] : 0, ends[j - 1], i0, i]);
+    j = j0; i = i0;
+  }
+  return blocks;
+};
+
+export const wordsFromSpans = (lines: string[], spans: Span[]): TimedWord[] => {
   const words: TimedWord[] = [];
-  lines.forEach((text, i) => {
-    const ws = text.split(/\s+/), segs = spans[i].segs;
-    const weights = ws.map((w) => syl(w) + 0.3), tot = weights.reduce((a, b) => a + b, 0);
-    const speech = segs.reduce((a, [p, q]) => a + q - p, 0);
-    const at = (x: number) => {
-      for (const [p, q] of segs) { if (x <= q - p + 1e-9) return p + x; x -= q - p; }
-      return segs[segs.length - 1][1];
-    };
-    let cur = 0;
-    ws.forEach((w, j) => {
-      const d = (speech * weights[j]) / tot;
-      words.push({ text: w, start: at(cur + 1e-4), end: at(cur + d) });
-      cur += d;
-    });
+  lines.forEach((text, li) => {
+    const ws = text.split(/\s+/);
+    for (const [w0, w1, s0, s1] of pairPhrases(ws, spans[li].segs)) {
+      const segs = spans[li].segs.slice(s0, s1);
+      const weights = ws.slice(w0, w1).map(weight), tot = Math.max(1e-6, weights.reduce((a, b) => a + b, 0));
+      const speech = segs.reduce((a, [p, q]) => a + q - p, 0);
+      const at = (x: number) => {
+        for (const [p, q] of segs) { if (x <= q - p + 1e-9) return p + x; x -= q - p; }
+        return segs[segs.length - 1][1];
+      };
+      let cur = 0;
+      weights.forEach((wt, j) => {
+        const d = (speech * wt) / tot;
+        words.push({ text: ws[w0 + j], start: at(cur + (d > 0 ? 1e-4 : 0)), end: at(cur + d) });
+        cur += d;
+      });
+    }
   });
   return words;
 };
