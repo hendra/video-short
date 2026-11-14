@@ -5,18 +5,17 @@
  * Requirements:
  *   - out/<slug>-final.mp4 must exist (run render + loudnorm first)
  *   - src/videos/<slug>/publish.json must exist: { title, description, tiktokTitle, tiktokCaption, catatan? }
- *   - .env keys: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, BUFFER_ACCESS_TOKEN
- * No git record is kept: docs/ledger.md (VM-local, gitignored) feeds only the
- * same-run Slack report — it does not survive the job and is never committed.
- * Publishing is NOT idempotent across runs — check YouTube/TikTok before re-running.
- * After a fully settled publish (Cloudinary + both Buffer posts + ledger), deletes the
+ *   - data/published-videos.json stores the public metadata of already-published videos;
+ *     CI commits that file after a settled publish. No source, VO, or other generated files are committed.
+ * After a fully settled publish (Cloudinary + both Buffer posts + catalog update), deletes the
  * local intermediates: out/<slug>*.mp4, public/<slug>/music.wav, public/<slug>/vo.mp3.
  * Don't re-add vo.mp3 to git — it's removed from the tree after every publish.
  */
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT, loadDotenv, readScript } from "./lib.mts";
-import { ledgerHas, cloudinarySign, validatePublishJson, extractBufferError } from "./publish-lib.mts";
+import { ROOT, loadDotenv } from "./lib.mts";
+import { parseFormat, readPublishedDb, recordPublishedVideos } from "./published-db.mts";
+import { cloudinarySign, validatePublishJson, extractBufferError } from "./publish-lib.mts";
 
 loadDotenv();
 
@@ -25,15 +24,13 @@ if (!slug) { console.error("Usage: npm run publish -- <slug>"); process.exit(1);
 
 const fail = (msg: string): never => { console.error(msg); process.exit(1); };
 const today = () => new Date().toISOString().slice(0, 10);
-const videoChars = () => readScript(slug).reduce((a, l) => a + l.length, 0);
 
-const ledgerPath = path.join(ROOT, "docs", "ledger.md");
 const mp4Path = path.join(ROOT, "out", `${slug}-final.mp4`);
 const publishPath = path.join(ROOT, "src", "videos", slug, "publish.json");
 
 if (!fs.existsSync(mp4Path)) fail(`No final mp4 at ${mp4Path} — render + loudnorm first.`);
 if (!fs.existsSync(publishPath)) fail(`Missing ${publishPath} — the agent must write publish.json (see ops/ci-prompt.md).`);
-const ledgerContent = fs.existsSync(ledgerPath) ? fs.readFileSync(ledgerPath, "utf8") : "";
+const publishedDb = readPublishedDb();
 
 const PUB = JSON.parse(fs.readFileSync(publishPath, "utf8")) as { title: string; description: string; tiktokTitle: string; tiktokCaption: string; catatan?: string };
 {
@@ -41,9 +38,9 @@ const PUB = JSON.parse(fs.readFileSync(publishPath, "utf8")) as { title: string;
   if (problems.length) fail(`publish.json: ${problems.join("; ")}`);
 }
 
-// ---------- ledger-first idempotency, same VM only: never double-publish in one run
-if (ledgerHas(ledgerContent, slug)) {
-  console.log(`publish: ledger already has ${slug} — skipping (no API calls).`);
+// ---------- ledger-first idempotency, backed by the git-tracked catalog
+if (publishedDb.videos.some((video) => video.slug === slug)) {
+  console.log(`publish: ${slug} is already in data/published-videos.json — skipping (no API calls).`);
   process.exit(0);
 }
 
@@ -148,15 +145,19 @@ const [ytP, ttP] = await Promise.all([poll(yt.id), poll(tt.id)]);
 const ytLink = ytP.link, ttLink = ttP.link;
 if (!ytLink || !ttLink) fail(`post settled with error or timeout (yt=${ytP.status}/${ytLink ?? "pending"}, tt=${ttP.status}/${ttLink ?? "pending"}) — do NOT retry blindly; check Buffer UI.`);
 
-// ---------- 4. VM-local record (gitignored, ephemeral) — feeds the Slack report
-const chars = videoChars();
-const row = `| ${today()} | ${slug} | ${chars.toLocaleString("id-ID")} | (Gemini, gratis) | ${ytLink} | ${ttLink} | ${PUB.catatan ?? "autopilot CI"} |`;
-fs.appendFileSync(ledgerPath, row + "\n");
-console.log(`ledger: ${row}`);
+// ---------- 4. Published-video catalog — CI commits this file after upload
+const updated = recordPublishedVideos({
+  slug,
+  date: today(),
+  youtube: { title: PUB.title, text: PUB.description, link: ytLink },
+  tiktok: { title: PUB.tiktokTitle, text: PUB.tiktokCaption, link: ttLink },
+  format: parseFormat(PUB.catatan),
+});
+console.log(`published catalog: recorded ${updated.added} platform entries (${updated.replaced} updated)`);
 
-// Nothing is committed to git — the row above is VM-local and ephemeral.
-// Cleanup after the publish is durable (Cloudinary + Buffer both settled).
-// Local intermediates are disposable; nothing of the publish is committed anyway.
+// data/published-videos.json has already been updated above; the workflow commits it after this step.
+// Cleanup after the publish is durable (Cloudinary + Buffer + catalog update).
+// Local intermediates are disposable; only the catalog is intentionally git-tracked.
 // Never fail the publish over this.
 try {
   for (const f of [

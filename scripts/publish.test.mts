@@ -1,15 +1,7 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { describe, test } from "node:test";
-import { ledgerHas, cloudinarySign, validatePublishJson, extractBufferError } from "./publish-lib.mts";
-
-describe("ledger presence check (shipped helper)", () => {
-  const ledger = `# Ledger\n| Tanggal | Slug | ...\n|---|---|\n| 2026-11-07 | jembatan-raksasa | 1.101 | (Gemini, gratis) | a | b | c |\n`;
-  test("detects existing slug", () => assert.equal(ledgerHas(ledger, "jembatan-raksasa"), true));
-  test("missing slug returns false", () => assert.equal(ledgerHas(ledger, "lain"), false));
-  test("slug with special chars is safe", () => assert.equal(ledgerHas(ledger, "a.b"), false));
-  test("slug embedded in another slug does not match", () => assert.equal(ledgerHas(ledger, "jembat"), false));
-});
+import { cloudinarySign, validatePublishJson, extractBufferError } from "./publish-lib.mts";
 
 describe("cloudinary signature (shipped helper)", () => {
   test("sorts params alphabetically", () => {

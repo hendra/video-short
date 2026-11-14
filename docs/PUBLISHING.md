@@ -99,9 +99,9 @@ curl -sS -X POST https://slack.com/api/chat.postMessage \
 
 Success: `{ "ok": true, "channel": "C0CDV7Y555K", "ts": "..." }` (a harmless `missing_charset` warning may appear).
 
-## Step 4 — Done — no git record
+## Step 4 — Done — committed catalog
 
-Nothing about the video is committed: source lives only in the CI VM and is discarded when the job ends. No ledger is kept in git (a VM-local `docs/ledger.md` is appended during the job for the Slack report, then lost). Check YouTube/TikTok directly for what shipped — re-running a slug publishes it again.
+Video source is not committed: source lives only in the CI VM and is discarded when the job ends. The only git-tracked record is `data/published-videos.json` (minimal public metadata and links). The publish step updates it; the CI publish job commits and pushes only that file after the posts settle. The catalog also makes re-running a slug a no-op; off-catalog/manual publishes must still be checked on YouTube/TikTok.
 
 ## Content requirements (not negotiable for this channel)
 

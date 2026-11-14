@@ -55,7 +55,7 @@ after(() => {
 });
 
 describe("synthesizeAndPublish", () => {
-  test("auto skips unconfigured providers and falls through to gcloud", async () => {
+  test("auto stays on the locked Gemini voice and does not fall through to gcloud", async () => {
     process.env.GCLOUD_TTS_KEY = "k";
     process.env.GEMINI_API_KEY = "k";
     const calls: string[] = [];
@@ -67,9 +67,8 @@ describe("synthesizeAndPublish", () => {
     } satisfies SynthByProvider;
     writeFixture();
     const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua tiga", "empat lima"], provider: "auto", synthByProvider });
-    assert.deepEqual(calls, ["gemini", "gcloud"]);
-    assert.equal(res.ok, true);
-    if (res.ok) assert.equal(res.provider, "gcloud");
+    assert.deepEqual(calls, ["gemini"]);
+    assert.equal(res.ok, false);
   });
 
   test("all providers skipped: ok:false, zero synth calls, nothing written", async () => {

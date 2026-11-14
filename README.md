@@ -5,7 +5,7 @@
 Template video **explainer 3D vertikal** (YouTube Shorts / Reels / TikTok, 1080×1920) dengan **Remotion + React Three Fiber**:
 animasi 3D low-poly, voiceover **AI** (Google AI Studio TTS, gratis — lihat `.env.example`) dengan timing per kata, caption karaoke, callout berlabel, chip angka, dan musik latar orisinal.
 
-Repo ini adalah **pipeline** — tidak ada video generated yang tersimpan di git (source maupun ledger diproduksi di CI VM, gitignored).
+Repo ini adalah **pipeline** — video generated tidak tersimpan di git. Satu-satunya metadata video di-track adalah `data/published-videos.json` (judul, teks publik, link, format, tanggal) untuk duplicate/re-publish protection; source, VO, dan render output tetap tidak di-commit.
 
 ## Mulai cepat
 
@@ -17,6 +17,14 @@ npm run render -- <id> out/<id>.mp4
 
 Butuh Node ≥ 20.19. `predev`/`prerender` otomatis membuat `public/<id>/music.wav` kalau belum ada.
 
+## Published-video catalog
+
+`data/published-videos.json` adalah database publik di git untuk video yang sudah tayang/di-publish. Duplicate gate dan anti re-publish memakainya. Setelah publish sukses, CI update file ini dan melakukan commit/push hanya file ini (bukan source video). Untuk backfill/sinkronisasi dari Buffer:
+
+```bash
+BUFFER_ACCESS_TOKEN=... npx tsx scripts/sync-published-videos.mts
+```
+
 ## Alur membuat video
 
 ```
@@ -27,15 +35,15 @@ naskah.txt ──► npm run tts      (Google AI Studio TTS, gratis: suara + tim
               alignment.json ──► npm run timeline ──► timeline.json ──► npm run dev / render
 ```
 
-1. Tulis naskah di `src/videos/<id>/naskah.txt`, satu baris per kalimat, format `NN  teks` (baris lain diabaikan).
-2. Isi `.env` (salin dari `.env.example`): `GEMINI_API_KEY` (gratis di [aistudio.google.com/apikey](https://aistudio.google.com/apikey), tanpa billing). Backup opsional: `GCLOUD_TTS_KEY`, atau `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`.
+1. Tulis naskah di `src/videos/<id>/naskah.txt`, satu baris per kalimat, format `NN  teks` (baris lain diabaikan). Format naratif tidak dipatok — ikuti format yang dipilih `npx tsx scripts/pick-format.mts` untuk video otomatis.
+2. Isi `.env` (salin dari `.env.example`): `GEMINI_API_KEY` (gratis di [aistudio.google.com/apikey](https://aistudio.google.com/apikey), tanpa billing).
 3. Pilih salah satu:
    ```bash
-   npm run tts   -- <id>                 # generate suara (Gemini, auto-fallback gcloud/azure) + timing
+   npm run tts   -- <id>                 # generate suara (Gemini 3.8 locked Indonesian male) + timing
    npm run align -- <id> path/ke/vo.mp3  # audio sudah ada -> timing per kata (ElevenLabs Forced Alignment)
    npm run align:local -- <id>           # timing gratis & offline (±0,2 detik per kata)
    ```
-   `npm run tts` pakai provider gratis `auto` (gemini → gcloud → azure). Paksa satu provider: `--provider=gemini|gcloud|azure|elevenlabs`.
+   `npm run tts` memakai voice dikunci `id-id-podcaster-1`; voice tidak bisa diganti lewat command ini.
 4. `npm run timeline -- <id>` → caption, timing baris, dan rentang shot.
 5. `npm run music -- <id>` (opsional, kalau durasi berubah) → musik baru sesuai titik potong shot.
 6. `npm run dev` untuk cek, lalu `npm run render -- <id> out/<id>.mp4`.
@@ -61,7 +69,7 @@ src/
       state.ts            # cerita sebagai fungsi waktu
       world.ts            # dunia 3D (dibuat sekali, diupdate tiap frame)
       shots.ts            # judul, kamera, callout, chip per shot
-scripts/                  # tts.mts (+lib-tts.mts), align.mts, align-core.mts, align-local.mts, build-timeline.mts, music.mts
+scripts/                  # tts.mts (+lib-tts.mts), align.mts, align-core.mts, align-local.mts, build-timeline.mts, music.mts, pick-format.mts, sync-published-videos.mts, published-db.mts, check-duplicates.mts (+*-core/test.mts)
 public/fonts              # Inter + DejaVu Sans Mono (OFL / Bitstream Vera), dibundel supaya render identik offline
 ```
 
