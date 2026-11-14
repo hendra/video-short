@@ -10,16 +10,13 @@ concurrency:
 
 jobs:
   produce:
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-latest
     timeout-minutes: 240
     # Single job => the GITHUB_TOKEN must be write-scoped here (used by the final
     # push). Deliberate trade-off: all steps share it. Mitigated by giving the
     # *agent* only GEMINI_API_KEY (below), not the publish secrets.
     permissions:
       contents: write
-    env:
-      # opencode (the agent) lives next to the runner; node comes from setup-node.
-      PATH: /home/hendra/.opencode/bin:/home/hendra/.local/bin:/usr/local/bin:/usr/bin:/bin
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,8 +34,16 @@ jobs:
       - name: Preflight
         run: |
           node -v; npm -v
-          /home/hendra/.opencode/bin/opencode --version
-          which google-chrome || true
+          which google-chrome ffmpeg
+
+      # Autopilot-only: the agent needs the opencode CLI, which the hosted
+      # runner doesn't have. Install latest v2 via the official installer.
+      - name: Install opencode
+        if: github.event.inputs.slug == ''
+        run: |
+          curl -fsSL https://opencode.ai/v2/install | bash
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+          "$HOME/.opencode/bin/opencode" --version
 
       # The agent only needs GEMINI_API_KEY (TTS) + publish.json conventions.
       # Publish secrets are written LATER (see "Write publish .env"), AFTER the
@@ -61,7 +66,7 @@ jobs:
           export XDG_CONFIG_HOME="$RUNNER_TEMP/opencode-config"
           export OPENCODE_DISABLE_CLAUDE_CODE=1
           mkdir -p "$XDG_CONFIG_HOME"
-          /home/hendra/.opencode/bin/opencode run --auto --standalone --model opencode/inkling-2-small-free --file AGENTS.md --file docs/AUTOPILOT.md --file ops/ci-prompt.md "You are in CI. Follow AGENTS.md and docs/AUTOPILOT.md. Follow ops/ci-prompt.md exactly. Stop before any publish/upload/render step."
+          "$HOME/.opencode/bin/opencode" run --auto --standalone --model opencode/inkling-2-small-free --file AGENTS.md --file docs/AUTOPILOT.md --file ops/ci-prompt.md "You are in CI. Follow AGENTS.md and docs/AUTOPILOT.md. Follow ops/ci-prompt.md exactly. Stop before any publish/upload/render step."
 
       # Slug candidates = folders under src/videos created since the marker.
       # Fail on ZERO or MULTIPLE candidates; validate the slug charset so it can
@@ -94,16 +99,14 @@ jobs:
         id: stills
         run: |
           while read -r shot frame; do
-            npx remotion still /tmp/rbundle "$SLUG" "/tmp/s_${shot}.jpg" --frame="$frame" --gl=vulkan --image-format=jpeg
+            npx remotion still /tmp/rbundle "$SLUG" "/tmp/s_${shot}.jpg" --frame="$frame" --gl=swangle --image-format=jpeg
             SZ=$(stat -c%s "/tmp/s_${shot}.jpg")
             if [ "$SZ" -lt 10000 ]; then echo "still for shot $shot too small or missing ($SZ bytes)"; exit 1; fi
           done < <(node -e 'const fs=require("fs"); const t=JSON.parse(fs.readFileSync(`src/videos/${process.env.SLUG}/timeline.json`,"utf8")); console.log(t.shots.map(s=>s.id+" "+(Math.floor(s.s*30)+1)).join("\n"));')
 
       - name: Render
         id: render
-        run: |
-          npx remotion render /tmp/rbundle "$SLUG" "out/$SLUG.mp4" --gl=vulkan --concurrency=2 --log=error \
-          || npx remotion render /tmp/rbundle "$SLUG" "out/$SLUG.mp4" --gl=swangle --concurrency=2 --log=error
+        run: npx remotion render /tmp/rbundle "$SLUG" "out/$SLUG.mp4" --gl=swangle --concurrency=2 --log=error
 
       - name: Loudnorm
         id: loudnorm
