@@ -62,7 +62,7 @@ Pakai ini untuk menguji perubahan workflow sebelum merge. `repository_dispatch` 
 
 ## Kalau gagal
 
-- **Agent/no-video**: step "Agent builds the video" selesai tapi folder video tidak ada → job gagal di "Discover slug"; Slack #social melaporkan. Tidak ada commit, tidak ada upload.
+- **Agent/no-video**: agent exits non-zero but Discover/Gates still run. Jika tidak ada satu folder video baru, job gagal di "Discover slug"; kalau output parsial/rusak, job gagal di duplicate gate/gates/still per shot. Slack #social melaporkan. Tidak ada commit, tidak ada upload.
 - **Duplicate gate gagal**: kandidat terlalu mirip dengan post YouTube/TikTok yang tercatat di Buffer; ganti topik/angle/title dan jalankan ulang. Jangan cukup ubah beberapa kata.
 - **Agent install gagal**: step "Install opencode" gagal → failure report ke Slack, publish tidak jalan. Installer upstream `opencode.ai/v2/install` berubah/mati → pin ulang URL atau pasang via npm `@opencode/cli`.
 - **Quota**: opencode free model menolak/rate-limit → publish tidak terjadi; coba lagi lewat `workflow_dispatch` nanti.

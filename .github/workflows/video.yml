@@ -119,7 +119,17 @@ jobs:
           export XDG_CONFIG_HOME="$RUNNER_TEMP/opencode-config"
           export OPENCODE_DISABLE_CLAUDE_CODE=1
           mkdir -p "$XDG_CONFIG_HOME"
-          "$HOME/.opencode/bin/opencode" run --auto --standalone --model opencode/inkling-2-small-free --file AGENTS.md --file docs/AUTOPILOT.md --file ops/ci-prompt.md "You are in CI. Follow AGENTS.md and docs/AUTOPILOT.md. Follow ops/ci-prompt.md exactly. Stop before any publish/upload/render step."
+          # The agent may fail only after writing a complete, verified video (for example after an
+          # unsupported interactive Web Search request). Do not throw that work away here. The
+          # downstream Discover/Gates/Still/Upload/Publish checks remain the authority and will
+          # reject incomplete or broken output.
+          set +e
+          "$HOME/.opencode/bin/opencode" run --auto --standalone --model opencode/inkling-2-small-free --file AGENTS.md --file docs/AUTOPILOT.md --file ops/ci-prompt.md "You are in CI. Follow AGENTS.md and docs/AUTOPILOT.md. Follow ops/ci-prompt.md exactly. Stop before any publish/upload/render step." 2>&1 | tee /tmp/opencode-agent.log
+          AGENT_STATUS=${PIPESTATUS[0]}
+          if [ "$AGENT_STATUS" -ne 0 ]; then
+            echo "::warning title=Agent exited $AGENT_STATUS::agent exited non-zero; relying on deterministic downstream gates"
+          fi
+          exit 0
 
       # Slug candidates = folders under src/videos created since the marker.
       # Fail on ZERO or MULTIPLE candidates; validate the slug charset so it can
