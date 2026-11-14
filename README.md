@@ -47,7 +47,8 @@ src/
   engine/                 # generik, dipakai semua video
     Explainer.tsx         # komposisi: ThreeCanvas + overlay + audio
     overlays/Overlays.tsx # header, callout, chip, caption karaoke, CTA, flash antar-shot
-    kit.ts                # balok bangunan low-poly: box, level air, rumah, pohon, pekerja, partikel
+    kit.ts                # balok bangunan PBR bertepi bulat: lights, box, cyl, ball, level air, rumah, pohon, pekerja, partikel
+    surface.ts            # tekstur butiran prosedural (deterministik, tanpa file gambar)
     math.ts               # ramp/smooth, PRNG deterministik, kamera keyframe/orbit, proyeksi 3D→2D
     types.ts              # VideoDef, ShotDef, Timeline
   videos/
@@ -80,6 +81,7 @@ public/fonts              # Inter + DejaVu Sans Mono (OFL / Bitstream Vera), dib
 ## Render
 
 - Laptop/desktop dengan GPU: default `--gl=angle` (lihat `remotion.config.ts`).
+- Master 4K (2160×3840) dengan GPU: tambahkan `--scale=2` — lapisan 3D ikut dirender di resolusi penuh, bukan di-upscale.
 - Server/CI tanpa GPU: `npm run render -- <id> out/<id>.mp4 --gl=swangle` (WebGL software, jauh lebih lambat: ±0,8 detik/frame/core).
 - Loudness standar YouTube (−14 LUFS), opsional:
   ```bash

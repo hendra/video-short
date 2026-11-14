@@ -8,10 +8,10 @@ Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test,
 
 - `npm run dev` — Remotion Studio. `predev` auto-synthesizes missing `public/<id>/music.wav` (local, no API key needed).
 - `npm run lint` — the only static check: `eslint src && tsc && tsc -p scripts`. Run this after any change. (`scripts/` has its own tsconfig because it uses `allowImportingTsExtensions`; root `tsc` covers only `src/`.)
-- `npm run render -- <id> out/<id>.mp4` — `--gl=angle` (GPU) by default. Server/CI without GPU: add `--gl=swangle` (much slower, ~0.8 s/frame). CI (`.github/workflows/video.yml`) runs on GitHub-hosted `ubuntu-latest` with `--gl=swangle`.
-- Video pipeline (per `<id>`, in order): `npm run tts -- <id>` *or* `npm run align -- <id> <vo.mp3>` → `npm run timeline -- <id>` → `npm run music -- <id>` (only if duration changed) → dev/render. `npm run tts` defaults to gemini (Google AI Studio free key), auto-falling back to `gcloud` then `azure` if keys exist; pin with `--provider=`. Timing comes from the built-in offline aligner (±0.2 s words) — no timestamps API needed. There is **no word-alignment dependency** for the default path.
+- `npm run render -- <id> out/<id>.mp4` — `--gl=angle` (GPU) by default. Add `--scale=2` for a 2160×3840 master (the 3D canvas follows the scale; ~4× the pixels, GPU only in practice). Server/CI without GPU: add `--gl=swangle` (much slower, ~0.8 s/frame). CI (`.github/workflows/video.yml`) runs on GitHub-hosted `ubuntu-latest` with `--gl=swangle`.
+- Video pipeline (per `<id>`, in order): `npm run tts -- <id>` *or* `npm run align -- <id> <vo.mp3>` → `npm run timeline -- <id>` → `npm run music -- <id>` (only if duration changed) → dev/render. `npm run tts` defaults to gemini (Google AI Studio free key), auto-falling back to `gcloud` then `azure` if keys exist; pin with `--provider=`. Timing comes from the built-in offline aligner (pauses pinned to punctuation; ±0.1 s words inside a phrase) — no timestamps API needed. There is **no word-alignment dependency** for the default path.
 - `npm run credits` — legacy ElevenLabs quota check (only relevant with `--provider=elevenlabs`).
-- CI: `.github/workflows/video.yml` (Cloudflare cron → GitHub-hosted runner → full free pipeline) — runbook: `ops/README.md`.
+- CI: `.github/workflows/video.yml` (Cloudflare cron → GitHub-hosted runners → full free pipeline) — jobs `build` → `render` (4 parallel shards, video only) → `publish` (audio via `audioOnly` prop, concat, loudnorm, upload); `workflow_dispatch -f dry_run=true` runs everything except publishing. Runbook: `ops/README.md`.
 - Args always go through `--`: `npm run <script> -- <id>`. Scripts take the video id; folders are in `src/videos/`.
 - Smoke-check a build without rendering: `npx remotion bundle --out-dir /tmp/rbundle`, then `npx remotion still <bundle> <id> <out.jpg> --frame=<f>` and view the image.
 
@@ -24,11 +24,17 @@ Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test,
 
 ## Architecture
 
-- `src/engine/` is video-agnostic: `Explainer.tsx` (ThreeCanvas + overlays + audio), `overlays/Overlays.tsx` (header, callouts, chips, karaoke caption, CTA, SAFE text areas), `kit.ts` (low-poly building blocks), `math.ts` (deterministic helpers, `rng`), `types.ts` (`VideoDef`, `Timeline`, `Ctx`).
+- `src/engine/` is video-agnostic: `Explainer.tsx` (ThreeCanvas + overlays + audio), `overlays/Overlays.tsx` (header, callouts, chips, karaoke caption, CTA, SAFE text areas), `kit.ts` (bevelled PBR building blocks, surface presets, standard light rig), `surface.ts` (procedural grain texture), `math.ts` (deterministic helpers, `rng`, physical easing `spring`/`drop`/`sway`), `types.ts` (`VideoDef`, `Timeline`, `Ctx`).
 - `src/videos/<id>/` per video (generated in CI, gitignored): `naskah.txt`, `config.json` (`shots: [[shotId, firstLine], …]` + `tail`), `state.ts`, `world.ts` (scene built once, `update(t)` per frame), `shots.ts`, `index.ts`. Registry: `src/videos/registry.ts` — a video exists only if registered there; composition id = registry key.
 - FPS 30, 1080×1920, duration = `ceil(timeline.dur * 30)` (`src/Root.tsx`).
 - `scripts/*.mts` run with `tsx`; shared helpers/env loading in `scripts/lib.mts`.
 - `public/fonts/` = Inter + DejaVu Sans Mono, bundled so renders are identical offline. Don't swap font sources.
+
+## Look & render cost (measured — don't undo without re-measuring)
+
+- Build scenes from `Kit`: `kit.lights()` once per world (never hand-place ambient/directional lights), `kit.box/cyl/ball` for shapes, `kit.mat(color, "matte" | "gloss" | "metal" | "glass" | "water")` for materials. Raw `new Mesh(...)` is fine for special shapes but give round things ≥ 16 segments and pass `{ flatShading: true }` only for deliberately faceted rock/foliage.
+- Ease motion physically: `spring()` for things that land/pop, `drop()` for falling objects, `sway()` for idle drift; plain `ramp()` only for slow continuous change.
+- CPU (`--gl=swangle`) per-frame cost is dominated by fragment shading. Measured on 4 cores: soft shadows ≈ 30%, MSAA ≈ 10%, surface grain ≈ 8%; `--concurrency` makes no difference (SwiftShader already uses every core). **No environment maps / IBL** (3× slower), **no bump maps** (alias into noise at grazing angles), **no VSM shadows** (slower + dark artefacts), no post-processing passes.
 
 ## Hard rules (render correctness)
 

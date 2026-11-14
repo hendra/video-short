@@ -66,6 +66,13 @@ Cek `timeline.json`: semua kata ter-match, durasi 60–90 dtk. Jika TTS gagal di
 
 File: `config.json` (shot → baris pertama), `state.ts` (semua animasi = fungsi murni dari `t`, terikat `L(n)`), `world.ts` (diorama dibuat sekali, `update(t)` per frame), `shots.ts` (label, judul `*hijau*`, kamera keyframe, callout, chip), `index.ts`, lalu daftarkan di `src/videos/registry.ts`.
 
+Supaya setiap objek tampak nyata (bukan kotak polos), bangun adegan dari `Kit` (`src/engine/kit.ts`):
+- **Cahaya:** panggil `kit.lights()` sekali di `createWorld` (matahari hangat + bayangan lembut + langit/pantulan tanah). Jangan menambah `AmbientLight`/`DirectionalLight` sendiri. `reach` = setengah lebar area yang perlu bayangan (default 16).
+- **Bentuk:** `kit.box(...)` (tepi membulat), `kit.cyl(x, y0, z, r, h, mat)` untuk pipa/tiang/tangki, `kit.ball(x, y, z, r, mat)`; prefab `kit.house/tree/worker`. Bentuk khusus boleh `new Mesh(...)`, tapi benda bulat minimal 16 segmen.
+- **Material:** `kit.mat(warna, "matte" | "gloss" | "metal" | "glass" | "water")` — beton/tanah/kayu = `matte` (default, bertekstur halus), plastik/cat = `gloss`, baja/pipa = `metal`, kaca/panel = `glass`, air = `water`.
+- **Gerak:** benda yang mendarat/muncul pakai `spring(u)`, benda jatuh pakai `drop(u)`, goyangan diam (daun, kabel, benda mengapung) pakai `sway(t, seed)` — semuanya di `engine/math.ts`, murni fungsi `t`. Hindari gerak linear kaku.
+- Jangan pakai environment map, bump map, atau post-processing: di render CPU (CI) biayanya 3× lipat.
+
 Standar kualitas (pelajaran dari video sebelumnya):
 - **Potongan tanah (cut face) di z = 0**, tanah dalam (BOT ≈ −11) supaya separuh bawah frame tidak kosong; strata warna + titik air.
 - Frame **potret**: FOV 44, objek utama mengisi ≥ 50% lebar; diorama yang memanjang diputar agar memanjang ke arah kamera.
