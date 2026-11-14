@@ -6,7 +6,7 @@
 **Non-goals:** metrics report, topic categories, any workflow/pipeline change.
 **Anti-goal:** breaking the existing pipeline or the one-run-at-a-time queue.
 
-**Approaches:** only one sensible way — change the Cloudflare cron triggers; the workflow already queues runs (`concurrency: video-run`) and a successful run takes ~18–26 min on free hosted runners.
+**Approaches:** only one sensible way — change the Cloudflare cron triggers; the workflow serializes runs (`concurrency: video-run`, at most one pending — a third trigger cancels the waiting one; only reachable if a run approaches its ~315 min worst-case timeouts) and a successful run takes ~18–26 min on free hosted runners.
 
 **Decided:**
 - `ops/cloudflare-cron/wrangler.toml` crons → `["30 0,2,4,5,9,12 * * *"]` (UTC) = 07:30, 09:30, 11:30, 12:30, 16:30, 19:30 WIB. *Claude's call:* fire 30 min before each slot so the post lands near the named time.
