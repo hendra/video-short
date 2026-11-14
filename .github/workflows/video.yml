@@ -40,6 +40,8 @@ jobs:
 
       - name: Preflight
         run: |
+          # ubuntu-latest migrated to Ubuntu 26 — ffmpeg no longer preinstalled
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
           node -v; npm -v
           which google-chrome ffmpeg
 
