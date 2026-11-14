@@ -1,6 +1,7 @@
 /**
  * Cron weker untuk pipeline video Kali Aja Tau.
- * Setiap 01:00, 04:30, 09:30 UTC (= 08:00, 11:30, 16:30 WIB) memicu
+ * Setiap 00:30, 02:30, 04:30, 05:30, 09:30, 12:30 UTC (= 07:30, 09:30, 11:30, 12:30, 16:30, 19:30 WIB;
+ * post tayang ±08/10/12/13/17/20 WIB) memicu
  * `repository_dispatch` di repo GitHub, yang menjalankan workflow video.yml.
  * Weker saja — semua kerja berat terjadi di runner GitHub-hosted (ubuntu-latest).
  */
