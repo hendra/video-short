@@ -2,7 +2,7 @@
  * Cron weker untuk pipeline video Kali Aja Tau.
  * Setiap 01:00, 04:30, 09:30 UTC (= 08:00, 11:30, 16:30 WIB) memicu
  * `repository_dispatch` di repo GitHub, yang menjalankan workflow video.yml.
- * Weker saja — semua kerja berat terjadi di runner self-hosted PC user.
+ * Weker saja — semua kerja berat terjadi di runner GitHub-hosted (ubuntu-latest).
  */
 export default {
   async scheduled(event, env, ctx) {
