@@ -182,7 +182,7 @@ jobs:
           TITLE=$(node -p "require('./src/videos/'+process.env.SLUG+'/publish.json').title")
           git config user.name "video-short-ci"
           git config user.email "ci@video-short.local"
-          git add "src/videos/$SLUG" "public/$SLUG/vo.mp3" src/videos/registry.ts docs/ledger.md
+          git add "src/videos/$SLUG" src/videos/registry.ts docs/ledger.md
           if git diff --cached --quiet; then
             echo "nothing to commit (ledger already pushed by publish step?)"
           else
