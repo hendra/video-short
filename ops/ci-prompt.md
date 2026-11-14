@@ -4,6 +4,7 @@ You are an autonomous agent running inside GitHub Actions on a **GitHub-hosted `
 Your task: produce a **complete new vertical 3D explainer Short** end-to-end, EXCEPT the final publish/upload steps — the workflow does those after you.
 
 ## Hard rules
+- Never call Web Search or `websearch`; it is not available in this CI runner and will cancel the process after you produce a video. Use `WebFetch` for every live source; if the source is unavailable or unverifiable, choose another verifiable topic or stop.
 - Always build a **brand-new** video with a new slug. Any slug that already shipped lives in the published-video catalog and YouTube/TikTok — never treat existing work as "this run's output". Your source disappears with the VM; the publish job later commits only `data/published-videos.json`.
 - Before choosing a topic, read `data/published-videos.json` (the git-tracked database of published YouTube + TikTok posts). Do not reuse a topic, angle, title, or source. After writing `publish.json`, the workflow runs the deterministic duplicate gate against that file; if it fails, you chose too close a video.
 - Pick the narration format at random: run `npx tsx scripts/pick-format.mts`, use its output verbatim, and record it in `publish.json` as `catatan: "format: <id>; ..."`. Do not swap it for another format.
