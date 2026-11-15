@@ -6,7 +6,7 @@
  */
 import { randomInt } from "node:crypto";
 import { pathToFileURL } from "node:url";
-import { ACCOUNT_IDS, DEFAULT_ACCOUNT, accountById, isAccountId, type AccountId } from "../src/accounts.ts";
+import { ACCOUNT_IDS, DEFAULT_ACCOUNT, isAccountId, type AccountId } from "../src/accounts.ts";
 
 export type Format = {
   id: string;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ACCOUNT_IDS } from "../src/accounts.ts";
-import { FORMATS_BY_ACCOUNT, formatsFor, pickFormat } from "./pick-format.mts";
+import { formatsFor, pickFormat } from "./pick-format.mts";
 
 describe("per-account format pools", () => {
   test("every account has a non-empty, weighted, unique-id pool", () => {
