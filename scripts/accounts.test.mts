@@ -8,8 +8,8 @@ import { ACCOUNT_IDS, ACCOUNTS, DEFAULT_ACCOUNT, accountById, isAccountId, isCon
 const isPlaceholder = (v: string) => v.startsWith("TODO_");
 
 describe("account registry", () => {
-  test("holds exactly the two known accounts and defaults to Kali Aja", () => {
-    assert.deepEqual([...ACCOUNT_IDS], ["kali-aja", "ai-labs"]);
+  test("holds exactly the three known accounts and defaults to Kali Aja", () => {
+    assert.deepEqual([...ACCOUNT_IDS], ["kali-aja", "ai-labs", "cerpenek"]);
     assert.equal(DEFAULT_ACCOUNT, "kali-aja");
   });
 
@@ -27,6 +27,12 @@ describe("account registry", () => {
     assert.ok(k.agent.files.includes("ops/ci-prompt.md"));
   });
 
+  test("existing accounts keep the locked male voice", () => {
+    for (const id of ["kali-aja", "ai-labs"] as const) {
+      assert.deepEqual(ACCOUNTS[id].tts, { voice: "id-id-podcaster-1", style: "natural, warm, conversational" });
+    }
+  });
+
   test("AI Labs has its own identity", () => {
     const a = ACCOUNTS["ai-labs"];
     assert.equal(a.label, "AI Labs");
@@ -35,7 +41,41 @@ describe("account registry", () => {
     assert.deepEqual(a.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/ai-labs.md", "ops/topics/ai-labs.md"]);
   });
 
-  test("each account is either fully configured or fully placeholder", () => {
+  test("Cerpenek has its own identity", () => {
+    const a = ACCOUNTS.cerpenek;
+    assert.equal(a.label, "Cerpenek");
+    assert.deepEqual(a.brand, { prefix: "Cerpe", accent: "nek" });
+    assert.equal(a.youtubeCategoryId, "27");
+    assert.equal(a.madeForKids, true);
+    assert.deepEqual(a.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/cerpenek.md", "ops/topics/cerpenek.md"]);
+  });
+
+  test("Cerpenek is fully configured with its own Buffer org and channels", () => {
+    const a = ACCOUNTS.cerpenek;
+    assert.deepEqual(a.buffer, { orgId: "6af9a85ef0ed12641d69eab4", youtubeChannelId: "6af9a8caece6dfde5fd19e00", tiktokChannelId: "6af9a8e0ece6dfde5fd19e93" });
+    assert.deepEqual(missingConfigFields(a), []);
+    const others = [ACCOUNTS["kali-aja"], ACCOUNTS["ai-labs"]].flatMap((o) => Object.values(o.buffer));
+    for (const id of Object.values(a.buffer)) assert.equal(others.includes(id), false, `buffer id ${id} belongs to another account`);
+  });
+
+  test("Cerpenek speaks with the chosen female storyteller voice", () => {
+    assert.equal(ACCOUNTS.cerpenek.tts.voice, "id-id-tutor-1");
+    assert.match(ACCOUNTS.cerpenek.tts.style, /nenek mendongeng/);
+  });
+
+  test("a placeholder voice counts as unconfigured and is named", () => {
+    const a = { ...ACCOUNTS["kali-aja"], tts: { voice: "TODO_VOICE", style: "x" } };
+    assert.deepEqual(missingConfigFields(a), ["tts.voice"]);
+    assert.equal(isConfigured(a), false);
+  });
+
+  test("voice chosen but buffer ids missing is still unconfigured", () => {
+    const a = { ...ACCOUNTS["kali-aja"], buffer: { orgId: "TODO_A", youtubeChannelId: "TODO_B", tiktokChannelId: "TODO_C" } };
+    assert.deepEqual(missingConfigFields(a), ["buffer.orgId", "buffer.youtubeChannelId", "buffer.tiktokChannelId"]);
+    assert.equal(isConfigured(a), false);
+  });
+
+  test("each account's buffer ids are either all real or all placeholder", () => {
     for (const id of ACCOUNT_IDS) {
       const a = ACCOUNTS[id];
       const placeholders = [a.buffer.orgId, a.buffer.youtubeChannelId, a.buffer.tiktokChannelId].filter(isPlaceholder);

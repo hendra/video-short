@@ -37,6 +37,13 @@ describe("per-account format pools", () => {
   });
 });
 
+describe("Cerpenek pool", () => {
+  test("is a story pool: no explainer or tutorial frameworks", () => {
+    const ids = formatsFor("cerpenek").map((f) => f.id);
+    assert.deepEqual(ids, ["dongeng-klasik", "asal-usul-tempat", "tokoh-sejarah", "tebak-dulu", "kenapa-begitu", "sahabat-hewan", "asal-usul-benda"]);
+  });
+});
+
 describe("pickFormat", () => {
   test("roll boundaries select the first and last weighted bucket per account", () => {
     for (const id of ACCOUNT_IDS) {
@@ -52,5 +59,15 @@ describe("pickFormat", () => {
   test("roll outside [0,1) throws", () => {
     assert.throws(() => pickFormat("kali-aja", 1));
     assert.throws(() => pickFormat("kali-aja", Number.NaN));
+  });
+});
+
+describe("Cerpenek weights follow the backlog mix", () => {
+  const weight = (id: string) => formatsFor("cerpenek").find((f) => f.id === id)!.weight;
+  test("historical figures (the largest backlog group) are the heaviest format", () => {
+    for (const f of formatsFor("cerpenek")) assert.ok(weight("tokoh-sejarah") >= f.weight, `${f.id} outweighs tokoh-sejarah`);
+  });
+  test("the animal-helper format, which few stories fit, is the lightest", () => {
+    for (const f of formatsFor("cerpenek")) assert.ok(weight("sahabat-hewan") <= f.weight, `${f.id} is lighter than sahabat-hewan`);
   });
 });

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ACCOUNTS } from "../src/accounts.ts";
-import { accountProblems, brandProblems, envLines } from "./account-core.mts";
+import { accountProblems, brandProblems, envLines, resolveAccountArg, voiceProblem } from "./account-core.mts";
 
 const ALL_ACCOUNTS = Object.values(ACCOUNTS);
 const kaliAja = ACCOUNTS["kali-aja"];
@@ -66,5 +66,21 @@ describe("envLines", () => {
 
   test("no value contains a newline (GITHUB_ENV is line based)", () => {
     for (const line of lines) assert.equal(line.includes("\n"), false, line);
+  });
+});
+
+describe("resolveAccountArg", () => {
+  test("no flag and no env → default account", () => assert.equal(resolveAccountArg(undefined, undefined).id, "kali-aja"));
+  test("env picks the account", () => assert.equal(resolveAccountArg(undefined, "ai-labs").id, "ai-labs"));
+  test("flag wins over env", () => assert.equal(resolveAccountArg("kali-aja", "ai-labs").id, "kali-aja"));
+  test("unknown id throws", () => assert.throws(() => resolveAccountArg(undefined, "nope"), /Unknown account "nope"/));
+  test("empty string throws instead of defaulting", () => assert.throws(() => resolveAccountArg(undefined, ""), /Unknown account ""/));
+});
+
+describe("voiceProblem", () => {
+  test("a chosen voice has no problem", () => assert.equal(voiceProblem(kaliAja), null));
+  test("a placeholder voice is reported with the account id", () => {
+    const problem = voiceProblem({ ...kaliAja, id: "cerpenek", tts: { voice: "TODO_VOICE", style: "x" } });
+    assert.match(problem ?? "", /suara akun cerpenek belum dipilih/);
   });
 });

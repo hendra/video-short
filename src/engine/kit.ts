@@ -8,6 +8,7 @@
  */
 import {
   BoxGeometry,
+  BufferGeometry,
   CapsuleGeometry,
   ConeGeometry,
   CylinderGeometry,
@@ -46,6 +47,29 @@ const SURFACES = {
   water: { roughness: 0.08, metalness: 0, transparent: true, opacity: 0.82, grain: false },
 } as const;
 export type Surface = keyof typeof SURFACES;
+
+/** Options for `Kit.figure` — a wooden-toy person. */
+export type FigureOpts = {
+  /** "anak" is smaller, "lansia" slightly smaller with grey hair in a bun. Default "dewasa". */
+  age?: "anak" | "dewasa" | "lansia";
+  /** Colour of the shirt (and of the kerudung, when worn). */
+  top?: string;
+  /** Colour of the kain / skirt. */
+  bottom?: string;
+  skin?: string;
+  hair?: string;
+  headwear?: "none" | "caping" | "mahkota" | "ikat" | "kerudung";
+};
+
+/** Options for `Kit.animal` — one generic four-legged animal. */
+export type AnimalOpts = {
+  s?: number;
+  color?: string;
+  ears?: "bulat" | "runcing" | "panjang";
+  horns?: boolean;
+  tail?: "pendek" | "panjang";
+  stripes?: boolean;
+};
 
 export class Kit {
   private cache = new Map<string, MeshStandardMaterial>();
@@ -202,6 +226,263 @@ export class Kit {
     helmet.position.y = 0.745;
     this.root.add(g);
     return g;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Wooden-toy diorama prefabs (storytelling channels). Rounded peg-doll shapes, warm matte colours,
+  // faces are two dots. The returned parts (head, arms, wings, tail) are pivoted at the joint, so
+  // rotating them in update(t) moves them the way the real limb would.
+  // ---------------------------------------------------------------------------------------------
+
+  /** Mesh from a raw geometry, placed inside `parent`. */
+  private part(geo: BufferGeometry, m: string | Material, parent: Object3D, pos: Vec3, scale?: Vec3, rot?: Vec3) {
+    const mesh = this.add(new Mesh(geo, this.resolve(m)), parent);
+    mesh.position.set(...pos);
+    if (scale) mesh.scale.set(...scale);
+    if (rot) mesh.rotation.set(...rot);
+    return mesh;
+  }
+
+  private pivot(parent: Object3D, pos: Vec3) {
+    const g = new Group();
+    g.position.set(...pos);
+    parent.add(g);
+    return g;
+  }
+
+  /** Two dot eyes on a head of radius `r` centred at `c`, looking down +z. */
+  private eyes(parent: Object3D, c: Vec3, r: number) {
+    for (const sx of [-1, 1]) {
+      this.part(new SphereGeometry(r * 0.12, 16, 12), this.mat("#2f2620", "gloss"), parent, [c[0] + sx * r * 0.36, c[1] + r * 0.08, c[2] + r * 0.9]);
+    }
+  }
+
+  /**
+   * Peg-doll person standing on the ground at x/z, facing +z when ry = 0. ~0.8 units tall as an adult.
+   * Rotate `armL` / `armR` around x (swing) or z (raise) and `head` around x/y (nod, turn).
+   */
+  figure(x: number, z: number, ry: number, o: FigureOpts = {}) {
+    const { age = "dewasa", top = "#c2573f", bottom = "#7a4a33", skin = "#e3b48d", headwear = "none" } = o;
+    const hair = o.hair ?? (age === "lansia" ? "#dcd8d2" : "#2e2520");
+    const root = new Group();
+    root.position.set(x, 0, z);
+    root.rotation.y = ry;
+    root.scale.setScalar(age === "anak" ? 0.7 : age === "lansia" ? 0.92 : 1);
+
+    this.cyl(0, 0, 0, 0.16, 0.24, bottom, root, 0.145); // kain / skirt
+    this.cyl(0, 0.24, 0, 0.145, 0.27, top, root, 0.105); // torso
+    this.ball(0, 0.5, 0, 0.108, top, root); // shoulders
+
+    const head = this.pivot(root, [0, 0.56, 0]);
+    const hc: Vec3 = [0, 0.13, 0];
+    this.ball(...hc, 0.135, skin, head);
+    this.eyes(head, hc, 0.135);
+    if (headwear !== "kerudung") {
+      // hair cap: upper back of the head
+      this.part(new SphereGeometry(0.142, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.52), hair, head, hc, undefined, [-0.35, 0, 0]);
+      if (age === "lansia") this.ball(0, 0.19, -0.13, 0.055, hair, head); // bun
+    }
+    if (headwear === "caping") {
+      this.part(new ConeGeometry(0.27, 0.13, 28), "#d9b56c", head, [0, 0.3, 0]);
+    } else if (headwear === "mahkota") {
+      const gold = this.mat("#e2b23c", "gloss");
+      this.part(new CylinderGeometry(0.1, 0.085, 0.075, 24), gold, head, [0, 0.275, 0]);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        this.part(new SphereGeometry(0.024, 16, 12), gold, head, [Math.sin(a) * 0.095, 0.325, Math.cos(a) * 0.095]);
+      }
+    } else if (headwear === "ikat") {
+      this.part(new CylinderGeometry(0.139, 0.139, 0.04, 28), "#b3352b", head, [0, 0.185, 0]);
+    } else if (headwear === "kerudung") {
+      this.part(new SphereGeometry(0.148, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.56), top, head, hc, undefined, [-0.62, 0, 0]);
+      this.part(new CylinderGeometry(0.115, 0.15, 0.12, 24), top, head, [0, -0.01, -0.035]);
+    }
+
+    const arm = (sx: number) => {
+      const a = this.pivot(root, [sx * 0.15, 0.5, 0]);
+      a.rotation.z = sx * 0.16;
+      this.part(new CapsuleGeometry(0.036, 0.19, 4, 12), top, a, [0, -0.13, 0]);
+      this.ball(0, -0.27, 0, 0.042, skin, a);
+      return a;
+    };
+    const armL = arm(-1), armR = arm(1);
+    this.root.add(root);
+    return { root, head, armL, armR };
+  }
+
+  /** Round diorama base: a disc of sand or grass on a thick soil rim. Top surface is y = 0. */
+  island(x: number, z: number, r: number, ground: "pasir" | "rumput" = "rumput") {
+    const g = new Group();
+    g.position.set(x, 0, z);
+    this.part(new CylinderGeometry(r, r * 0.94, 0.36, 64), "#a57c50", g, [0, -0.2, 0]);
+    this.part(new CylinderGeometry(r * 1.005, r * 1.005, 0.05, 64), ground === "pasir" ? "#ecd9a6" : "#7fae5b", g, [0, -0.025, 0]);
+    this.root.add(g);
+    return g;
+  }
+
+  /** Coconut palm with a leaning trunk. */
+  palm(x: number, z: number, s: number) {
+    const g = new Group();
+    g.position.set(x, 0, z);
+    g.scale.setScalar(s);
+    const r = rng(Math.round(x * 97 + z * 31));
+    const lean = 0.1 + r() * 0.08;
+    g.rotation.y = r() * Math.PI * 2;
+    let px = 0, py = 0;
+    for (let i = 0; i < 6; i++) {
+      const a = lean * i * 0.5;
+      this.part(new CylinderGeometry(0.05 - i * 0.004, 0.058 - i * 0.004, 0.24, 16), i % 2 ? "#8a6a48" : "#7a5c3e", g, [px, py + 0.11, 0], undefined, [0, 0, -a]);
+      px += Math.sin(a) * 0.22;
+      py += Math.cos(a) * 0.22;
+    }
+    const crown = this.pivot(g, [px, py, 0]);
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2 + r() * 0.3;
+      const leaf = this.pivot(crown, [0, 0, 0]);
+      leaf.rotation.set(0, a, -0.42 - r() * 0.25);
+      this.part(new SphereGeometry(0.3, 16, 10), this.mat(i % 2 ? "#4f9a55" : "#5fae62", { flatShading: true }), leaf, [0.3, 0, 0], [1, 0.1, 0.3]);
+    }
+    for (const [cx, cz] of [[0.06, 0.03], [-0.04, 0.05]] as const) this.ball(px + cx, py - 0.07, cz, 0.05, "#6b4a2c", g);
+    this.root.add(g);
+    return g;
+  }
+
+  /** Wooden boat floating at water level y = 0, bow toward +x when ry = 0. */
+  boat(x: number, z: number, s: number, ry: number, sail = true) {
+    const g = new Group();
+    g.position.set(x, 0, z);
+    g.scale.setScalar(s);
+    g.rotation.y = ry;
+    this.part(new SphereGeometry(0.8, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), "#9c5a2e", g, [0, 0.16, 0], [1, 0.42, 0.4]);
+    this.part(new CylinderGeometry(0.8, 0.8, 0.04, 32), "#b97440", g, [0, 0.16, 0], [1, 1, 0.4]);
+    this.cyl(0.05, 0.16, 0, 0.028, 0.95, "#6e3f1f", g);
+    if (sail) {
+      this.part(new ConeGeometry(0.44, 0.78, 4), this.mat("#fbf1dc", { flatShading: true }), g, [0.07, 0.72, 0], [1.2, 1, 0.05]);
+    }
+    this.root.add(g);
+    return g;
+  }
+
+  /** Faceted mountain; `volcano` flattens the top and adds a glowing crater. */
+  mountain(x: number, z: number, s: number, volcano = false) {
+    const g = new Group();
+    g.position.set(x, 0, z);
+    g.scale.setScalar(s);
+    const r = rng(Math.round(x * 53 + z * 11));
+    g.rotation.y = r() * Math.PI;
+    if (volcano) {
+      this.part(new CylinderGeometry(0.26, 1, 1.25, 8), this.mat("#6b5f55", { flatShading: true }), g, [0, 0.625, 0]);
+      this.part(new CylinderGeometry(0.62, 1.02, 0.5, 8), this.mat("#5f8251", { flatShading: true }), g, [0, 0.25, 0]);
+      this.part(new CylinderGeometry(0.2, 0.2, 0.03, 20), this.mat("#ef6a2c", "gloss"), g, [0, 1.25, 0]);
+    } else {
+      this.part(new ConeGeometry(1, 1.4, 8), this.mat("#6a8f58", { flatShading: true }), g, [0, 0.7, 0]);
+      this.part(new ConeGeometry(0.62, 0.9, 7), this.mat("#587c4b", { flatShading: true }), g, [0.62, 0.45, 0.2]);
+    }
+    this.root.add(g);
+    return g;
+  }
+
+  /** Small stilt house with a thatched roof; door faces +z when ry = 0. */
+  hut(x: number, z: number, s: number, ry: number) {
+    const g = new Group();
+    g.position.set(x, 0, z);
+    g.scale.setScalar(s);
+    g.rotation.y = ry;
+    for (const sx of [-0.36, 0.36]) for (const sz of [-0.3, 0.3]) this.cyl(sx, 0, sz, 0.035, 0.28, "#6e4f33", g);
+    this.box(-0.46, 0.46, 0.26, 0.32, -0.4, 0.4, "#8a6a48", g); // floor
+    this.box(-0.4, 0.4, 0.32, 0.72, -0.34, 0.34, "#dcbb84", g); // woven walls
+    this.box(-0.09, 0.09, 0.32, 0.6, 0.33, 0.352, "#5a4030", g); // door
+    this.part(new ConeGeometry(0.74, 0.5, 4), this.mat("#8c6c3e", { flatShading: true }), g, [0, 0.96, 0], [1, 1, 0.86], [0, Math.PI / 4, 0]);
+    this.box(-0.06, 0.06, 0, 0.3, 0.42, 0.46, "#6e4f33", g).rotation.x = -0.5; // ladder
+    this.root.add(g);
+    return g;
+  }
+
+  /**
+   * Generic four-legged animal facing +z when ry = 0 (kerbau, rusa, kancil, harimau, anjing, kucing …):
+   * pick colour, ears, horns, tail and stripes. `s` scales it (1 ≈ knee-high dog, 1.8 ≈ buffalo).
+   */
+  animal(x: number, z: number, ry: number, o: AnimalOpts = {}) {
+    const { s = 1, color = "#a9764a", ears = "bulat", horns = false, tail = "pendek", stripes = false } = o;
+    const root = new Group();
+    root.position.set(x, 0, z);
+    root.rotation.y = ry;
+    root.scale.setScalar(s);
+    this.part(new CapsuleGeometry(0.14, 0.4, 6, 16), color, root, [0, 0.33, 0], undefined, [Math.PI / 2, 0, 0]);
+    for (const sx of [-0.08, 0.08]) for (const sz of [-0.2, 0.2]) this.cyl(sx, 0, sz, 0.04, 0.24, color, root, 0.048);
+    if (stripes) {
+      for (const sz of [-0.18, -0.06, 0.06, 0.18]) {
+        this.part(new CylinderGeometry(0.144, 0.144, 0.035, 24), "#2f2620", root, [0, 0.33, sz], undefined, [Math.PI / 2, 0, 0]);
+      }
+    }
+    const head = this.pivot(root, [0, 0.42, 0.3]);
+    const hc: Vec3 = [0, 0.06, 0.05];
+    this.ball(...hc, 0.105, color, head);
+    this.part(new SphereGeometry(0.066, 20, 14), "#f1e4cf", head, [0, 0.03, 0.15], [0.9, 0.75, 1.25]); // muzzle
+    this.ball(0, 0.045, 0.225, 0.02, "#2f2620", head); // nose
+    this.eyes(head, hc, 0.105);
+    for (const sx of [-1, 1]) {
+      if (ears === "runcing") this.part(new ConeGeometry(0.035, 0.09, 16), color, head, [sx * 0.062, 0.175, 0.03]);
+      else if (ears === "panjang") this.part(new CapsuleGeometry(0.024, 0.13, 4, 12), color, head, [sx * 0.055, 0.23, 0.02], undefined, [0, 0, -sx * 0.16]);
+      else this.ball(sx * 0.085, 0.14, 0.03, 0.035, color, head);
+      if (horns) this.part(new ConeGeometry(0.024, 0.17, 16), "#ece4d0", head, [sx * 0.12, 0.2, 0.0], undefined, [0, 0, -sx * 0.55]);
+    }
+    if (tail === "panjang") this.part(new CapsuleGeometry(0.02, 0.24, 4, 12), color, root, [0, 0.27, -0.42], undefined, [0.5, 0, 0]);
+    else this.ball(0, 0.37, -0.36, 0.042, color, root);
+    this.root.add(root);
+    return { root, head };
+  }
+
+  /** Small bird at height y, facing +z. Rotate `wingL` / `wingR` around z to flap. */
+  bird(x: number, y: number, z: number, ry: number, o: { s?: number; color?: string } = {}) {
+    const { s = 1, color = "#e9e4d8" } = o;
+    const root = new Group();
+    root.position.set(x, y, z);
+    root.rotation.y = ry;
+    root.scale.setScalar(s);
+    this.part(new SphereGeometry(0.12, 24, 16), color, root, [0, 0, 0], [0.85, 0.85, 1.25]);
+    const hc: Vec3 = [0, 0.08, 0.13];
+    this.ball(...hc, 0.075, color, root);
+    this.eyes(root, hc, 0.075);
+    this.part(new ConeGeometry(0.025, 0.08, 16), "#e8952f", root, [0, 0.07, 0.23], undefined, [Math.PI / 2, 0, 0]);
+    this.part(new ConeGeometry(0.06, 0.16, 12), color, root, [0, 0.01, -0.2], [1, 1, 0.3], [-Math.PI / 2, 0, 0]);
+    const wing = (sx: number) => {
+      const w = this.pivot(root, [sx * 0.08, 0.03, 0]);
+      this.part(new SphereGeometry(0.16, 20, 12), color, w, [sx * 0.15, 0, -0.01], [1, 0.12, 0.55]);
+      return w;
+    };
+    const wingL = wing(-1), wingR = wing(1);
+    this.root.add(root);
+    return { root, wingL, wingR };
+  }
+
+  /** Water animal lying at the surface y = 0, facing +z: a round fish or a long crocodile. Rotate `tail` around y. */
+  swimmer(x: number, z: number, ry: number, o: { s?: number; color?: string; kind?: "ikan" | "buaya" } = {}) {
+    const { s = 1, kind = "ikan" } = o;
+    const color = o.color ?? (kind === "buaya" ? "#5d7f4a" : "#e98a3a");
+    const root = new Group();
+    root.position.set(x, 0, z);
+    root.rotation.y = ry;
+    root.scale.setScalar(s);
+    let tail: Group;
+    if (kind === "buaya") {
+      this.part(new CapsuleGeometry(0.11, 0.6, 6, 16), color, root, [0, 0.07, 0], [1.15, 1, 0.8], [Math.PI / 2, 0, 0]);
+      this.part(new CapsuleGeometry(0.075, 0.24, 6, 16), color, root, [0, 0.08, 0.52], [1.2, 1, 0.6], [Math.PI / 2, 0, 0]); // snout
+      this.eyes(root, [0, 0.13, 0.33], 0.1);
+      for (let i = 0; i < 5; i++) this.part(new ConeGeometry(0.035, 0.06, 12), "#4b6a3c", root, [0, 0.18, 0.24 - i * 0.12]);
+      for (const sx of [-1, 1]) for (const sz of [-0.2, 0.22]) this.ball(sx * 0.15, 0.03, sz, 0.05, color, root);
+      tail = this.pivot(root, [0, 0.07, -0.38]);
+      this.part(new ConeGeometry(0.1, 0.55, 16), color, tail, [0, 0, -0.27], [1, 1, 0.7], [-Math.PI / 2, 0, 0]);
+    } else {
+      const bc: Vec3 = [0, 0.12, 0];
+      this.part(new SphereGeometry(0.2, 24, 16), color, root, bc, [0.5, 0.75, 1.25]);
+      this.eyes(root, [0, 0.14, 0.12], 0.11);
+      this.part(new ConeGeometry(0.06, 0.12, 12), color, root, [0, 0.29, -0.02], [0.3, 1, 1]); // dorsal fin
+      tail = this.pivot(root, [0, 0.12, -0.22]);
+      this.part(new ConeGeometry(0.13, 0.2, 12), color, tail, [0, 0, -0.09], [0.25, 1, 1], [Math.PI / 2, 0, 0]);
+    }
+    this.root.add(root);
+    return { root, tail };
   }
 
   /** Instanced spheres for flowing water, bubbles, etc. */

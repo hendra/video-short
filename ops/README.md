@@ -46,6 +46,8 @@ gh workflow run video-run --ref main                    # channel Kali Aja
 gh workflow run video-run --ref main -f account=ai-labs # channel AI Labs
 ```
 
+Channel ketiga `cerpenek` (dongeng anak) sudah terkonfigurasi (ID Buffer + environment `cerpenek`) tetapi **belum masuk cron** — langkah aktivasi di `docs/PUBLISHING.md`.
+
 ⚠️ Dispatch manual **tanpa `dry_run` adalah live run** — video akan benar-benar diposting ke YouTube + TikTok. Untuk rehearsal, pakai `-f dry_run=true` (lihat bawah). Video untuk `account=ai-labs` butuh isi `accounts.ts` (ID Buffer AI Labs — sudah terisi) dan environment `ai-labs` (sudah terpasang).
 
 Render+publish video yang **sudah di-commit & push ke main** (mis. video yang kamu bangun sendiri, tanpa agent):

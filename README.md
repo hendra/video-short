@@ -5,6 +5,8 @@
 Template video **explainer 3D vertikal** (YouTube Shorts / Reels / TikTok, 1080×1920) dengan **Remotion + React Three Fiber**:
 animasi 3D low-poly, voiceover **AI** (Google AI Studio TTS, gratis — lihat `.env.example`) dengan timing per kata, caption karaoke, callout berlabel, chip angka, dan musik latar orisinal.
 
+**Channel ketiga (belum aktif): Cerpenek** — dongeng anak 5–10 tahun (sejarah, legenda, asal-usul Indonesia) dengan suara wanita dan diorama mainan kayu; sudah terkonfigurasi, menunggu dry run sebelum masuk cron (lihat `docs/PUBLISHING.md`).
+
 **Dua channel, satu pipeline.** Saat ini dua brand tayang otomatis di slot cron yang sama (6×/hari, 07:30/09:30/11:30/12:30/16:30/19:30 WIB), masing-masing sekali run per akun: **Kali Aja Tau** (sains & teknik Indonesia) dan **AI Labs** (tips & trik Claude/ChatGPT/Gemini/OpenCode). Konfigurasi akun ada di `src/accounts.ts`; kredensial terpisah lewat GitHub Environments (`kali-aja` / `ai-labs`) — detail & fallback di `docs/PUBLISHING.md` dan `ops/README.md`.
 
 Repo ini adalah **pipeline** — video generated tidak tersimpan di git, dan tidak ada katalog video yang di-commit. Duplicate/re-publish lookup diambil dari Buffer di CI ke `/tmp/published-videos-<account>.json` (satu run = satu akun; lihat `src/accounts.ts`); source, VO, dan render output tetap tidak di-commit.
@@ -41,11 +43,11 @@ naskah.txt ──► npm run tts      (Google AI Studio TTS, gratis: suara + tim
 2. Isi `.env` (salin dari `.env.example`): `GEMINI_API_KEY` (gratis di [aistudio.google.com/apikey](https://aistudio.google.com/apikey), tanpa billing).
 3. Pilih salah satu:
    ```bash
-   npm run tts   -- <id>                 # generate suara (Gemini 3.8 locked Indonesian male) + timing
+   npm run tts   -- <id>                 # generate suara (Gemini 3.8, voice mengikuti akun) + timing
    npm run align -- <id> path/ke/vo.mp3  # audio sudah ada -> timing per kata (ElevenLabs Forced Alignment)
    npm run align:local -- <id>           # timing gratis & offline (±0,2 detik per kata)
    ```
-   `npm run tts` memakai voice dikunci `id-id-podcaster-1`; voice tidak bisa diganti lewat command ini.
+   `npm run tts` memakai voice akun (`tts` di `src/accounts.ts`; `--account <id>` atau env `ACCOUNT`, default Kali Aja): pria `id-id-podcaster-1` untuk Kali Aja dan AI Labs, wanita `id-id-tutor-1` untuk Cerpenek. Tidak ada pengganti voice lain.
 4. `npm run timeline -- <id>` → caption, timing baris, dan rentang shot.
 5. `npm run music -- <id>` (opsional, kalau durasi berubah) → musik baru sesuai titik potong shot.
 6. `npm run dev` untuk cek, lalu `npm run render -- <id> out/<id>.mp4`.

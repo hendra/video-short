@@ -101,7 +101,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   };
   const accountId = arg("account") ?? process.env.ACCOUNT ?? DEFAULT_ACCOUNT;
   if (!isAccountId(accountId)) {
-    console.error(`Unknown account "${accountId}". Valid accounts: kali-aja, ai-labs`);
+    console.error(`Unknown account "${accountId}". Valid accounts: ${Object.keys(ACCOUNTS).join(", ")}`);
     process.exit(1);
   }
   const outPath = arg("out") ?? publishedVideosPath(accountId as AccountId);

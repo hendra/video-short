@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { synthesizeAndPublish, type SynthByProvider } from "./lib-tts.mts";
+import { ACCOUNTS } from "../src/accounts.ts";
 
 const TMP = (n: string) => path.join(os.tmpdir(), n);
 const RATE = 24000;
@@ -66,7 +67,7 @@ describe("synthesizeAndPublish", () => {
       elevenlabs: async () => { calls.push("elevenlabs"); return { audio: bursts(), ext: "wav" as const }; },
     } satisfies SynthByProvider;
     writeFixture();
-    const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua tiga", "empat lima"], provider: "auto", synthByProvider });
+    const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua tiga", "empat lima"], provider: "auto", tts: ACCOUNTS["kali-aja"].tts, synthByProvider });
     assert.deepEqual(calls, ["gemini"]);
     assert.equal(res.ok, false);
   });
@@ -75,7 +76,7 @@ describe("synthesizeAndPublish", () => {
     const calls: string[] = [];
     const synthByProvider = Object.fromEntries(["gemini", "gcloud", "azure", "elevenlabs"].map((p) => [p, async () => { calls.push(p); return { audio: Buffer.from([1]), ext: "mp3" as const }; }])) as unknown as SynthByProvider;
     writeFixture();
-    const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua"], provider: "auto", synthByProvider });
+    const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua"], provider: "auto", tts: ACCOUNTS["kali-aja"].tts, synthByProvider });
     assert.equal(res.ok, false);
     assert.deepEqual(calls, []);
     assert.equal(fs.existsSync(`${FIXTURE_PUB}/vo.mp3`), false);
@@ -88,7 +89,7 @@ describe("synthesizeAndPublish", () => {
     const calls: string[] = [];
     const synthByProvider = Object.fromEntries(["gemini", "gcloud", "azure", "elevenlabs"].map((p) => [p, async () => { calls.push(p); throw new Error(`${p} boom`); }])) as unknown as SynthByProvider;
     writeFixture();
-    const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua"], provider: "auto", synthByProvider });
+    const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua"], provider: "auto", tts: ACCOUNTS["kali-aja"].tts, synthByProvider });
     assert.equal(res.ok, false);
     assert.ok(!calls.includes("elevenlabs"));
   });
@@ -104,7 +105,7 @@ describe("synthesizeAndPublish", () => {
       azure: async () => { calls.push("azure"); return { audio: constantTone(), ext: "wav" as const }; },
       elevenlabs: async () => { calls.push("elevenlabs"); return { audio: constantTone(), ext: "wav" as const }; },
     } satisfies SynthByProvider;
-    const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua tiga", "empat lima"], provider: "auto", synthByProvider });
+    const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua tiga", "empat lima"], provider: "auto", tts: ACCOUNTS["kali-aja"].tts, synthByProvider });
     assert.equal(res.ok, false);
     assert.deepEqual(calls, ["gemini"], "no fall-through on analysis failure");
     assert.equal(sha1(`${FIXTURE_PUB}/vo.mp3`), before, "committed vo.mp3 unchanged");
@@ -124,7 +125,7 @@ describe("synthesizeAndPublish", () => {
       azure: async () => ({ audio: bursts(), ext: "wav" as const }),
       elevenlabs: async () => ({ audio: bursts(), ext: "wav" as const }),
     } satisfies SynthByProvider;
-    const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua tiga empat lima", "enam tujuh delapan"], provider: "auto", synthByProvider });
+    const res = await synthesizeAndPublish({ videoId: "test-tts-tmp", lines: ["satu dua tiga empat lima", "enam tujuh delapan"], provider: "auto", tts: ACCOUNTS["kali-aja"].tts, synthByProvider });
     assert.equal(res.ok, true);
     assert.notEqual(sha1(`${FIXTURE_PUB}/vo.mp3`), before, "vo.mp3 replaced");
     const alignment = JSON.parse(fs.readFileSync(`${FIXTURE}/alignment.json`, "utf8"));
@@ -135,6 +136,21 @@ describe("synthesizeAndPublish", () => {
 });
 
 describe("CLI validation", () => {
+  test("unknown ACCOUNT exits 1 before any provider work", () => {
+    writeFixture();
+    const r = spawnSync("npx", ["tsx", "scripts/tts.mts", "test-tts-tmp"], { encoding: "utf8", env: { ...process.env, ACCOUNT: "nope" } });
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /Unknown account "nope"/);
+    assert.equal(fs.existsSync(`${FIXTURE_PUB}/vo.mp3`), false);
+  });
+
+  test("empty ACCOUNT exits 1 instead of using the default voice", () => {
+    writeFixture();
+    const r = spawnSync("npx", ["tsx", "scripts/tts.mts", "test-tts-tmp"], { encoding: "utf8", env: { ...process.env, ACCOUNT: "" } });
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /Unknown account ""/);
+  });
+
   test("bad --provider exits 1 with valid list", () => {
     writeFixture();
     const r = spawnSync("npx", ["tsx", "scripts/tts.mts", "test-tts-tmp", "--provider=gemiini"], { encoding: "utf8" });

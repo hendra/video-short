@@ -25,7 +25,7 @@ if (!slug) {
   process.exit(1);
 }
 if (accountId === undefined || !isAccountId(accountId)) {
-  console.error(`Unknown account "${accountId ?? ""}". Valid accounts: kali-aja, ai-labs`);
+  console.error(`Unknown account "${accountId ?? ""}". Valid accounts: ${Object.keys(ACCOUNTS).join(", ")}`);
   process.exit(1);
 }
 
