@@ -1,9 +1,15 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import type { AccountId } from "../src/accounts.ts";
 
 export const ROOT = path.resolve(import.meta.dirname, "..");
 export const videoDir = (id: string) => path.join(ROOT, "src", "videos", id);
 export const publicDir = (id: string) => path.join(ROOT, "public", id);
+
+/** Ephemeral Buffer catalog snapshot for one account (never committed). */
+export const publishedVideosPath = (accountId: AccountId): string =>
+  path.join(os.tmpdir(), `published-videos-${accountId}.json`);
 
 export type VideoConfig = {
   /** [shotId, first script line of that shot] in order. */
