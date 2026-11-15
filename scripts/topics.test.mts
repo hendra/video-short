@@ -114,9 +114,19 @@ describe("Cerpenek topic backlog", () => {
     assert.deepEqual(bad, [], `malformed dash lines: ${bad.join(" | ")}`);
   });
 
-  test("has entries and unique slugs", () => {
+  test("has at least 180 entries (about a month at six videos a day) with unique slugs", () => {
     const slugs = fs.readFileSync(cerpenekTopics, "utf8").split(/\r?\n/).filter((l) => CERPENEK_ENTRY.test(l)).map((l) => l.slice(2).split(":")[0]);
-    assert.ok(slugs.length >= 5, `backlog has ${slugs.length} entries`);
+    assert.ok(slugs.length >= 180, `backlog has ${slugs.length} entries, need >= 180`);
     assert.equal(new Set(slugs).size, slugs.length, "duplicate slugs in backlog");
+  });
+
+  test("covers at least 20 distinct daerah", () => {
+    const daerah = fs.readFileSync(cerpenekTopics, "utf8").split(/\r?\n/).filter((l) => CERPENEK_ENTRY.test(l)).map((l) => l.slice(l.lastIndexOf("(") + 1, -1));
+    assert.ok(new Set(daerah).size >= 20, `only ${new Set(daerah).size} daerah`);
+  });
+
+  test("no source is used twice", () => {
+    const urls = fs.readFileSync(cerpenekTopics, "utf8").split(/\r?\n/).filter((l) => CERPENEK_ENTRY.test(l)).map((l) => l.match(/https:\/\/\S+/)![0]);
+    assert.equal(new Set(urls).size, urls.length, "duplicate source urls in backlog");
   });
 });
