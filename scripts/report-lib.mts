@@ -1,12 +1,17 @@
 /** Pure report-text builder for report.mts (exported for unit tests). */
-export const buildReportText = (opts: { slug: string; links?: string; step?: string; error?: string }): string => {
-  const { slug, links = "", step = "", error = "" } = opts;
+import { ACCOUNTS, isAccountId } from "../src/accounts.ts";
+
+export const buildReportText = (opts: { slug: string; links?: string; step?: string; error?: string; account?: string }): string => {
+  const { slug, links = "", step = "", error = "", account } = opts;
+  const known = account !== undefined && isAccountId(account) ? account : undefined;
+  const label = known ? ACCOUNTS[known].label : "video-short CI";
   if (error) {
-    return `:x: *[video-short CI]* run gagal di *${step || "unknown step"}* untuk \`${slug}\`\nError: ${error.slice(0, 300)}`;
+    const suffix = known ? ` — ${label}` : "";
+    return `:x: *[video-short CI]* run gagal di *${step || "unknown step"}* untuk \`${slug}\`${suffix}\nError: ${error.slice(0, 300)}`;
   }
   if (links) {
     const [yt, tt] = links.split(",");
-    return `:rocket: *[Kali Aja Tau] Video baru live*\n*Judul:* lihat di ${yt ?? ""}\n▶️ ${yt ?? "?"}\n🎵 ${tt ?? "?"}\nProject: \`${slug}\` — diproduksi oleh pipeline video-short (GitHub-hosted).`;
+    return `:rocket: *[${label}] Video baru live*\n*Judul:* lihat di ${yt ?? ""}\n▶️ ${yt ?? "?"}\n🎵 ${tt ?? "?"}\nProject: \`${slug}\` — diproduksi oleh pipeline video-short (GitHub-hosted).`;
   }
-  return `:information_source: *[video-short CI]* \`${slug}\` — report (tidak ada links/error diberikan)`;
+  return `:information_source: *[${label}]* \`${slug}\` — report (tidak ada links/error diberikan)`;
 };
