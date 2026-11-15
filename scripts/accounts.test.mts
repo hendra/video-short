@@ -68,9 +68,12 @@ describe("account registry", () => {
   });
 
   test("missingConfigFields names the unconfigured buffer ids", () => {
-    const missing = missingConfigFields(ACCOUNTS["ai-labs"]);
-    assert.deepEqual(missing, ["buffer.orgId", "buffer.youtubeChannelId", "buffer.tiktokChannelId"]);
-    assert.equal(isConfigured(ACCOUNTS["ai-labs"]), false);
+    const placeholder = {
+      ...ACCOUNTS["ai-labs"],
+      buffer: { orgId: "TODO_ORG", youtubeChannelId: "TODO_YT", tiktokChannelId: "TODO_TT" },
+    };
+    assert.deepEqual(missingConfigFields(placeholder), ["buffer.orgId", "buffer.youtubeChannelId", "buffer.tiktokChannelId"]);
+    assert.equal(isConfigured(placeholder), false);
     assert.deepEqual(missingConfigFields(ACCOUNTS["kali-aja"]), []);
     assert.equal(isConfigured(ACCOUNTS["kali-aja"]), true);
   });
