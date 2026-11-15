@@ -1,10 +1,12 @@
 /**
  * Pick one weighted, current short-form format at random.
- *   npx tsx scripts/pick-format.mts
+ *   npx tsx scripts/pick-format.mts [--account <id>]
  * Prints JSON consumed by the agent before writing naskah.txt.
+ * The pool is per account: Kali Aja keeps its promotion-format mix, AI Labs has its own.
  */
 import { randomInt } from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { ACCOUNT_IDS, DEFAULT_ACCOUNT, accountById, isAccountId, type AccountId } from "../src/accounts.ts";
 
 export type Format = {
   id: string;
@@ -15,7 +17,7 @@ export type Format = {
 
 // Weights follow 2026 YouTube Shorts / TikTok short-form research: expert explainers lead,
 // listicles and story arcs retain well, Q&A/challenges earn comments.
-export const FORMATS: Format[] = [
+const KALI_AJA: Format[] = [
   { id: "expert-explainer", weight: 3, name: "Expert Explainer", instruction: "authority hook with a verified number/fact; 1–3 mechanism steps; one everyday analogy; takeaway, not a mystery tag every time." },
   { id: "numbered-listicle", weight: 2, name: "Numbered Listicle", instruction: "promise a count in the hook; 3 evidence-backed points; visual/scale payoff per point; final ranking or punchline." },
   { id: "myth-buster", weight: 2, name: "Myth-Buster", instruction: "open with the common misconception; separate what people repeat from what the evidence shows; explain why the myth survives; state the corrected version." },
@@ -29,18 +31,53 @@ export const FORMATS: Format[] = [
   { id: "mini-documentary", weight: 1, name: "Mini Documentary", instruction: "scene → turning point → consequence; three tight beats; keep the full arc complete and factual, not a list." },
 ];
 
-export const TOTAL_WEIGHT = FORMATS.reduce((sum, format) => sum + format.weight, 0);
+// AI Labs: prompting and tool-comparison lead — the audience wants one usable thing they
+// can copy, not a story about the industry.
+const AI_LABS: Format[] = [
+  { id: "prompt-recipe", weight: 3, name: "Prompt Recipe", instruction: "open with the result being promised; split the prompt into three parts (role, context, constraint); show before/after briefly; close with a template the viewer can copy." },
+  { id: "tool-compare", weight: 2, name: "Tool Compare", instruction: "compare two tools or features for one task; one is used, one is not; evidence from the official docs; close with a recommendation per situation." },
+  { id: "edit-photo-before-after", weight: 2, name: "Edit Photo Before → After", instruction: "open with the embarrassing before photo; show the edit result; name the three decisions that made the difference (light, colour, detail); close with one change to try tonight." },
+  { id: "debug-postmortem", weight: 2, name: "Debug Postmortem", instruction: "open with the error that made you stuck; narrow it to three hypotheses; name the one that was right and why; close with how to keep it from happening again." },
+  { id: "plugin-teardown", weight: 2, name: "Plugin Teardown", instruction: "open with one plugin going viral; take it apart from manifest to actions; name two things to check before installing; close with when it is worth installing and when not." },
+  { id: "workflow-speedrun", weight: 2, name: "Workflow Speedrun", instruction: "open with one boring recurring task; do it start to finish on camera; say the time saved; close with the trap that breaks this workflow." },
+  { id: "pitfall-callout", weight: 1, name: "Pitfall Callout", instruction: "open with a setting that looks correct; show how it is silently wrong; two quick checks to prove it; close with the one line that is actually right." },
+  { id: "feature-drop", weight: 1, name: "Feature Drop", instruction: "announce one new feature that matters; one sentence that says exactly what changed; three things worth trying; close with the honest limit." },
+  { id: "screen-rebuild", weight: 1, name: "Screen Rebuild", instruction: "open with the screen you want; rebuild it from a single instruction to the AI; show the intermediate result; close with the exact instruction used." },
+  { id: "one-liner", weight: 1, name: "One-Liner", instruction: "open with one question nobody asks; answer it with one sharp sentence; show the proof in two lines; close with the key line worth writing down." },
+];
 
-export const pickFormat = (roll: number = randomInt(TOTAL_WEIGHT) / TOTAL_WEIGHT): Format => {
-  if (!Number.isFinite(roll) || roll < 0 || roll >= 1) throw new Error(`roll must be in [0, 1), got ${roll}`);
-  let cursor = roll * TOTAL_WEIGHT;
-  for (const format of FORMATS) {
+export const FORMATS_BY_ACCOUNT: Record<AccountId, Format[]> = {
+  "kali-aja": KALI_AJA,
+  "ai-labs": AI_LABS,
+};
+
+export const formatsFor = (accountId: AccountId | string = DEFAULT_ACCOUNT): Format[] => {
+  if (!isAccountId(accountId)) throw new Error(`Unknown account "${accountId}". Valid accounts: ${ACCOUNT_IDS.join(", ")}`);
+  return FORMATS_BY_ACCOUNT[accountId];
+};
+
+export const pickFormat = (accountId: AccountId | string = DEFAULT_ACCOUNT, roll?: number): Format => {
+  const pool = formatsFor(accountId);
+  const totalWeight = pool.reduce((sum, format) => sum + format.weight, 0);
+  const resolvedRoll = roll ?? randomInt(totalWeight) / totalWeight;
+  if (!Number.isFinite(resolvedRoll) || resolvedRoll < 0 || resolvedRoll >= 1) throw new Error(`roll must be in [0, 1), got ${resolvedRoll}`);
+  let cursor = resolvedRoll * totalWeight;
+  for (const format of pool) {
     cursor -= format.weight;
     if (cursor < 0) return format;
   }
-  return FORMATS[FORMATS.length - 1];
+  return pool[pool.length - 1];
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  console.log(JSON.stringify(pickFormat(), null, 2));
+  const args = process.argv.slice(2);
+  const inline = args.find((a) => a.startsWith("--account="));
+  const idx = args.indexOf("--account");
+  const accountId = inline ? inline.slice("--account=".length) : idx >= 0 ? args[idx + 1] : DEFAULT_ACCOUNT;
+  try {
+    console.log(JSON.stringify(pickFormat(accountId), null, 2));
+  } catch (e) {
+    console.error((e as Error).message);
+    process.exit(1);
+  }
 }
