@@ -37,6 +37,13 @@ describe("per-account format pools", () => {
   });
 });
 
+describe("Cerpenek pool", () => {
+  test("is a story pool: no explainer or tutorial frameworks", () => {
+    const ids = formatsFor("cerpenek").map((f) => f.id);
+    assert.deepEqual(ids, ["dongeng-klasik", "asal-usul-tempat", "tokoh-sejarah", "tebak-dulu", "kenapa-begitu", "sahabat-hewan", "asal-usul-benda"]);
+  });
+});
+
 describe("pickFormat", () => {
   test("roll boundaries select the first and last weighted bucket per account", () => {
     for (const id of ACCOUNT_IDS) {

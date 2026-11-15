@@ -8,8 +8,8 @@ import { ACCOUNT_IDS, ACCOUNTS, DEFAULT_ACCOUNT, accountById, isAccountId, isCon
 const isPlaceholder = (v: string) => v.startsWith("TODO_");
 
 describe("account registry", () => {
-  test("holds exactly the two known accounts and defaults to Kali Aja", () => {
-    assert.deepEqual([...ACCOUNT_IDS], ["kali-aja", "ai-labs"]);
+  test("holds exactly the three known accounts and defaults to Kali Aja", () => {
+    assert.deepEqual([...ACCOUNT_IDS], ["kali-aja", "ai-labs", "cerpenek"]);
     assert.equal(DEFAULT_ACCOUNT, "kali-aja");
   });
 
@@ -41,7 +41,28 @@ describe("account registry", () => {
     assert.deepEqual(a.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/ai-labs.md", "ops/topics/ai-labs.md"]);
   });
 
-  test("each account is either fully configured or fully placeholder", () => {
+  test("Cerpenek has its own identity", () => {
+    const a = ACCOUNTS.cerpenek;
+    assert.equal(a.label, "Cerpenek");
+    assert.deepEqual(a.brand, { prefix: "Cerpe", accent: "nek" });
+    assert.equal(a.youtubeCategoryId, "27");
+    assert.equal(a.madeForKids, true);
+    assert.deepEqual(a.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/cerpenek.md", "ops/topics/cerpenek.md"]);
+  });
+
+  test("a placeholder voice counts as unconfigured and is named", () => {
+    const a = { ...ACCOUNTS["kali-aja"], tts: { voice: "TODO_VOICE", style: "x" } };
+    assert.deepEqual(missingConfigFields(a), ["tts.voice"]);
+    assert.equal(isConfigured(a), false);
+  });
+
+  test("voice chosen but buffer ids missing is still unconfigured", () => {
+    const a = { ...ACCOUNTS["kali-aja"], buffer: { orgId: "TODO_A", youtubeChannelId: "TODO_B", tiktokChannelId: "TODO_C" } };
+    assert.deepEqual(missingConfigFields(a), ["buffer.orgId", "buffer.youtubeChannelId", "buffer.tiktokChannelId"]);
+    assert.equal(isConfigured(a), false);
+  });
+
+  test("each account's buffer ids are either all real or all placeholder", () => {
     for (const id of ACCOUNT_IDS) {
       const a = ACCOUNTS[id];
       const placeholders = [a.buffer.orgId, a.buffer.youtubeChannelId, a.buffer.tiktokChannelId].filter(isPlaceholder);

@@ -2,7 +2,7 @@
  * Pick one weighted, current short-form format at random.
  *   npx tsx scripts/pick-format.mts [--account <id>]
  * Prints JSON consumed by the agent before writing naskah.txt.
- * The pool is per account: Kali Aja keeps its promotion-format mix, AI Labs has its own.
+ * The pool is per account: Kali Aja keeps its promotion-format mix; AI Labs and Cerpenek have their own.
  */
 import { randomInt } from "node:crypto";
 import { pathToFileURL } from "node:url";
@@ -46,9 +46,22 @@ const AI_LABS: Format[] = [
   { id: "one-liner", weight: 1, name: "One-Liner", instruction: "open with one question nobody asks; answer it with one sharp sentence; show the proof in two lines; close with the key line worth writing down." },
 ];
 
+// Cerpenek: stories told by "Nenek" to children aged 5–10. Every format is a story arc that ends
+// on one clear lesson — no explainer, listicle or tutorial frameworks.
+const CERPENEK: Format[] = [
+  { id: "dongeng-klasik", weight: 3, name: "Dongeng Klasik", instruction: "introduce one character and their place; give them a wish or a problem; show the choice they make; show what happens because of it; close with one gentle lesson." },
+  { id: "asal-usul-tempat", weight: 3, name: "Asal-Usul Tempat", instruction: "open on a real place children can visit today; say 'kata orang dulu…'; tell the legend of how it came to be; return to the place as it is now; close with one gentle lesson." },
+  { id: "tokoh-sejarah", weight: 2, name: "Tokoh Sejarah", instruction: "one real historical figure and one moment of courage or kindness; only facts found in the source; say when and where simply; close with what children can imitate." },
+  { id: "tebak-dulu", weight: 2, name: "Tebak Dulu", instruction: "Nenek asks one riddle-like question; let the child wonder for a beat; tell the story that answers it; repeat the answer plainly; close with one gentle lesson." },
+  { id: "kenapa-begitu", weight: 2, name: "Kenapa Begitu", instruction: "start from something children notice (an animal's shape, a rock, a lake, a custom); tell the old story people tell to explain it, clearly as a legend; close with one gentle lesson." },
+  { id: "sahabat-hewan", weight: 2, name: "Sahabat Hewan", instruction: "a person and an animal helper from a regional legend; show how they meet; one kindness given and one returned; close with one gentle lesson about caring for others." },
+  { id: "asal-usul-benda", weight: 1, name: "Asal-Usul Benda", instruction: "one regional food, game, cloth or instrument; where the story says it came from; how people still use it today; invite the child to try or look for it." },
+];
+
 export const FORMATS_BY_ACCOUNT: Record<AccountId, Format[]> = {
   "kali-aja": KALI_AJA,
   "ai-labs": AI_LABS,
+  cerpenek: CERPENEK,
 };
 
 export const formatsFor = (accountId: AccountId | string = DEFAULT_ACCOUNT): Format[] => {

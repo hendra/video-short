@@ -144,6 +144,14 @@ describe("CLI validation", () => {
     assert.equal(fs.existsSync(`${FIXTURE_PUB}/vo.mp3`), false);
   });
 
+  test("an account whose voice is still a placeholder exits 1", () => {
+    writeFixture();
+    const r = spawnSync("npx", ["tsx", "scripts/tts.mts", "test-tts-tmp"], { encoding: "utf8", env: { ...process.env, ACCOUNT: "cerpenek" } });
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /suara akun cerpenek belum dipilih/);
+    assert.equal(fs.existsSync(`${FIXTURE_PUB}/vo.mp3`), false);
+  });
+
   test("empty ACCOUNT exits 1 instead of using the default voice", () => {
     writeFixture();
     const r = spawnSync("npx", ["tsx", "scripts/tts.mts", "test-tts-tmp"], { encoding: "utf8", env: { ...process.env, ACCOUNT: "" } });

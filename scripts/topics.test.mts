@@ -63,3 +63,60 @@ describe("AI Labs topic backlog", () => {
     assert.equal(new Set(slugs).size, slugs.length, "duplicate slugs in backlog");
   });
 });
+
+// ---------- Cerpenek
+const cerpenekBrief = path.join(ROOT, "ops", "accounts", "cerpenek.md");
+const cerpenekTopics = path.join(ROOT, "ops", "topics", "cerpenek.md");
+/** `- <slug>: <judul> — <https source> (<daerah>)` */
+const CERPENEK_ENTRY = /^- [a-z0-9]+(?:-[a-z0-9]+)*: .+ — https:\/\/\S+ \([^()]+\)$/;
+
+describe("Cerpenek brief", () => {
+  test("exists", () => assert.ok(fs.existsSync(cerpenekBrief), `missing ${cerpenekBrief}`));
+
+  test("has every required section", () => {
+    const text = fs.readFileSync(cerpenekBrief, "utf8");
+    for (const heading of ["## Brand", "## Format", "## Topik", "## Naskah", "## Scene 3D", "## Batas isi", "## publish.json"]) {
+      assert.ok(text.includes(heading), `brief missing section ${heading}`);
+    }
+  });
+
+  test("states the exact brand line and account id", () => {
+    const text = fs.readFileSync(cerpenekBrief, "utf8");
+    assert.ok(text.includes('brand: { prefix: "Cerpe", accent: "nek" },'), "brief must carry the literal brand line");
+    assert.ok(text.includes('"account": "cerpenek"'), "brief must carry the account id");
+  });
+
+  test("forbids callouts and names the diorama prefabs", () => {
+    const text = fs.readFileSync(cerpenekBrief, "utf8");
+    for (const name of ["kit.figure(", "kit.island(", "kit.palm(", "kit.boat(", "kit.mountain(", "kit.hut(", "kit.animal(", "kit.bird(", "kit.swimmer("]) {
+      assert.ok(text.includes(name), `brief must show ${name}`);
+    }
+    assert.match(text, /tanpa `callouts`/i);
+  });
+});
+
+describe("Cerpenek topic entry format", () => {
+  test("accepts a well-formed entry", () =>
+    assert.ok(CERPENEK_ENTRY.test("- malin-kundang: Malin Kundang, anak yang lupa pada ibunya — https://example.go.id/malin (Sumatra Barat)")));
+  test("rejects http sources, a missing daerah, and uppercase slugs", () => {
+    assert.equal(CERPENEK_ENTRY.test("- malin-kundang: Malin Kundang — http://example.go.id/malin (Sumatra Barat)"), false);
+    assert.equal(CERPENEK_ENTRY.test("- malin-kundang: Malin Kundang — https://example.go.id/malin"), false);
+    assert.equal(CERPENEK_ENTRY.test("- Malin-Kundang: Malin Kundang — https://example.go.id/malin (Sumatra Barat)"), false);
+  });
+});
+
+describe("Cerpenek topic backlog", () => {
+  test("exists", () => assert.ok(fs.existsSync(cerpenekTopics), `missing ${cerpenekTopics}`));
+
+  test("every dash line is a valid entry — nothing is silently skipped", () => {
+    const lines = fs.readFileSync(cerpenekTopics, "utf8").split(/\r?\n/);
+    const bad = lines.filter((l) => l.startsWith("- ") && !CERPENEK_ENTRY.test(l));
+    assert.deepEqual(bad, [], `malformed dash lines: ${bad.join(" | ")}`);
+  });
+
+  test("has entries and unique slugs", () => {
+    const slugs = fs.readFileSync(cerpenekTopics, "utf8").split(/\r?\n/).filter((l) => CERPENEK_ENTRY.test(l)).map((l) => l.slice(2).split(":")[0]);
+    assert.ok(slugs.length >= 5, `backlog has ${slugs.length} entries`);
+    assert.equal(new Set(slugs).size, slugs.length, "duplicate slugs in backlog");
+  });
+});
