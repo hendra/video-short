@@ -18,7 +18,7 @@ import path from "node:path";
 import { ROOT, loadDotenv } from "./lib.mts";
 import { fetchPublishedVideos } from "./fetch-published-videos.mts";
 import { findDuplicate, type CandidatePost } from "./duplicate-core.mts";
-import { cloudinarySign, validatePublishJson, extractBufferError } from "./publish-lib.mts";
+import { cloudinarySign, validatePublishJson, extractBufferError, youtubeSafe } from "./publish-lib.mts";
 
 loadDotenv();
 
@@ -107,9 +107,9 @@ const bufferPost = async (input: Record<string, unknown>) => {
 
 const ytInput = {
   channelId: YT, mode: "shareNow", schedulingType: "automatic", needsApproval: false,
-  text: PUB.description,
+  text: youtubeSafe(PUB.description),
   assets: [{ video: { url: up.secure_url! } }],
-  metadata: { youtube: { title: PUB.title, categoryId: "27", privacy: "public" as const, madeForKids: false, isAiGenerated: true, notifySubscribers: true } },
+  metadata: { youtube: { title: youtubeSafe(PUB.title), categoryId: "27", privacy: "public" as const, madeForKids: false, isAiGenerated: true, notifySubscribers: true } },
 };
 const ttInput = {
   channelId: TT, mode: "shareNow", schedulingType: "automatic", needsApproval: false,

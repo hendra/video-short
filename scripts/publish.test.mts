@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { describe, test } from "node:test";
-import { cloudinarySign, validatePublishJson, extractBufferError } from "./publish-lib.mts";
+import { cloudinarySign, validatePublishJson, extractBufferError, youtubeSafe } from "./publish-lib.mts";
 
 describe("cloudinary signature (shipped helper)", () => {
   test("sorts params alphabetically", () => {
@@ -29,6 +29,18 @@ describe("validatePublishJson", () => {
   test("length caps enforced", () => {
     assert.ok(validatePublishJson({ ...ok, title: "x".repeat(101) }).join().includes("title > 100"));
     assert.ok(validatePublishJson({ ...ok, tiktokTitle: "x".repeat(91) }).join().includes("tiktokTitle > 90"));
+    assert.ok(validatePublishJson({ ...ok, description: "x".repeat(5001) }).join().includes("description > 5000"));
+    assert.ok(validatePublishJson({ ...ok, tiktokCaption: "x".repeat(2201) }).join().includes("tiktokCaption > 2200"));
+    assert.deepEqual(validatePublishJson({ ...ok, description: "x".repeat(5000), tiktokCaption: "x".repeat(2200) }), []);
+  });
+});
+
+describe("youtubeSafe", () => {
+  test("replaces every < and > with full-width look-alikes", () => {
+    assert.equal(youtubeSafe("Lidar (>4.400 km) <b>x</b>"), "Lidar (＞4.400 km) ＜b＞x＜/b＞");
+  });
+  test("leaves other text unchanged", () => {
+    assert.equal(youtubeSafe("±183.000 km² — #shorts & co"), "±183.000 km² — #shorts & co");
   });
 });
 
