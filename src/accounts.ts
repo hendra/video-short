@@ -20,8 +20,6 @@ export type Account = {
   buffer: { orgId: string; youtubeChannelId: string; tiktokChannelId: string };
   /** YouTube video category id. */
   youtubeCategoryId: string;
-  /** Prefix of the per-account secret names ("" = canonical names, "AI_LABS_" = AI Labs). */
-  secretPrefix: string;
   /** Instruction files the agent reads, plus the model it runs on. */
   agent: { model: string; prompt: string; files: string[] };
 };
@@ -41,7 +39,6 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       tiktokChannelId: "6aedb7fee29c69a171804662",
     },
     youtubeCategoryId: "27",
-    secretPrefix: "",
     agent: {
       model: "opencode/inkling-2-small-free",
       prompt:
@@ -59,7 +56,6 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       tiktokChannelId: "TODO_AI_LABS_TIKTOK_CHANNEL_ID",
     },
     youtubeCategoryId: "30",
-    secretPrefix: "AI_LABS_",
     agent: {
       model: "opencode/inkling-2-small-free",
       prompt:

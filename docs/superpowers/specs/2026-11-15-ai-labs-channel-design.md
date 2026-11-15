@@ -3,6 +3,15 @@
 **Date:** 2026-11-15
 **Status:** Approved 2026-11-15 (user) — semua keputusan di bawah sudah dikonfirmasi user
 
+## Amendment 2026-11-15 — mekanisme kredensial: GitHub Environments (menggantikan §4)
+
+User meminta repo secrets yang sekarang **tetap dipertahankan** untuk Kali Aja, dan dipakai juga sebagai *fallback* AI Labs: kalau secret tidak di-set di sisi AI Labs, default-nya memakai yang ada sekarang. Jalur yang dipilih: **GitHub Environments**, bukan prefix `AI_LABS_*`.
+
+- Job `build` dan `publish` mereferensi `environment:` sesuai id akun (nama environment = nama id: `kali-aja`, `ai-labs`). Environment secrets menimpa repo secrets dengan nama yang sama; kalau environment tidak meng-set suatu secret, otomatis dipakai repo secret. `kali-aja` boleh kosong. **Prasyarat deploy: kedua environment harus ada — environment yang tidak ada membatalkan run.**
+- `secretPrefix`, `secretNameFor`, `SECRET_KEYS`, `missingSecrets`, flag `--require-credentials` dan preflight "kredensial wajib ada sebelum render" (jawaban reviewer #2 / I2) **ditiadakan** — fallback adalah perilaku yang diinginkan. Yang tetap fail-fast: ID Buffer yang masih placeholder (job `Resolve account`) + account gate di build + cross-check akun di `publish.mts`.
+- `.env`-writing ceremony di build/publish disederhanakan: GitHub yang memilih secret; script tetap baca nama kanonik di `process.env` / `.env`.
+- Sisa dokumen ini (terutama §4 "Kredensial per akun") diasumsikan mengacu pada mekanisme di atas.
+
 ## Intent / why
 
 Repo `yt-video-short-generator` adalah pipeline video 3D explainer Shorts yang saat ini punya **satu channel**: YouTube *Kali Aja Tau* + TikTok *kaliajatau01* (niche: "kok bisa?" sains/teknik Indonesia). User ingin **channel kedua: *AI Labs*** — niche tips & trik AI (Claude, ChatGPT, Gemini: edit foto & video, coding, debugging, plugin seperti superpowers), dengan **akun sendiri** (YouTube, TikTok, Cloudinary, Gemini, opencode), **jadwal tayang sama** (6 slot/hari: 07:30/09:30/11:30/12:30/16:30/19:30 WIB), dan **engine yang sama** — visual 3D diorama, caption karaoke, TTS, publish Cloudinary → Buffer.

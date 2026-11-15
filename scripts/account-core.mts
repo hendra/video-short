@@ -6,16 +6,6 @@
  */
 import type { Account, AccountId } from "../src/accounts.ts";
 
-/** Name of the GitHub secret holding a canonical env var for this account. */
-export const secretNameFor = (account: Account, canonicalKey: string): string => `${account.secretPrefix}${canonicalKey}`;
-
-/** Canonical publish credential env var names the pipeline needs per account. */
-export const SECRET_KEYS = ["GEMINI_API_KEY", "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "BUFFER_ACCESS_TOKEN"] as const;
-
-/** Names of the secrets holding a publish credential that is missing from `env`. */
-export const missingSecrets = (account: Account, env: Record<string, string | undefined>): string[] =>
-  SECRET_KEYS.filter((key) => !env[secretNameFor(account, key)]).map((key) => secretNameFor(account, key));
-
 /** The brand line a generated video source must contain, exactly. */
 export const brandLine = (account: Account): string =>
   `brand: { prefix: ${JSON.stringify(account.brand.prefix)}, accent: ${JSON.stringify(account.brand.accent)} }`;

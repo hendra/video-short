@@ -7,7 +7,7 @@
  *
  * Env:
  *   ACCOUNTS            — comma-separated account ids to dispatch. Default: "kali-aja".
- *                        Tambahkan "ai-labs" setelah ID Buffer + secret AI_LABS_* terisi.
+ *                        Tambahkan "ai-labs" setelah ID Buffer + environment `ai-labs` terisi.
  *   VIDEO_SHORT_PAT     — fine-grained PAT with Contents: read+write on the repo
  *   SLACK_BOT_TOKEN, SLACK_SOCIAL_CHANNEL_ID — warning saat dispatch gagal
  */

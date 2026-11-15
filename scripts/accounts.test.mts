@@ -18,7 +18,6 @@ describe("account registry", () => {
     assert.equal(k.label, "Kali Aja Tau");
     assert.deepEqual(k.brand, { prefix: "Kali Aja ", accent: "Tau" });
     assert.equal(k.youtubeCategoryId, "27");
-    assert.equal(k.secretPrefix, "");
     assert.equal(k.buffer.orgId, "6aed53e7ec5c7c6d73f3e437");
     assert.equal(k.buffer.youtubeChannelId, "6aedb753e29c69a171803f6e");
     assert.equal(k.buffer.tiktokChannelId, "6aedb7fee29c69a171804662");
@@ -33,7 +32,6 @@ describe("account registry", () => {
     assert.equal(a.label, "AI Labs");
     assert.deepEqual(a.brand, { prefix: "AI ", accent: "Labs" });
     assert.equal(a.youtubeCategoryId, "30");
-    assert.equal(a.secretPrefix, "AI_LABS_");
     assert.deepEqual(a.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/ai-labs.md", "ops/topics/ai-labs.md"]);
   });
 

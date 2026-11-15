@@ -35,11 +35,14 @@ permissions:
 # build (agent + gates + bundle) -> render (N shards in parallel, video only) -> publish (concat + audio + upload)
 # A run is scoped to ONE channel account (Kali Aja or AI Labs), selected by the trigger:
 #   repository_dispatch client_payload.account, or workflow_dispatch input `account`.
-# Publish/Slack secrets are scoped to the publish/report-failure jobs. The build job uses a
-# step-scoped BUFFER_ACCESS_TOKEN only to fetch public post metadata into /tmp; it is never written to .env or the repo.
+# Publish/Slack secrets live in repo secrets + per-account environments (build and publish jobs
+# reference the environment matching their account). Environment secrets override repo secrets of the
+# same name; unset environment secrets fall back to repo secrets. The build job's published-video lookup
+# is a step-scoped BUFFER_ACCESS_TOKEN only, written to /tmp and never into .env or the repo.
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.account || github.event.client_payload.account || 'kali-aja' }}
     timeout-minutes: 180
     outputs:
       slug: ${{ steps.slug.outputs.slug || steps.manualslug.outputs.slug }}
@@ -107,54 +110,34 @@ jobs:
 
       # Resolve the account: sets ACCOUNT, ACCOUNT_LABEL, BRAND_LINE, YOUTUBE_CATEGORY_ID,
       # AGENT_MODEL, AGENT_FILES, AGENT_PROMPT, CATALOG_PATH. Fails fast — before the agent and
-      # before any render — when the account's Buffer config still holds TODO_ placeholders,
-      # and (except on dry_run) when one of the five publish credentials is missing.
+      # before any render — when the account's Buffer config still holds TODO_ placeholders.
+      # Credentials (GEMINI_API_KEY, keys, tokens) are NOT listed here: the job `environment:`
+      # resolves them from GitHub, overriding repo secrets per-name or falling back to them.
       - name: Resolve account
         id: acct
         env:
           ACCOUNT: ${{ inputs.account || github.event.client_payload.account || 'kali-aja' }}
-          DRY_RUN: ${{ inputs.dry_run }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          AI_LABS_GEMINI_API_KEY: ${{ secrets.AI_LABS_GEMINI_API_KEY }}
-          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          AI_LABS_CLOUDINARY_CLOUD_NAME: ${{ secrets.AI_LABS_CLOUDINARY_CLOUD_NAME }}
-          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-          AI_LABS_CLOUDINARY_API_KEY: ${{ secrets.AI_LABS_CLOUDINARY_API_KEY }}
-          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          AI_LABS_CLOUDINARY_API_SECRET: ${{ secrets.AI_LABS_CLOUDINARY_API_SECRET }}
-          BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
-          AI_LABS_BUFFER_ACCESS_TOKEN: ${{ secrets.AI_LABS_BUFFER_ACCESS_TOKEN }}
         run: |
           set -e
           npx tsx scripts/account-env.mts --account "$ACCOUNT" --require-configured >> "$GITHUB_ENV"
           echo "account=$ACCOUNT" >> "$GITHUB_OUTPUT"
-          if [ "${DRY_RUN:-false}" != "true" ]; then
-            npx tsx scripts/account-env.mts --account "$ACCOUNT" --require-credentials
-          fi
 
-      # The agent gets a GEMINI_API_KEY and nothing else, and it belongs to this account.
-      - name: Write agent .env from secrets
+      # The agent gets a GEMINI_API_KEY and nothing else. The environment already picked the
+      # account's key (or the repo fallback).
+      - name: Write agent .env
         if: github.event.inputs.slug == ''
         shell: bash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          AI_LABS_GEMINI_API_KEY: ${{ secrets.AI_LABS_GEMINI_API_KEY }}
         run: |
           umask 077
-          AGENT_KEY="$GEMINI_API_KEY"
-          if [ "$ACCOUNT" = "ai-labs" ]; then AGENT_KEY="$AI_LABS_GEMINI_API_KEY"; fi
-          printf 'GEMINI_API_KEY=%s\n' "$AGENT_KEY" > .env
+          printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" > .env
 
       - name: Fetch published-video catalog from Buffer
         id: catalog
         env:
           BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
-          AI_LABS_BUFFER_ACCESS_TOKEN: ${{ secrets.AI_LABS_BUFFER_ACCESS_TOKEN }}
-        run: |
-          CATALOG_TOKEN="$BUFFER_ACCESS_TOKEN"
-          if [ "$ACCOUNT" = "ai-labs" ]; then CATALOG_TOKEN="$AI_LABS_BUFFER_ACCESS_TOKEN"; fi
-          export BUFFER_ACCESS_TOKEN="$CATALOG_TOKEN"
-          npx tsx scripts/fetch-published-videos.mts --account "$ACCOUNT" --out "$CATALOG_PATH"
+        run: npx tsx scripts/fetch-published-videos.mts --account "$ACCOUNT" --out "$CATALOG_PATH"
 
       - name: Agent builds the video
         id: agent
@@ -333,6 +316,7 @@ jobs:
   publish:
     needs: [build, render]
     runs-on: ubuntu-latest
+    environment: ${{ needs.build.outputs.account }}
     timeout-minutes: 45
     outputs:
       failed_step: ${{ steps.failed.outputs.step }}
@@ -405,31 +389,17 @@ jobs:
           retention-days: 3
 
       # Video source is not committed; publishing fetches Buffer history directly.
-      # Secrets are passed as step env, written into a step-scoped .env with canonical names;
-      # the AI Labs credentials live in AI_LABS_* secrets.
+      # The environment (needs.build.outputs.account) already resolved which secrets win per name —
+      # Cloudinary/Buffer below are the account's values (or, if it unset them, the repo fallback).
       - name: Publish (Cloudinary → Buffer YT + TikTok)
         id: publish
         if: ${{ !inputs.dry_run }}
         env:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          AI_LABS_CLOUDINARY_CLOUD_NAME: ${{ secrets.AI_LABS_CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-          AI_LABS_CLOUDINARY_API_KEY: ${{ secrets.AI_LABS_CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          AI_LABS_CLOUDINARY_API_SECRET: ${{ secrets.AI_LABS_CLOUDINARY_API_SECRET }}
           BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
-          AI_LABS_BUFFER_ACCESS_TOKEN: ${{ secrets.AI_LABS_BUFFER_ACCESS_TOKEN }}
-        run: |
-          umask 077
-          : > .env
-          for key in CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET BUFFER_ACCESS_TOKEN; do
-            src="$key"
-            if [ "$ACCOUNT" = "ai-labs" ]; then src="AI_LABS_$key"; fi
-            value="${!src:-}"
-            if [ -z "$value" ]; then echo "akun $ACCOUNT: secret $src kosong — publish ditolak sebelum upload"; exit 1; fi
-            printf '%s=%s\n' "$key" "$value" >> .env
-          done
-          npm run publish -- "$SLUG" --account "$ACCOUNT"
+        run: npm run publish -- "$SLUG" --account "$ACCOUNT"
 
       - name: Success report (Slack #social)
         if: ${{ success() && !inputs.dry_run }}

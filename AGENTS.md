@@ -2,7 +2,7 @@
 
 Vertical (1080×1920) 3D explainer Shorts for YouTube/TikTok: Remotion + React Three Fiber, AI voiceover (Google AI Studio TTS, free) with per-word timing, karaoke captions. Content language is Indonesian (santai-profesional).
 
-**This pipeline publishes to more than one channel account.** Account config lives in `src/accounts.ts` (brand, Buffer org/channel ids, YouTube category, credential prefix, agent instruction files). A run is scoped to one account; `publish.json` carries `account` and the publish channel follows it. Brand is per video (`VideoDef.brand`) — do not hardcode one channel's brand.
+**This pipeline publishes to more than one channel account.** Account config lives in `src/accounts.ts` (brand, Buffer org/channel ids, YouTube category, agent instruction files). A run is scoped to one account; `publish.json` carries `account` and the publish channel follows it. Brand is per video (`VideoDef.brand`) — do not hardcode one channel's brand.
 
 Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test, offline/mocked) + bundling + eyeballing stills.
 
