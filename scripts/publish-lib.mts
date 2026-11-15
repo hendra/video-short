@@ -12,7 +12,10 @@ export const cloudinarySign = (params: Record<string, string | number>, secret: 
 
 export type PublishMeta = { title: string; description: string; tiktokTitle: string; tiktokCaption: string; catatan?: string };
 
-/** Minimal schema for publish.json: required non-empty strings, title caps. Returns a list of problems ([] = valid). */
+/** YouTube rejects "<" and ">" in titles and descriptions; swap them for full-width look-alikes. */
+export const youtubeSafe = (text: string): string => text.replaceAll("<", "＜").replaceAll(">", "＞");
+
+/** Minimal schema for publish.json: required non-empty strings, platform length caps. Returns a list of problems ([] = valid). */
 export const validatePublishJson = (obj: unknown): string[] => {
   const problems: string[] = [];
   if (!obj || typeof obj !== "object") return ["publish.json: not an object"];
@@ -22,6 +25,12 @@ export const validatePublishJson = (obj: unknown): string[] => {
   }
   if (typeof PUB.title === "string" && PUB.title.length > 100) problems.push(`title > 100 chars (${PUB.title.length})`);
   if (typeof PUB.tiktokTitle === "string" && PUB.tiktokTitle.length > 90) problems.push(`tiktokTitle > 90 chars (${PUB.tiktokTitle.length})`);
+  if (typeof PUB.description === "string") {
+    // YouTube caps the description in UTF-8 bytes, measured on the text it actually receives.
+    const bytes = Buffer.byteLength(youtubeSafe(PUB.description));
+    if (bytes > 5000) problems.push(`description > 5000 bytes (${bytes})`);
+  }
+  if (typeof PUB.tiktokCaption === "string" && PUB.tiktokCaption.length > 2200) problems.push(`tiktokCaption > 2200 chars (${PUB.tiktokCaption.length})`);
   return problems;
 };
 
