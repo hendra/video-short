@@ -1,11 +1,15 @@
 /**
  * Publish a finished video to YouTube + TikTok via Cloudinary (signed upload) and Buffer (GraphQL).
- *   npm run publish -- <slug>
+ *   npm run publish -- <slug> [--account <id>]
  *
  * Requirements:
  *   - out/<slug>-final.mp4 must exist (run render + loudnorm first)
- *   - src/videos/<slug>/publish.json must exist: { title, description, tiktokTitle, tiktokCaption, catatan? }
+ *   - src/videos/<slug>/publish.json must exist: { account, title, description, tiktokTitle, tiktokCaption, catatan? }
  *   - .env keys: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, BUFFER_ACCESS_TOKEN
+ *
+ * The channel is decided by publish.json's `account`. --account (optional) is a cross-check:
+ * if it disagrees, the publish is refused before anything is uploaded. An account whose buffer
+ * config still holds TODO_ placeholders is refused the same way.
  * Buffer is checked again before upload and the candidate is refused if it matches a recently posted video.
  * No source, VO, video data, or catalog file is committed by this script.
  * After a fully settled publish (Cloudinary + both Buffer posts), deletes the
@@ -19,11 +23,20 @@ import { ROOT, loadDotenv } from "./lib.mts";
 import { fetchPublishedVideos } from "./fetch-published-videos.mts";
 import { findDuplicate, type CandidatePost } from "./duplicate-core.mts";
 import { cloudinarySign, validatePublishJson, extractBufferError, youtubeSafe } from "./publish-lib.mts";
+import { ACCOUNT_IDS, accountById, isAccountId, isConfigured, missingConfigFields } from "../src/accounts.ts";
 
 loadDotenv();
 
-const slug = process.argv[2];
-if (!slug) { console.error("Usage: npm run publish -- <slug>"); process.exit(1); }
+const args = process.argv.slice(2);
+let slug = "";
+let runAccount: string | undefined;
+for (let i = 0; i < args.length; i += 1) {
+  const a = args[i];
+  if (a === "--account") { runAccount = args[i + 1]; i += 1; }
+  else if (a.startsWith("--account=")) runAccount = a.slice("--account=".length);
+  else if (!a.startsWith("--")) slug = a;
+}
+if (!slug) { console.error("Usage: npm run publish -- <slug> [--account <id>]"); process.exit(1); }
 
 const fail = (msg: string): never => { console.error(msg); process.exit(1); };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -34,10 +47,22 @@ const publishPath = path.join(ROOT, "src", "videos", slug, "publish.json");
 if (!fs.existsSync(mp4Path)) fail(`No final mp4 at ${mp4Path} — render + loudnorm first.`);
 if (!fs.existsSync(publishPath)) fail(`Missing ${publishPath} — the agent must write publish.json (see ops/ci-prompt.md).`);
 
-const PUB = JSON.parse(fs.readFileSync(publishPath, "utf8")) as { title: string; description: string; tiktokTitle: string; tiktokCaption: string; catatan?: string };
+const PUB = JSON.parse(fs.readFileSync(publishPath, "utf8")) as { account: string; title: string; description: string; tiktokTitle: string; tiktokCaption: string; catatan?: string };
 {
   const problems = validatePublishJson(PUB);
   if (problems.length) fail(`publish.json: ${problems.join("; ")}`);
+}
+
+// ---------- Account resolution: the video's own account decides the channels; the run account only cross-checks
+const account = accountById(PUB.account);
+if (runAccount !== undefined && !isAccountId(runAccount)) {
+  fail(`--account "${runAccount}" tidak dikenal (valid: ${ACCOUNT_IDS.join(", ")})`);
+}
+if (runAccount && runAccount !== account.id) {
+  fail(`publish refused: video account "${account.id}" != run account "${runAccount}" — refusing before upload`);
+}
+if (!isConfigured(account)) {
+  fail(`publish refused: akun ${account.id} belum dikonfigurasi (missing: ${missingConfigFields(account).join(", ")}) — refusing before upload`);
 }
 
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME, CLOUD_KEY = process.env.CLOUDINARY_API_KEY, CLOUD_SECRET = process.env.CLOUDINARY_API_SECRET;
@@ -47,7 +72,7 @@ for (const [n, v] of [["CLOUDINARY_CLOUD_NAME", CLOUD_NAME], ["CLOUDINARY_API_KE
 }
 
 // ---------- Final near-duplicate check: Buffer is the source of truth; never upload a video already posted
-const published = await fetchPublishedVideos(BUFFER);
+const published = await fetchPublishedVideos(BUFFER, account.id);
 {
   const match = findDuplicate(PUB as CandidatePost, published);
   if (match) fail(`publish refused: candidate is too similar to a live Buffer post (${match.field}; containment ${match.containment.toFixed(2)}, jaccard ${match.jaccard.toFixed(2)}) — choose a different video or inspect YouTube/TikTok`);
@@ -76,7 +101,7 @@ if (up.resource_type && up.resource_type !== "video") fail(`Cloudinary resource_
 console.log(`  -> ${up.secure_url}`);
 
 // ---------- 2. Buffer GraphQL createPost
-const YT = "6aedb753e29c69a171803f6e", TT = "6aedb7fee29c69a171804662";
+const YT = account.buffer.youtubeChannelId, TT = account.buffer.tiktokChannelId;
 const bufferPost = async (input: Record<string, unknown>) => {
   const query = `mutation($input: CreatePostInput!) {
   createPost(input: $input) {
@@ -109,7 +134,7 @@ const ytInput = {
   channelId: YT, mode: "shareNow", schedulingType: "automatic", needsApproval: false,
   text: youtubeSafe(PUB.description),
   assets: [{ video: { url: up.secure_url! } }],
-  metadata: { youtube: { title: youtubeSafe(PUB.title), categoryId: "27", privacy: "public" as const, madeForKids: false, isAiGenerated: true, notifySubscribers: true } },
+  metadata: { youtube: { title: youtubeSafe(PUB.title), categoryId: account.youtubeCategoryId, privacy: "public" as const, madeForKids: false, isAiGenerated: true, notifySubscribers: true } },
 };
 const ttInput = {
   channelId: TT, mode: "shareNow", schedulingType: "automatic", needsApproval: false,
@@ -150,7 +175,7 @@ if (!ytLink || !ttLink) fail(`post settled with error or timeout (yt=${ytP.statu
 
 // ---------- 4. Temporary same-run result — used by the Slack report, never committed
 const resultPath = path.join(os.tmpdir(), "publish-result.json");
-fs.writeFileSync(resultPath, JSON.stringify({ slug, date: today(), title: PUB.title, links: { youtube: ytLink, tiktok: ttLink } }, null, 1));
+fs.writeFileSync(resultPath, JSON.stringify({ slug, account: account.id, date: today(), title: PUB.title, links: { youtube: ytLink, tiktok: ttLink } }, null, 1));
 console.log(`publish result: wrote ${resultPath}`);
 
 // Cleanup after the publish is durable (Cloudinary + both Buffer posts settled).

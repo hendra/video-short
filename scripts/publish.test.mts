@@ -17,14 +17,20 @@ describe("cloudinary signature (shipped helper)", () => {
 });
 
 describe("validatePublishJson", () => {
-  const ok = { title: "Judul", description: "desc", tiktokTitle: "tt", tiktokCaption: "tc" };
+  const ok = { account: "kali-aja", title: "Judul", description: "desc", tiktokTitle: "tt", tiktokCaption: "tc" };
   test("valid metadata has no problems", () => assert.deepEqual(validatePublishJson(ok), []));
   test("missing required keys is reported", () => {
-    assert.ok(validatePublishJson({ title: "x" }).length >= 3);
+    assert.ok(validatePublishJson({ title: "x" }).length >= 4);
     assert.deepEqual(validatePublishJson(null), ["publish.json: not an object"]);
   });
   test("empty strings count as missing", () => {
     assert.ok(validatePublishJson({ ...ok, description: "   " }).join().includes("description"));
+    assert.ok(validatePublishJson({ ...ok, account: "   " }).join().includes("account"));
+  });
+  test("account must be a known account id", () => {
+    assert.ok(validatePublishJson({ ...ok, account: "bogus" }).join().includes("bogus"));
+    assert.ok(validatePublishJson({ title: "Judul", description: "desc", tiktokTitle: "tt", tiktokCaption: "tc" }).join().includes("account"));
+    assert.deepEqual(validatePublishJson({ ...ok, account: "ai-labs" }), []);
   });
   test("length caps enforced", () => {
     assert.ok(validatePublishJson({ ...ok, title: "x".repeat(101) }).join().includes("title > 100"));

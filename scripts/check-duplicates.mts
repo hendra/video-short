@@ -1,23 +1,42 @@
 /**
  * Deterministic near-duplicate gate for generated videos.
- *   npx tsx scripts/check-duplicates.mts <slug> [--db /tmp/published-videos.json]
+ *   npx tsx scripts/check-duplicates.mts <slug> [--db /tmp/published-videos-<id>.json]
+ * Without --db, the catalog path is derived from the video's publish.json `account`.
  * Exits non-zero before render/publish when the candidate is too close to a published video.
  */
 import fs from "node:fs";
 import path from "node:path";
-import { videoDir, readScript } from "./lib.mts";
+import { videoDir, readScript, publishedVideosPath } from "./lib.mts";
+import { DEFAULT_ACCOUNT, isAccountId, type AccountId } from "../src/accounts.ts";
 import { findDuplicate, type CandidatePost, type RecentPost } from "./duplicate-core.mts";
-import { PUBLISHED_VIDEOS_PATH } from "./fetch-published-videos.mts";
 
 const slug = process.argv[2];
-const inline = process.argv.find((a) => a.startsWith("--db="));
-const flagIdx = process.argv.indexOf("--db");
-const requestedPath = inline ? inline.slice("--db=".length) : flagIdx > 0 ? process.argv[flagIdx + 1] : PUBLISHED_VIDEOS_PATH;
-const dbPath = path.isAbsolute(requestedPath) ? requestedPath : path.resolve(requestedPath);
 if (!slug) {
-  console.error("Usage: npx tsx scripts/check-duplicates.mts <slug> [--db /tmp/published-videos.json]");
+  console.error("Usage: npx tsx scripts/check-duplicates.mts <slug> [--db /tmp/published-videos-<id>.json]");
   process.exit(1);
 }
+
+const publishPathForSlug = path.join(videoDir(slug), "publish.json");
+const defaultCatalogPath = (): string => {
+  try {
+    if (!fs.existsSync(publishPathForSlug)) return publishedVideosPath(DEFAULT_ACCOUNT);
+    const parsed = JSON.parse(fs.readFileSync(publishPathForSlug, "utf8")) as { account?: unknown };
+    const account = typeof parsed.account === "string" ? parsed.account : DEFAULT_ACCOUNT;
+    if (!isAccountId(account)) {
+      console.error(`publish.json: account "${String(parsed.account)}" is not a known account (valid: kali-aja, ai-labs)`);
+      process.exit(1);
+    }
+    return publishedVideosPath(account as AccountId);
+  } catch (e) {
+    console.error(`duplicate gate: could not read ${publishPathForSlug}: ${(e as Error).message ?? e}`);
+    process.exit(1);
+  }
+};
+
+const inline = process.argv.find((a) => a.startsWith("--db="));
+const flagIdx = process.argv.indexOf("--db");
+const requestedPath = inline ? inline.slice("--db=".length) : flagIdx > 0 ? process.argv[flagIdx + 1] : defaultCatalogPath();
+const dbPath = path.isAbsolute(requestedPath) ? requestedPath : path.resolve(requestedPath);
 if (!fs.existsSync(dbPath)) {
   console.error(`published-video catalog not found at ${dbPath} — run scripts/fetch-published-videos.mts first or let the workflow fetch it`);
   process.exit(1);
