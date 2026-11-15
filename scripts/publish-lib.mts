@@ -3,6 +3,7 @@
  * shipped code instead of a re-implementation. No I/O, no env access.
  */
 import crypto from "node:crypto";
+import { ACCOUNT_IDS, isAccountId } from "../src/accounts.ts";
 
 /** Cloudinary signed-upload signature: sha1 of the alphabetically sorted "k=v&…" param string + <secret>. */
 export const cloudinarySign = (params: Record<string, string | number>, secret: string): string =>
@@ -20,8 +21,11 @@ export const validatePublishJson = (obj: unknown): string[] => {
   const problems: string[] = [];
   if (!obj || typeof obj !== "object") return ["publish.json: not an object"];
   const PUB = obj as Record<string, unknown>;
-  for (const k of ["title", "description", "tiktokTitle", "tiktokCaption"] as const) {
+  for (const k of ["title", "description", "tiktokTitle", "tiktokCaption", "account"] as const) {
     if (typeof PUB[k] !== "string" || !(PUB[k] as string).trim()) problems.push(`missing/empty "${k}"`);
+  }
+  if (typeof PUB.account === "string" && PUB.account.trim() && !isAccountId(PUB.account)) {
+    problems.push(`unknown account "${PUB.account}" (valid: ${ACCOUNT_IDS.join(", ")})`);
   }
   if (typeof PUB.title === "string" && PUB.title.length > 100) problems.push(`title > 100 chars (${PUB.title.length})`);
   if (typeof PUB.tiktokTitle === "string" && PUB.tiktokTitle.length > 90) problems.push(`tiktokTitle > 90 chars (${PUB.tiktokTitle.length})`);

@@ -4,6 +4,8 @@
 
 Dibaca oleh scheduled task (Sen/Rab/Jum) dan oleh CI `video-run` (cron harian ×6: 07:30/09:30/11:30/12:30/16:30/19:30 WIB, lihat `ops/README.md`). Ikuti persis. Bahasa konten: Indonesia santai-profesional. Zona waktu WIB.
 
+> **Multi-akun:** dokumen ini adalah runbook khusus channel **Kali Aja Tau** (ID channel, brand, niche sains). Channel kedua **AI Labs** punya brief sendiri di `ops/accounts/ai-labs.md` + backlog topik di `ops/topics/ai-labs.md`; konfigurasi kedua channel ada di `src/accounts.ts`. CI menjalankan keduanya di slot yang sama, sekali per akun — AI Labs hanya lewat CI (bukan scheduled task lokal).
+
 ## 0. Konstanta
 
 | | |
@@ -43,7 +45,7 @@ Tidak ada API kuota gratis untuk Gemini TTS. Kuota AI Studio gratis ±10 request
 
 - Cari topik "**kok bisa?**" sains/teknik/infrastruktur yang **ramai di Indonesia 1–3 hari terakhir** (berita proyek, fenomena alam, teknologi, rekor). **Jangan panggil WebSearch** — tool itu tidak tersedia dan akan membatalkan run setelah agent selesai. Gunakan `WebFetch` ke sumber asli (ANTARA, Kompas, Detik, CNBC Indonesia, dsb.). Kalau sumber yang dibutuhkan tidak bisa di-fetch, ganti topik atau berhenti.
 - Bisa divisualkan sebagai **diorama 3D potongan/cutaway** dengan mekanisme bertahap (langkah 1-2-3).
-- **Jangan membuat ulang video**: `/tmp/published-videos.json` adalah snapshot seluruh sent post YouTube + TikTok dari Buffer yang dibuat CI sebelum agent. Alihkan ke topik/angle/title yang jelas berbeda; gate deterministik `npx tsx scripts/check-duplicates.mts <slug> --db /tmp/published-videos.json` wajib lolos sebelum render/publish. Kalau hampir mirip, jangan "sedikit ubah judul" — ganti topik atau sudut pandang.
+- **Jangan membuat ulang video**: `/tmp/published-videos-<account>.json` adalah snapshot seluruh sent post YouTube + TikTok dari Buffer yang dibuat CI sebelum agent (untuk channel ini: akun Kali Aja). Alihkan ke topik/angle/title yang jelas berbeda; gate deterministik `npx tsx scripts/check-duplicates.mts <slug> --db /tmp/published-videos-kali-aja.json` wajib lolos sebelum render/publish. Kalau hampir mirip, jangan "sedikit ubah judul" — ganti topik atau sudut pandang.
 - **Aman:** tidak ada tragedi/korban, politik partisan, SARA, klaim medis/keuangan. Bencana boleh hanya sebagai sains netral tanpa korban.
 - Setiap angka harus dari sumber yang dibaca; angka turunan dihitung dengan Python. Fakta tak terverifikasi → buang atau ganti topik.
 

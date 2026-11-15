@@ -4,6 +4,8 @@ Tested end-to-end 2026-11-11. Read this before any upload; `git log --oneline do
 
 ## Env keys (`.env`, always gitignored)
 
+Kredensial disimpan **dengan nama yang sama di setiap level** — tidak ada prefix `AI_LABS_*`. Di CI, level repo (yang sekarang: milik Kali Aja, apa adanya) adalah *default untuk semua akun*; level environment `ai-labs` hanya berisi kunci khusus AI Labs yang kamu set. Environment secrets menimpa repo secrets dengan nama yang sama; kalau environment tidak meng-set suatu secret, dipakai repo secret. Lokal, `.env` diisi dengan kunci yang sedang dipakai:
+
 ```
 BUFFER_ACCESS_TOKEN=      # Buffer API token. Scopes in use: posts:read + posts:write ONLY.
                           # It CANNOT list channels or account (those need account:read) — use the fixed channel IDs below.
@@ -12,13 +14,26 @@ CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 ```
 
-## Channel IDs (same as docs/AUTOPILOT.md §0)
+- Kali Aja: kunci repo (yang sudah ada) = apa yang dipakai di CI, tidak berubah.
+- AI Labs: di CI diisi dari environment `ai-labs` (hanya yang kamu set); yang tidak di-set otomatis fallback ke repo secret Kali Aja.
+- Prasyarat: **dua GitHub Environments harus dibuat** (`kali-aja` boleh kosong, `ai-labs`); job `build`/`publish` mereferensi environment sesuai id akun — environment yang tidak ada membatalkan run.
 
-| Channel | ID |
-|---|---|
-| YouTube — **Kali Aja Tau** | `6aedb753e29c69a171803f6e` |
-| TikTok — **kaliajatau01** | `6aedb7fee29c69a171804662` |
-| Buffer organization | `6aed53e7ec5c7c6d73f3e437` |
+## Channel IDs (lihat juga docs/AUTOPILOT.md §0)
+
+Sekarang di `src/accounts.ts` (sumber kebenaran tunggal). Ringkasan:
+
+| Channel | Akun `kali-aja` | Akun `ai-labs` |
+|---|---|---|
+| YouTube | `6aedb753e29c69a171803f6e` | `TODO_AI_LABS_YOUTUBE_CHANNEL_ID` |
+| TikTok | `6aedb7fee29c69a171804662` | `TODO_AI_LABS_TIKTOK_CHANNEL_ID` |
+| Buffer organization | `6aed53e7ec5c7c6d73f3e437` | `TODO_AI_LABS_BUFFER_ORG_ID` |
+| `categoryId` YouTube | `27` (Education) | `30` (Science & Technology) |
+| Brand overlay | prefix `Kali Aja ` + accent `Tau` | prefix `AI ` + accent `Labs` |
+| Token Buffer (scope `posts:read`+`posts:write`) | `BUFFER_ACCESS_TOKEN` (repo) | `BUFFER_ACCESS_TOKEN` (environment `ai-labs` menimpa, atau fallback repo) |
+
+AI Labs belum bisa dipublish sampai ID `TODO_` di atas diisi di `src/accounts.ts` (job `Resolve account` gagal cepat + laporan ke Slack kalau masih placeholder).
+
+Publikasi tetap per akun: `npm run publish -- <slug>` membaca `account` dari `src/videos/<slug>/publish.json`; `--account <id>` (opsional) hanyalah cross-check dan menolak kalau tidak cocok. Hal yang sama berlaku untuk `scripts/fetch-published-videos.mts --account` dan `scripts/check-duplicates.mts --db`.
 
 ## Step 1 — Host the MP4 (Cloudinary signed upload)
 
@@ -101,7 +116,9 @@ Success: `{ "ok": true, "channel": "C0CDV7Y555K", "ts": "..." }` (a harmless `mi
 
 ## Step 4 — Done — committed catalog
 
-Video source is not committed: source lives only in the CI VM and is discarded when the job ends. CI fetches Buffer history into `/tmp/published-videos.json` for duplicate/republication checks; nothing from it is committed or preserved. The publish command fetches Buffer again before uploading and refuses a candidate that matches a live post.
+Video source is not committed: source lives only in the CI VM and is discarded when the job ends. CI fetches Buffer history into `/tmp/published-videos-<account>.json` for duplicate/republication checks; nothing from it is committed or preserved. The publish command fetches Buffer again before uploading and refuses a candidate that matches a live post.
+
+**Retry setelah publish setengah gagal:** kalau `createPost` YouTube sudah sukses tapi TikTok gagal/timeout, pipeline berhenti dengan error. Menjalankan ulang akan **menolak** video yang sama karena kandidatnya cocok dengan post YouTube yang sudah live. Pulihkan dengan salah satu: (a) di Buffer, hapus post YouTube-nya lalu jalankan lagi (kedua platform akan ter-post ulang), atau (b) tayangkan TikTok itu manual lewat Buffer. Tidak ada jalur otomatis yang melanjutkan hanya sisi TikTok — jika Anda butuh itu, buat issue/request terlebih dulu.
 
 ## Content requirements (not negotiable for this channel)
 

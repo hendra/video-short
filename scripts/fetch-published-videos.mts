@@ -1,24 +1,19 @@
 /**
  * Fetch Buffer's sent-post history into an ephemeral JSON file for duplicate/republish checks.
- *   npx tsx scripts/fetch-published-videos.mts [--out /tmp/published-videos.json]
+ *   npx tsx scripts/fetch-published-videos.mts [--account <id>] [--out /tmp/published-videos-<id>.json]
  * The access token stays in this process; the output contains only public post text/metadata.
  * Nothing from this data is committed by CI.
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { loadDotenv } from "./lib.mts";
+import { ACCOUNTS, DEFAULT_ACCOUNT, isAccountId, type AccountId } from "../src/accounts.ts";
+import { loadDotenv, publishedVideosPath } from "./lib.mts";
 import type { RecentPost } from "./duplicate-core.mts";
 
-export const PUBLISHED_VIDEOS_PATH = path.join(os.tmpdir(), "published-videos.json");
-
-const YT = "6aedb753e29c69a171803f6e";
-const TT = "6aedb7fee29c69a171804662";
-const ORG = "6aed53e7ec5c7c6d73f3e437";
-
-export const fetchPublishedVideos = async (token: string | undefined = process.env.BUFFER_ACCESS_TOKEN): Promise<RecentPost[]> => {
+export const fetchPublishedVideos = async (token = process.env.BUFFER_ACCESS_TOKEN, accountId: AccountId = DEFAULT_ACCOUNT): Promise<RecentPost[]> => {
   if (!token) throw new Error("Missing BUFFER_ACCESS_TOKEN in .env (posts:read only; see docs/PUBLISHING.md)");
+  const { orgId, youtubeChannelId, tiktokChannelId } = ACCOUNTS[accountId].buffer;
 
   const query = `query($input: PostsInput!, $first: Int, $after: String) {
     posts(input: $input, first: $first, after: $after) {
@@ -56,8 +51,8 @@ export const fetchPublishedVideos = async (token: string | undefined = process.e
         query,
         variables: {
           input: {
-            organizationId: ORG,
-            filter: { channelIds: [YT, TT], status: ["sent"] },
+            organizationId: orgId,
+            filter: { channelIds: [youtubeChannelId, tiktokChannelId], status: ["sent"] },
             sort: [{ field: "createdAt", direction: "desc" }],
           },
           first: 100,
@@ -104,10 +99,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const idx = process.argv.indexOf(`--${name}`);
     return inline ? inline.slice(name.length + 3) : idx > 0 ? process.argv[idx + 1] : undefined;
   };
-  const outPath = arg("out") ?? PUBLISHED_VIDEOS_PATH;
+  const accountId = arg("account") ?? process.env.ACCOUNT ?? DEFAULT_ACCOUNT;
+  if (!isAccountId(accountId)) {
+    console.error(`Unknown account "${accountId}". Valid accounts: kali-aja, ai-labs`);
+    process.exit(1);
+  }
+  const outPath = arg("out") ?? publishedVideosPath(accountId as AccountId);
   loadDotenv();
   try {
-    const posts = await fetchPublishedVideos();
+    const posts = await fetchPublishedVideos(process.env.BUFFER_ACCESS_TOKEN, accountId as AccountId);
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, JSON.stringify(posts, null, 1));
     console.log(`published-videos: wrote ${posts.length} sent posts to ${outPath}`);

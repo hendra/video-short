@@ -11,14 +11,37 @@ describe("buildReportText (Slack payload, shipped helper)", () => {
   test("error report without step says unknown step", () => {
     assert.match(buildReportText({ slug: "x", error: "boom" }), /\*unknown step\*/);
   });
+  test("error report without account stays channel-neutral", () => {
+    const t = buildReportText({ slug: "x", step: "publish", error: "boom" });
+    assert.equal(t.includes("Kali Aja Tau"), false);
+    assert.equal(t.includes("AI Labs"), false);
+  });
+  test("error report appends the account channel label when known", () => {
+    const t = buildReportText({ slug: "x", step: "publish", error: "boom", account: "ai-labs" });
+    assert.match(t, / — AI Labs/);
+    const t2 = buildReportText({ slug: "x", step: "publish", error: "boom", account: "kali-aja" });
+    assert.match(t2, / — Kali Aja Tau/);
+  });
   test("success report embeds both links and slug", () => {
-    const t = buildReportText({ slug: "video-id", links: "https://yt/1,https://tt/2" });
+    const t = buildReportText({ slug: "video-id", links: "https://yt/1,https://tt/2", account: "kali-aja" });
     assert.match(t, /https:\/\/yt\/1/);
     assert.match(t, /https:\/\/tt\/2/);
     assert.match(t, /`video-id`/);
   });
-  test("success report does not claim a self-hosted runner", () => {
+  test("success report for kali-aja keeps the existing channel label", () => {
+    const t = buildReportText({ slug: "video-id", links: "https://yt/1,https://tt/2", account: "kali-aja" });
+    assert.match(t, /\*\[Kali Aja Tau\] Video baru live\*/);
+  });
+  test("success report for ai-labs is labelled for that channel", () => {
+    const t = buildReportText({ slug: "video-id", links: "https://yt/1,https://tt/2", account: "ai-labs" });
+    assert.match(t, /\*\[AI Labs\] Video baru live\*/);
+  });
+  test("success report without account is channel-neutral", () => {
     const t = buildReportText({ slug: "video-id", links: "https://yt/1,https://tt/2" });
+    assert.match(t, /\*\[video-short CI\] Video baru live\*/);
+  });
+  test("success report does not claim a self-hosted runner", () => {
+    const t = buildReportText({ slug: "video-id", links: "https://yt/1,https://tt/2", account: "kali-aja" });
     assert.doesNotMatch(t, /self-hosted/);
   });
   test("empty links and no error yields the informational fallback", () => {

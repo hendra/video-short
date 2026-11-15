@@ -5,7 +5,7 @@
 Template video **explainer 3D vertikal** (YouTube Shorts / Reels / TikTok, 1080×1920) dengan **Remotion + React Three Fiber**:
 animasi 3D low-poly, voiceover **AI** (Google AI Studio TTS, gratis — lihat `.env.example`) dengan timing per kata, caption karaoke, callout berlabel, chip angka, dan musik latar orisinal.
 
-Repo ini adalah **pipeline** — video generated tidak tersimpan di git, dan tidak ada katalog video yang di-commit. Duplicate/re-publish lookup diambil dari Buffer di CI ke `/tmp/published-videos.json`; source, VO, dan render output tetap tidak di-commit.
+Repo ini adalah **pipeline** — video generated tidak tersimpan di git, dan tidak ada katalog video yang di-commit. Duplicate/re-publish lookup diambil dari Buffer di CI ke `/tmp/published-videos-<account>.json` (satu run = satu akun; lihat `src/accounts.ts`); source, VO, dan render output tetap tidak di-commit.
 
 ## Mulai cepat
 
@@ -19,10 +19,10 @@ Butuh Node ≥ 20.19. `predev`/`prerender` otomatis membuat `public/<id>/music.w
 
 ## Published-video catalog
 
-CI fetches Buffer's public sent-post history into `/tmp/published-videos.json` at the start of each run. Duplicate gate and publish-time near-duplicate checks use that temporary file; nothing from it is committed. To create the same local snapshot manually:
+CI fetches Buffer's public sent-post history into `/tmp/published-videos-<account>.json` at the start of each run (per account, using that account's org + channel IDs). Duplicate gate and publish-time near-duplicate checks use that temporary file; nothing from it is committed. To create the same local snapshot manually:
 
 ```bash
-BUFFER_ACCESS_TOKEN=... npx tsx scripts/fetch-published-videos.mts --out /tmp/published-videos.json
+BUFFER_ACCESS_TOKEN=... npx tsx scripts/fetch-published-videos.mts --account kali-aja --out /tmp/published-videos-kali-aja.json
 ```
 
 ## Alur membuat video

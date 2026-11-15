@@ -1,6 +1,6 @@
 # ops — CI: Cloudflare cron → GitHub Actions (hosted) → pipeline video
 
-Chain: **Cloudflare Worker** (cron 6×/hari 07:30/09:30/11:30/12:30/16:30/19:30 WIB → tayang ±08/10/12/13/17/20 WIB) → `repository_dispatch` → **GitHub-hosted `ubuntu-latest`** → workflow `.github/workflows/video.yml` → fetch katalog Buffer ke `/tmp/published-videos.json` → agent (opencode, free model) + duplicate gate → gates (lint/test/bundle/still-per-shot) → render (`--gl=swangle`, 4 runner paralel) → gabung + audio + loudnorm → publish (Cloudinary → Buffer YouTube + TikTok) → Slack #social. Video source tidak di-commit; katalog tidak di-commit dan hanya di-fetch ke `/tmp` saat CI.
+Chain: **Cloudflare Worker** (cron 6×/hari 07:30/09:30/11:30/12:30/16:30/19:30 WIB → tayang ±08/10/12/13/17/20 WIB) → `repository_dispatch` **sekali per akun** (`kali-aja`, `ai-labs`) → **GitHub-hosted `ubuntu-latest`** → workflow `.github/workflows/video.yml` → fetch katalog Buffer (per akun) ke `/tmp/published-videos-<akun>.json` → agent (opencode, free model) + duplicate gate → gates (lint/test/bundle/still-per-shot) → render (`--gl=swangle`, 4 runner paralel) → gabung + audio + loudnorm → publish (Cloudinary → Buffer YouTube + TikTok) → Slack #social. Video source tidak di-commit; katalog tidak di-commit dan hanya di-fetch ke `/tmp` saat CI.
 
 Repo **public** (wajib untuk free hosted minutes; unlimited). Tidak ada runner self-hosted — PC lokal bebas.
 
@@ -8,7 +8,7 @@ Repo **public** (wajib untuk free hosted minutes; unlimited). Tidak ada runner s
 
 | Job | Isi | Secret |
 |---|---|---|
-| `build` | fetch katalog Buffer ke `/tmp/published-videos.json`, agent membuat video, duplicate gate dari file itu, gates, still per shot, bundle → artifact `bundle` (situs Remotion lengkap + `public/`) dan `meta` (`publish.json`, `naskah.txt`) | agent hanya `GEMINI_API_KEY`; `BUFFER_ACCESS_TOKEN` hanya untuk step fetch katalog |
+| `build` | resolve akun (gagal cepat kalau belum dikonfigurasi) → fetch katalog Buffer per akun ke `/tmp/published-videos-<akun>.json`, agent membuat video, account gate (video milik akun + brand yang benar), duplicate gate dari file itu, gates, still per shot, bundle → artifact `bundle` (situs Remotion lengkap + `public/`) dan `meta` (`publish.json`, `naskah.txt`) | agent hanya `GEMINI_API_KEY`; `BUFFER_ACCESS_TOKEN` hanya untuk step fetch katalog |
 | `render` ×4 (matrix `shard`) | tiap runner merender seperempat frame, **tanpa audio** (`--frames=a-b --muted`) → artifact `chunk-<i>` | tidak ada |
 | `publish` | render audio sekali (`audioOnly`, < 1 menit), sambung chunk tanpa encode ulang + audio + loudnorm, cek jumlah frame, Fetch Buffer lagi lalu tolak near-duplicate, publish, lalu laporan sukses | Cloudinary, Buffer, Slack |
 | `report-failure` | jalan hanya kalau ada job gagal; checkout bersih → Slack #social dengan nama step/job yang gagal | Slack |
@@ -21,18 +21,20 @@ Kenapa dipecah: render CPU sudah memakai semua core (`--concurrency` tidak berpe
 |---|---|
 | Worker (weker) | `ops/cloudflare-cron/worker.js` — ter-deploy di akun CF; crons di `wrangler.toml` |
 | Runner | GitHub-hosted `ubuntu-latest` (swangle-only, tidak ada GPU); render dibagi ke 4 runner paralel |
-| Workflow | `.github/workflows/video.yml` — `repository_dispatch[video-run]` + `workflow_dispatch` (manual, opsional input `slug` dan `dry_run`) |
+| Workflow | `.github/workflows/video.yml` — `repository_dispatch[video-run]` (+ `client_payload.account`) dan `workflow_dispatch` (manual, opsional input `slug`, `dry_run`, `account`); concurrency group per akun |
 | Publish | `scripts/publish.mts` (`npm run publish -- <slug>`) — Cloudinary signed upload → Buffer GraphQL; publish fetch Buffer lagi sebelum upload dan menolak kandidat yang sudah dekat dengan post live |
 | Report | `scripts/report.mts` (`npm run report -- <slug>`) — Slack #social; otomatis membaca links dari `/tmp/publish-result.json` bila `--links` kosong |
-| Publikasi history | `scripts/fetch-published-videos.mts` — fetch seluruh post Buffer sent ke `/tmp/published-videos.json`; dipakai duplicate gate dan publish-time check; tidak di-commit |
+| Publikasi history | `scripts/fetch-published-videos.mts` — fetch seluruh post Buffer sent ke `/tmp/published-videos-<akun>.json` (org + channel ID per akun dari `src/accounts.ts`); dipakai duplicate gate dan publish-time check; tidak di-commit |
 | Agent | `ops/ci-prompt.md` — opencode, `--model opencode/inkling-2-small-free` |
 
 ## Setup sekali jalan (baru)
 
 1. **Repo → public** (Settings → Danger Zone). Jangan di-public-kan bila ada secret di tree/history — cek dulu: `git ls-files | grep -E '(^|/)\.env($|\.)|\.key$|secret|service-account'` harus bersih.
-2. **Secrets GitHub Actions** (Settings → Secrets and variables → Actions): `GEMINI_API_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `BUFFER_ACCESS_TOKEN`, `SLACK_BOT_TOKEN`, `SLACK_SOCIAL_CHANNEL_ID`.
+2. **Secrets GitHub Actions** (Settings → Secrets and variables → Actions). Repo secrets yang sudah ada **tidak disentuh** — tetap dipakai Kali Aja, sekaligus jadi *fallback* AI Labs: `GEMINI_API_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `BUFFER_ACCESS_TOKEN`, `SLACK_BOT_TOKEN`, `SLACK_SOCIAL_CHANNEL_ID`. Tidak ada prefix `AI_LABS_*`; semua kunci memakai nama yang sama di level repo dan environment.
+   **Wajib: buat dua GitHub Environments** (Settings → Environments → New environment; salah satunya harus ada karena job `build` dan `publish` mereferensi `environment:` sesuai id akun — **environment yang tidak ada membatalkan run**): `kali-aja` (boleh kosong) dan `ai-labs` (isi hanya kredensial khusus AI Labs). Environment secrets menimpa repo secrets dengan nama yang sama; kalau environment tidak meng-set suatu secret, otomatis dipakai repo secret. Jadi AI Labs boleh tidak setup apa-apa (kredensial Kali Aja dipakai — termasuk kuota TTS sama) atau hanya beberapa kunci (mis. `GEMINI_API_KEY` di environment `ai-labs` untuk kuota TTS terpisah).
+   AI Labs juga butuh 3 ID Buffer di `src/accounts.ts` (lihat `docs/PUBLISHING.md`).
 3. **`VIDEO_SHORT_PAT`** (fine-grained, repo `hendra/yt-video-short-generator`, minimal **Contents: write**) → Cloudflare Worker secret (`npx wrangler secret put VIDEO_SHORT_PAT`) — dipakai Worker untuk memicu dispatch.
-4. **Worker deploy**: `npx wrangler deploy --config ops/cloudflare-cron/wrangler.toml` (butuh `CF_ACCOUNT_ID` + `CF_API_TOKEN` dengan izin Workers Scripts:Edit).
+4. **Worker deploy**: `npx wrangler deploy --config ops/cloudflare-cron/wrangler.toml` (butuh `CF_ACCOUNT_ID` + `CF_API_TOKEN` dengan izin Workers Scripts:Edit). Cron dipicu 6×/hari; setiap tick dispatch **sekali per akun** (`ACCOUNTS`, default `kali-aja,ai-labs`, bisa dipersempit ke `kali-aja` selama AI Labs belum dikonfigurasi).
 5. opencode tidak perlu dipasang manual — workflow meng-install sendiri via `https://opencode.ai/v2/install` pada path autopilot.
 
 ## Trigger manual
@@ -40,7 +42,8 @@ Kenapa dipecah: render CPU sudah memakai semua core (`--concurrency` tidak berpe
 Autopilot (agent bikin video baru):
 
 ```bash
-gh workflow run video-run --ref main
+gh workflow run video-run --ref main                    # channel Kali Aja
+gh workflow run video-run --ref main -f account=ai-labs # channel AI Labs (selama belum dikonfigurasi → gagal cepat + lapor Slack)
 ```
 
 Render+publish video yang **sudah di-commit & push ke main** (mis. video yang kamu bangun sendiri, tanpa agent):
