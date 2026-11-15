@@ -4,7 +4,7 @@
  * Exported so account-core.test.mts can unit-test the shipped code instead of a
  * re-implementation.
  */
-import type { Account, AccountId } from "../src/accounts.ts";
+import { ACCOUNT_IDS, accountById, isAccountId, type Account, type AccountId } from "../src/accounts.ts";
 
 /** The brand line a generated video source must contain, exactly. */
 export const brandLine = (account: Account): string =>
@@ -64,4 +64,15 @@ export const envLines = (account: Account, catalogPath: string): string[] => {
     `AGENT_PROMPT=${prompt}`,
     `CATALOG_PATH=${catalogPath}`,
   ];
+};
+
+/**
+ * Resolve the account a script runs for: the --account flag wins over the ACCOUNT env value;
+ * neither given means the default account. An explicitly empty or unknown value throws —
+ * it must never silently become the default channel.
+ */
+export const resolveAccountArg = (flag: string | undefined, envValue: string | undefined): Account => {
+  const raw = flag ?? envValue;
+  if (raw !== undefined && !isAccountId(raw)) throw new Error(`Unknown account "${raw}". Valid accounts: ${ACCOUNT_IDS.join(", ")}`);
+  return accountById(raw);
 };

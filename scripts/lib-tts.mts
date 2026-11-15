@@ -11,14 +11,13 @@ import os from "node:os";
 import path from "node:path";
 import { analyzeAlignment, ffmpeg } from "./align-core.mts";
 import { type TimedWord, publicDir, videoDir } from "./lib.mts";
+import type { Account } from "../src/accounts.ts";
 
 export type TtsProvider = "gemini" | "gcloud" | "azure" | "elevenlabs";
 export type SynthResult = { audio: Buffer; ext: "mp3" | "wav"; words?: TimedWord[] };
 
 // Locked production identity — do not read from env or swap per-run.
 const GEMINI_TTS_MODEL = "gemini-3.8-flash-tts";
-const GEMINI_TTS_VOICE = "id-id-podcaster-1";
-const GEMINI_TTS_STYLE = "natural, warm, conversational";
 
 const snippet = async (res: Response): Promise<string> => {
   try { return (await res.text()).slice(0, 300); } catch { return ""; }
@@ -27,17 +26,17 @@ const snippet = async (res: Response): Promise<string> => {
 export const xmlEscape = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&apos;").replace(/"/g, "&quot;");
 
-/** Gemini TTS via Google AI Studio. Locked to a natural Indonesian male voice. */
-export const synthesizeGemini = async (text: string): Promise<SynthResult> => {
+/** Gemini TTS via Google AI Studio, in the voice and style of the account the video belongs to. */
+export const synthesizeGemini = async (text: string, tts: Account["tts"]): Promise<SynthResult> => {
   const model = GEMINI_TTS_MODEL;
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: { "x-goog-api-key": process.env.GEMINI_API_KEY!, "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text, speechMetadata: { style: GEMINI_TTS_STYLE } }] }],
+      contents: [{ role: "user", parts: [{ text, speechMetadata: { style: tts.style } }] }],
       generationConfig: {
         responseModalities: ["AUDIO"],
-        speechConfig: { languageCode: "id-ID", voiceConfig: { voice: GEMINI_TTS_VOICE } },
+        speechConfig: { languageCode: "id-ID", voiceConfig: { voice: tts.voice } },
       },
     }),
   });
@@ -156,14 +155,15 @@ export type SynthByProvider = Record<TtsProvider, (text: string) => Promise<Synt
  * On timing-analysis failure the committed pair is left untouched and the fresh
  * audio is kept at os.tmpdir()/vo-<id>-failed.mp3 (never published silently).
  */
-export const synthesizeAndPublish = async ({ videoId, lines, provider, synthByProvider }: {
+export const synthesizeAndPublish = async ({ videoId, lines, provider, tts, synthByProvider }: {
   videoId: string;
   lines: string[];
   provider: "auto" | TtsProvider;
+  tts: Account["tts"];
   synthByProvider?: SynthByProvider;
 }): Promise<RunResult> => {
   const synth: SynthByProvider = synthByProvider ?? {
-    gemini: synthesizeGemini, gcloud: synthesizeGcloud, azure: synthesizeAzure, elevenlabs: synthesizeElevenLabs,
+    gemini: (t) => synthesizeGemini(t, tts), gcloud: synthesizeGcloud, azure: synthesizeAzure, elevenlabs: synthesizeElevenLabs,
   };
   const order: TtsProvider[] = provider === "auto" ? ["gemini"] : [provider];
   const attempts: string[] = [];

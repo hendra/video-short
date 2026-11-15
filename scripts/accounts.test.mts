@@ -27,6 +27,12 @@ describe("account registry", () => {
     assert.ok(k.agent.files.includes("ops/ci-prompt.md"));
   });
 
+  test("existing accounts keep the locked male voice", () => {
+    for (const id of ["kali-aja", "ai-labs"] as const) {
+      assert.deepEqual(ACCOUNTS[id].tts, { voice: "id-id-podcaster-1", style: "natural, warm, conversational" });
+    }
+  });
+
   test("AI Labs has its own identity", () => {
     const a = ACCOUNTS["ai-labs"];
     assert.equal(a.label, "AI Labs");

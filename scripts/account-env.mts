@@ -5,8 +5,8 @@
  * before the agent, before the render shards. Credentials are resolved by GitHub Environments
  * (see ops/README.md) — an unset environment secret falls back to the repository secret.
  */
-import { ACCOUNT_IDS, accountById, isAccountId, isConfigured, missingConfigFields } from "../src/accounts.ts";
-import { envLines } from "./account-core.mts";
+import { isConfigured, missingConfigFields } from "../src/accounts.ts";
+import { envLines, resolveAccountArg } from "./account-core.mts";
 import { publishedVideosPath } from "./lib.mts";
 
 const args = process.argv.slice(2);
@@ -16,17 +16,10 @@ const arg = (name: string) => {
   return inline ? inline.slice(name.length + 3) : idx >= 0 ? args[idx + 1] : undefined;
 };
 
-const accountIdRaw = arg("account") ?? process.env.ACCOUNT;
-
 // Explicitly empty or unknown values fail loudly; no flag at all means the default account.
-if (accountIdRaw !== undefined && !isAccountId(accountIdRaw)) {
-  console.error(`Unknown account "${accountIdRaw}". Valid accounts: ${ACCOUNT_IDS.join(", ")}`);
-  process.exit(1);
-}
-
 let account;
 try {
-  account = accountById(accountIdRaw);
+  account = resolveAccountArg(arg("account"), process.env.ACCOUNT);
 } catch (e) {
   console.error((e as Error).message);
   process.exit(1);

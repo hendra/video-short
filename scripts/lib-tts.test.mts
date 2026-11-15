@@ -59,12 +59,23 @@ afterEach(() => {
 });
 
 describe("synthesizeGemini", () => {
+  test("sends the voice and style it is given", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const calls = mockFetch(() => Promise.resolve(jsonResponse(200, {
+      candidates: [{ content: { parts: [{ inlineData: { data: wavOf(pcmTone(0.5, 440)).toString("base64") } }] } }],
+    })));
+    await synthesizeGemini("halo", { voice: "voice-x", style: "style-y" });
+    const body = JSON.parse(calls[0].init?.body ?? "{}");
+    assert.equal(body.generationConfig.speechConfig.voiceConfig.voice, "voice-x");
+    assert.equal(body.contents[0].parts[0].speechMetadata.style, "style-y");
+  });
+
   test("happy path: PCM wrapped in WAV, correct request shape, voice/language pinned", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     const calls = mockFetch(() => Promise.resolve(jsonResponse(200, {
       candidates: [{ content: { parts: [{ inlineData: { data: wavOf(pcmTone(0.5, 440)).toString("base64") } }] } }],
     })));
-    const out = await synthesizeGemini("halo dunia");
+    const out = await synthesizeGemini("halo dunia", { voice: "id-id-podcaster-1", style: "natural, warm, conversational" });
     assert.equal(out.ext, "wav");
     assert.equal(out.audio.subarray(0, 4).toString(), "RIFF");
     assert.equal(out.audio.length, wavOf(pcmTone(0.5, 440)).length);
@@ -81,7 +92,7 @@ describe("synthesizeGemini", () => {
   test("non-2xx: throws with status, never leaks the key", async () => {
     process.env.GEMINI_API_KEY = "super-secret-key-123";
     mockFetch(() => Promise.resolve(jsonResponse(429, { error: { message: "quota" } })));
-    await assert.rejects(() => synthesizeGemini("x"), (err: Error) => {
+    await assert.rejects(() => synthesizeGemini("x", { voice: "v", style: "s" }), (err: Error) => {
       assert.match(err.message, /gemini 429/);
       assert.ok(!err.message.includes("super-secret-key-123"));
       return true;
@@ -91,7 +102,7 @@ describe("synthesizeGemini", () => {
   test("200 but no audio part: explicit error", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     mockFetch(() => Promise.resolve(jsonResponse(200, { candidates: [{ content: { parts: [{}] } }] })));
-    await assert.rejects(() => synthesizeGemini("x"), /no audio data/);
+    await assert.rejects(() => synthesizeGemini("x", { voice: "v", style: "s" }), /no audio data/);
   });
 });
 

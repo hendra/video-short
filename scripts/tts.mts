@@ -1,12 +1,14 @@
 /**
  * Generate the voiceover AND word timing in one command.
- *   npm run tts -- <id> [--provider=auto|gemini]
- * Default: Gemini 3.8 Flash TTS pinned to `id-id-podcaster-1` (natural Indonesian male).
- * There is no automatic or manual voice switch through this command; a failed run stops and reports. Timing comes
+ *   npm run tts -- <id> [--provider=auto|gemini] [--account <id>]
+ * Gemini 3.8 Flash TTS in the voice of the video's account (`tts` in src/accounts.ts). The account is
+ * --account, else the ACCOUNT env var (set by CI's "Resolve account" step), else the default account.
+ * There is no provider fallback and no other voice switch; a failed run stops and reports. Timing comes
  * from the bundled offline aligner — no with-timestamps API needed.
  */
 import { loadDotenv, readScript, videoIdArg } from "./lib.mts";
 import { synthesizeAndPublish, type TtsProvider } from "./lib-tts.mts";
+import { resolveAccountArg } from "./account-core.mts";
 
 loadDotenv();
 const id = videoIdArg();
@@ -21,6 +23,21 @@ if (!(VALID as readonly string[]).includes(provider)) {
   process.exit(1);
 }
 
+const accountInline = process.argv.find((a) => a.startsWith("--account="));
+const accountIdx = process.argv.indexOf("--account");
+const accountFlag = accountInline ? accountInline.slice("--account=".length) : accountIdx > 0 ? process.argv[accountIdx + 1] : undefined;
+let account;
+try {
+  account = resolveAccountArg(accountFlag, process.env.ACCOUNT);
+} catch (e) {
+  console.error((e as Error).message);
+  process.exit(1);
+}
+if (account.tts.voice.startsWith("TODO_")) {
+  console.error(`suara akun ${account.id} belum dipilih (tts.voice di src/accounts.ts)`);
+  process.exit(1);
+}
+
 const lines = readScript(id);
 // Blank line between script lines -> natural pause for the silence detector.
 const text = lines.join("\n\n");
@@ -29,7 +46,7 @@ if (lines.length === 0 || text.trim().length === 0) {
   process.exit(1);
 }
 
-const result = await synthesizeAndPublish({ videoId: id, lines, provider: provider as "auto" | TtsProvider });
+const result = await synthesizeAndPublish({ videoId: id, lines, provider: provider as "auto" | TtsProvider, tts: account.tts });
 if (!result.ok) {
   if (result.analysisFailure) {
     console.error(`Synthesis succeeded but timing analysis failed: ${result.analysisFailure.reason}`);
