@@ -4,6 +4,8 @@ Tested end-to-end 2026-11-11. Read this before any upload; `git log --oneline do
 
 ## Env keys (`.env`, always gitignored)
 
+Kredensial di-list **per akun**. Resep penulisan `.env` sama untuk keduanya (nama kanonik selalu sama; workflow yang memilih secret mana):
+
 ```
 BUFFER_ACCESS_TOKEN=      # Buffer API token. Scopes in use: posts:read + posts:write ONLY.
                           # It CANNOT list channels or account (those need account:read) — use the fixed channel IDs below.
@@ -12,13 +14,25 @@ CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 ```
 
-## Channel IDs (same as docs/AUTOPILOT.md §0)
+- Kali Aja: isi langsung dengan kunci channel Kali Aja (nama secret lama di CI, mis. `BUFFER_ACCESS_TOKEN`, `CLOUDINARY_API_KEY`, …).
+- AI Labs: di CI diisi dari secret `AI_LABS_BUFFER_ACCESS_TOKEN`, `AI_LABS_CLOUDINARY_CLOUD_NAME`, `AI_LABS_CLOUDINARY_API_KEY`, `AI_LABS_CLOUDINARY_API_SECRET`, `AI_LABS_GEMINI_API_KEY`; kalau di-set manual di `.env`, cukup isi baris di atas dengan kunci AI Labs.
 
-| Channel | ID |
-|---|---|
-| YouTube — **Kali Aja Tau** | `6aedb753e29c69a171803f6e` |
-| TikTok — **kaliajatau01** | `6aedb7fee29c69a171804662` |
-| Buffer organization | `6aed53e7ec5c7c6d73f3e437` |
+## Channel IDs (lihat juga docs/AUTOPILOT.md §0)
+
+Sekarang di `src/accounts.ts` (sumber kebenaran tunggal). Ringkasan:
+
+| Channel | Akun `kali-aja` | Akun `ai-labs` |
+|---|---|---|
+| YouTube | `6aedb753e29c69a171803f6e` | `TODO_AI_LABS_YOUTUBE_CHANNEL_ID` |
+| TikTok | `6aedb7fee29c69a171804662` | `TODO_AI_LABS_TIKTOK_CHANNEL_ID` |
+| Buffer organization | `6aed53e7ec5c7c6d73f3e437` | `TODO_AI_LABS_BUFFER_ORG_ID` |
+| `categoryId` YouTube | `27` (Education) | `30` (Science & Technology) |
+| Brand overlay | prefix `Kali Aja ` + accent `Tau` | prefix `AI ` + accent `Labs` |
+| Token Buffer (scope `posts:read`+`posts:write`) | `BUFFER_ACCESS_TOKEN` | `AI_LABS_BUFFER_ACCESS_TOKEN` |
+
+AI Labs belum bisa dipublish sampai ID `TODO_` di atas diisi di `src/accounts.ts` dan secret `AI_LABS_*` dipasang di GitHub (job `Resolve account` gagal cepat + laporan ke Slack kalau belum dikonfigurasi).
+
+Publikasi tetap per akun: `npm run publish -- <slug>` membaca `account` dari `src/videos/<slug>/publish.json`; `--account <id>` (opsional) hanyalah cross-check dan menolak kalau tidak cocok. Hal yang sama berlaku untuk `scripts/fetch-published-videos.mts --account` dan `scripts/check-duplicates.mts --db`.
 
 ## Step 1 — Host the MP4 (Cloudinary signed upload)
 
@@ -101,7 +115,7 @@ Success: `{ "ok": true, "channel": "C0CDV7Y555K", "ts": "..." }` (a harmless `mi
 
 ## Step 4 — Done — committed catalog
 
-Video source is not committed: source lives only in the CI VM and is discarded when the job ends. CI fetches Buffer history into `/tmp/published-videos.json` for duplicate/republication checks; nothing from it is committed or preserved. The publish command fetches Buffer again before uploading and refuses a candidate that matches a live post.
+Video source is not committed: source lives only in the CI VM and is discarded when the job ends. CI fetches Buffer history into `/tmp/published-videos-<account>.json` for duplicate/republication checks; nothing from it is committed or preserved. The publish command fetches Buffer again before uploading and refuses a candidate that matches a live post.
 
 ## Content requirements (not negotiable for this channel)
 

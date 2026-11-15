@@ -1,6 +1,8 @@
 # AGENTS.md — explainer-3d
 
-Vertical (1080×1920) 3D explainer Shorts for YouTube/TikTok: Remotion + React Three Fiber, AI voiceover (Google AI Studio TTS, free) with per-word timing, karaoke captions. Content language is Indonesian (santai-profesional). Channel brand: prefix `Kali Aja `, accent `Tau`.
+Vertical (1080×1920) 3D explainer Shorts for YouTube/TikTok: Remotion + React Three Fiber, AI voiceover (Google AI Studio TTS, free) with per-word timing, karaoke captions. Content language is Indonesian (santai-profesional).
+
+**This pipeline publishes to more than one channel account.** Account config lives in `src/accounts.ts` (brand, Buffer org/channel ids, YouTube category, credential prefix, agent instruction files). A run is scoped to one account; `publish.json` carries `account` and the publish channel follows it. Brand is per video (`VideoDef.brand`) — do not hardcode one channel's brand.
 
 Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test, offline/mocked) + bundling + eyeballing stills.
 
@@ -48,7 +50,7 @@ Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test,
 ## Publishing & automation
 
 - `docs/AUTOPILOT.md` is the scheduled-task runbook (Mon/Wed/Fri) for end-to-end production → YouTube + TikTok. If asked to "make a video" end-to-end, read it first — topic rules, quality bar, commit expectations (CI commits nothing after publish). Publishing mechanics (Buffer GraphQL, Cloudinary signed upload, token scopes, poll `post(input:{id})`): **`docs/PUBLISHING.md`** (tested 2026-11-11) — read BEFORE any upload; no "| 11.ai" suffix for Gemini VO (ElevenLabs-Free only).
-- **Nothing generated lands in git.** The duplicate/republication lookup is fetched from Buffer into `/tmp/published-videos.json` during CI; no catalog is committed. Buffer remains the source of truth; source, VO, alignment, and render output are never committed.
+- **Nothing generated lands in git.** The duplicate/republication lookup is fetched from Buffer into `/tmp/published-videos-<account>.json` during CI; no catalog is committed. Buffer remains the source of truth; source, VO, alignment, and render output are never committed.
 
 ## Gotchas
 
