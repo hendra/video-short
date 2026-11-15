@@ -153,7 +153,7 @@ jobs:
           # unsupported interactive Web Search request). Do not throw that work away here. The
           # downstream Discover/Gates/Still/Upload/Publish checks remain the authority and will
           # reject incomplete or broken output.
-          mapfile -t FILES <<< "$AGENT_FILES"
+          read -ra FILES <<< "$AGENT_FILES"
           ARGS=()
           for f in "${FILES[@]}"; do ARGS+=(--file "$f"); done
           set +e
