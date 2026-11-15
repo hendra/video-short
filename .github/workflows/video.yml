@@ -14,13 +14,18 @@ on:
         required: false
         default: false
         type: boolean
+      account:
+        description: "Channel account for this run (kali-aja | ai-labs). Empty = kali-aja."
+        required: false
+        default: 'kali-aja'
+        type: string
 
 env:
   # Render shards = entries in jobs.render.strategy.matrix.shard (keep the two in sync).
   SHARDS: 4
 
 concurrency:
-  group: video-run
+  group: video-run-${{ github.event.client_payload.account || inputs.account || 'kali-aja' }}
   cancel-in-progress: false
 
 # Default token is read-only; no job pushes to the repository.
@@ -28,6 +33,8 @@ permissions:
   contents: read
 
 # build (agent + gates + bundle) -> render (N shards in parallel, video only) -> publish (concat + audio + upload)
+# A run is scoped to ONE channel account (Kali Aja or AI Labs), selected by the trigger:
+#   repository_dispatch client_payload.account, or workflow_dispatch input `account`.
 # Publish/Slack secrets are scoped to the publish/report-failure jobs. The build job uses a
 # step-scoped BUFFER_ACCESS_TOKEN only to fetch public post metadata into /tmp; it is never written to .env or the repo.
 jobs:
@@ -37,6 +44,7 @@ jobs:
     outputs:
       slug: ${{ steps.slug.outputs.slug || steps.manualslug.outputs.slug }}
       frames: ${{ steps.frames.outputs.frames }}
+      account: ${{ steps.acct.outputs.account }}
       failed_step: ${{ steps.failed.outputs.step }}
     steps:
       - uses: actions/checkout@v5
@@ -71,18 +79,9 @@ jobs:
           echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
           "$HOME/.opencode/bin/opencode" --version
 
-      # The agent gets GEMINI_API_KEY only. The published-video lookup uses a step-scoped
+      # The agent gets a GEMINI_API_KEY and nothing else. The published-video lookup uses a step-scoped
       # BUFFER_ACCESS_TOKEN and writes only public metadata to /tmp; no .env or repo data is used.
-      # Publish secrets are written LATER (see "Write publish .env"), AFTER the
-      # agent/render steps, so the agent never sees them.
-      - name: Write agent .env from secrets
-        if: github.event.inputs.slug == ''
-        shell: bash
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          umask 077
-          printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" > .env
+      # Publish secrets are written in the publish job, AFTER the build, so the agent never sees them.
 
       # Manual path (workflow_dispatch -f slug=<slug>): the video is already
       # committed; skip the agent and refuse to republish or run half-built videos.
@@ -106,11 +105,40 @@ jobs:
       - name: Dependencies
         run: npm ci
 
+      # Resolve the account: sets ACCOUNT, ACCOUNT_LABEL, BRAND_LINE, YOUTUBE_CATEGORY_ID,
+      # AGENT_MODEL, AGENT_FILES, AGENT_PROMPT, CATALOG_PATH. Fails fast (before the agent and
+      # before any render) when the account's Buffer config still holds TODO_ placeholders.
+      - name: Resolve account
+        id: acct
+        env:
+          ACCOUNT: ${{ inputs.account || github.event.client_payload.account || 'kali-aja' }}
+        run: |
+          npx tsx scripts/account-env.mts --account "$ACCOUNT" --require-configured >> "$GITHUB_ENV"
+          echo "account=$ACCOUNT" >> "$GITHUB_OUTPUT"
+
+      # The agent gets a GEMINI_API_KEY and nothing else, and it belongs to this account.
+      - name: Write agent .env from secrets
+        if: github.event.inputs.slug == ''
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AI_LABS_GEMINI_API_KEY: ${{ secrets.AI_LABS_GEMINI_API_KEY }}
+        run: |
+          umask 077
+          AGENT_KEY="$GEMINI_API_KEY"
+          if [ "$ACCOUNT" = "ai-labs" ]; then AGENT_KEY="$AI_LABS_GEMINI_API_KEY"; fi
+          printf 'GEMINI_API_KEY=%s\n' "$AGENT_KEY" > .env
+
       - name: Fetch published-video catalog from Buffer
         id: catalog
         env:
           BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
-        run: npx tsx scripts/fetch-published-videos.mts --out /tmp/published-videos.json
+          AI_LABS_BUFFER_ACCESS_TOKEN: ${{ secrets.AI_LABS_BUFFER_ACCESS_TOKEN }}
+        run: |
+          CATALOG_TOKEN="$BUFFER_ACCESS_TOKEN"
+          if [ "$ACCOUNT" = "ai-labs" ]; then CATALOG_TOKEN="$AI_LABS_BUFFER_ACCESS_TOKEN"; fi
+          export BUFFER_ACCESS_TOKEN="$CATALOG_TOKEN"
+          npx tsx scripts/fetch-published-videos.mts --account "$ACCOUNT" --out "$CATALOG_PATH"
 
       - name: Agent builds the video
         id: agent
@@ -126,8 +154,11 @@ jobs:
           # unsupported interactive Web Search request). Do not throw that work away here. The
           # downstream Discover/Gates/Still/Upload/Publish checks remain the authority and will
           # reject incomplete or broken output.
+          mapfile -t FILES <<< "$AGENT_FILES"
+          ARGS=()
+          for f in "${FILES[@]}"; do ARGS+=(--file "$f"); done
           set +e
-          "$HOME/.opencode/bin/opencode" run --auto --standalone --model opencode/inkling-2-small-free --file AGENTS.md --file docs/AUTOPILOT.md --file ops/ci-prompt.md "You are in CI. Follow AGENTS.md and docs/AUTOPILOT.md. Follow ops/ci-prompt.md exactly. Stop before any publish/upload/render step." 2>&1 | tee /tmp/opencode-agent.log
+          "$HOME/.opencode/bin/opencode" run --auto --standalone --model "$AGENT_MODEL" "${ARGS[@]}" "$AGENT_PROMPT" 2>&1 | tee /tmp/opencode-agent.log
           AGENT_STATUS=${PIPESTATUS[0]}
           if [ "$AGENT_STATUS" -ne 0 ]; then
             echo "::warning title=Agent exited $AGENT_STATUS::agent exited non-zero; relying on deterministic downstream gates"
@@ -151,11 +182,17 @@ jobs:
           echo "SLUG=$SLUG" >> "$GITHUB_ENV"
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
 
+      # The video must belong to this run's account and carry its brand. Runs on both paths
+      # (autopilot build and manual render+publish of a committed video).
+      - name: Account gate
+        id: accountgate
+        run: npx tsx scripts/account-gate.mts --account "$ACCOUNT" --slug "$SLUG"
+
       # Deterministic near-duplicate gate: fail before music/render/publish when the candidate
       # topic/title is too close to anything previously published, using the Buffer snapshot from this job.
       - name: Duplicate gate
         id: duplicates
-        run: npx tsx scripts/check-duplicates.mts "$SLUG" --db /tmp/published-videos.json
+        run: npx tsx scripts/check-duplicates.mts "$SLUG" --db "$CATALOG_PATH"
 
       # music.wav is gitignored and synthesized by predev/prerender, which the direct
       # `npx remotion bundle` below never triggers — synthesize it here or the render 404s on the asset.
@@ -217,8 +254,10 @@ jobs:
           MANUALSLUG_O: ${{ steps.manualslug.outcome }}
           GATES_O: ${{ steps.gates.outcome }}
           STILLS_O: ${{ steps.stills.outcome }}
+          ACCT_O: ${{ steps.acct.outcome }}
+          ACCOUNTGATE_O: ${{ steps.accountgate.outcome }}
         run: |
-          for pair in "install:$INSTALL_O" "catalog:$CATALOG_O" "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "duplicates:$DUPLICATES_O" "gates:$GATES_O" "stills:$STILLS_O"; do
+          for pair in "install:$INSTALL_O" "acct:$ACCT_O" "catalog:$CATALOG_O" "agent:$AGENT_O" "slug:$SLUG_O" "manualslug:$MANUALSLUG_O" "accountgate:$ACCOUNTGATE_O" "duplicates:$DUPLICATES_O" "gates:$GATES_O" "stills:$STILLS_O"; do
             if [ "${pair##*:}" = "failure" ]; then echo "step=${pair%%:*}" >> "$GITHUB_OUTPUT"; break; fi
           done
 
@@ -284,6 +323,7 @@ jobs:
     env:
       SLUG: ${{ needs.build.outputs.slug }}
       FRAMES: ${{ needs.build.outputs.frames }}
+      ACCOUNT: ${{ needs.build.outputs.account }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -349,23 +389,36 @@ jobs:
           retention-days: 3
 
       # Video source is not committed; publishing fetches Buffer history directly.
-      # Secrets are passed as step env (the scripts read process.env); no .env file is written.
+      # Secrets are passed as step env, written into a step-scoped .env with canonical names;
+      # the AI Labs credentials live in AI_LABS_* secrets.
       - name: Publish (Cloudinary → Buffer YT + TikTok)
         id: publish
         if: ${{ !inputs.dry_run }}
         env:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          AI_LABS_CLOUDINARY_CLOUD_NAME: ${{ secrets.AI_LABS_CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          AI_LABS_CLOUDINARY_API_KEY: ${{ secrets.AI_LABS_CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          AI_LABS_CLOUDINARY_API_SECRET: ${{ secrets.AI_LABS_CLOUDINARY_API_SECRET }}
           BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
-        run: npm run publish -- "$SLUG"
+          AI_LABS_BUFFER_ACCESS_TOKEN: ${{ secrets.AI_LABS_BUFFER_ACCESS_TOKEN }}
+        run: |
+          umask 077
+          : > .env
+          for key in CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET BUFFER_ACCESS_TOKEN; do
+            src="$key"
+            if [ "$ACCOUNT" = "ai-labs" ]; then src="AI_LABS_$key"; fi
+            printf '%s=%s\n' "$key" "${!src:-}" >> .env
+          done
+          npm run publish -- "$SLUG" --account "$ACCOUNT"
 
       - name: Success report (Slack #social)
         if: ${{ success() && !inputs.dry_run }}
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_SOCIAL_CHANNEL_ID: ${{ secrets.SLACK_SOCIAL_CHANNEL_ID }}
-        run: npm run report -- "$SLUG"
+        run: npm run report -- "$SLUG" --account "$ACCOUNT"
 
       - name: Name the failing step
         id: failed
@@ -409,6 +462,7 @@ jobs:
           PUBLISH_R: ${{ needs.publish.result }}
           BUILD_STEP: ${{ needs.build.outputs.failed_step }}
           PUBLISH_STEP: ${{ needs.publish.outputs.failed_step }}
+          ACCOUNT: ${{ needs.build.outputs.account || 'kali-aja' }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           # First failing job, refined to the step when that job reported one.
@@ -416,4 +470,4 @@ jobs:
           elif [ "$RENDER_R" != "success" ]; then FAILSTEP=render
           else FAILSTEP="${PUBLISH_STEP:-publish}"; fi
           [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || SLUG=ci
-          npm run report -- "$SLUG" --step "$FAILSTEP" --error "run gagal di step $FAILSTEP — lihat $RUN_URL" || true
+          npm run report -- "$SLUG" --account "$ACCOUNT" --step "$FAILSTEP" --error "run gagal di step $FAILSTEP — lihat $RUN_URL" || true
