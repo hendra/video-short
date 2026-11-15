@@ -75,7 +75,7 @@ for (const [n, v] of [["CLOUDINARY_CLOUD_NAME", CLOUD_NAME], ["CLOUDINARY_API_KE
 const published = await fetchPublishedVideos(BUFFER, account.id);
 {
   const match = findDuplicate(PUB as CandidatePost, published);
-  if (match) fail(`publish refused: candidate is too similar to a live Buffer post (${match.field}; containment ${match.containment.toFixed(2)}, jaccard ${match.jaccard.toFixed(2)}) — choose a different video or inspect YouTube/TikTok`);
+  if (match) fail(`publish refused: candidate is too similar to a live Buffer post (${match.field}; containment ${match.containment.toFixed(2)}, jaccard ${match.jaccard.toFixed(2)}) — choose a different video or inspect YouTube/TikTok. Kalau post itu adalah video yang sama dari retry run yang sebelumnya setengah gagal (YouTube live, TikTok belum), purge post itu di Buffer atau tayangkannya manual, lalu jalankan lagi`);
 }
 
 // ---------- 1. Cloudinary signed upload

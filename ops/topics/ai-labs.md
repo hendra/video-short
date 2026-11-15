@@ -3,16 +3,11 @@
 Backlog kurasi untuk channel **AI Labs** (tips & trik Claude, ChatGPT, Gemini, OpenCode).
 Satu topik per video. Setiap baris: `- <slug>: <judul ide> — <URL sumber resmi> (<tool>)`.
 
-Aturan pakai:
-- Ambil **satu** topik yang judulnya belum pernah tayang (lihat katalog video yang-published di path yang diberikan prompt run).
-- **Verifikasi** klaim ke URL sumbernya (WebFetch) sebelum menulis naskah. Kalau sumbernya tak terjangkau → ganti topik, jangan mengarang.
-- Sisa topik yang belum terpakai < 3 → **berhenti dan lapor** (jangan mengarang topik).
-
-Format baris: `- <slug>: <judul ide> — <URL sumber resmi> (<Claude|ChatGPT|Gemini|OpenCode>)`
+Aturan pakai. Ambil satu topik yang judulnya belum pernah tayang (lihat katalog video yang-published di path yang diberikan prompt run). Verifikasi klaim ke URL sumbernya (WebFetch) sebelum menulis naskah. Kalau sumbernya tak terjangkau, ganti topik. Kalau sisa topik yang belum terpakai kurang dari 3, berhenti dan lapor. Format satu baris: `- <slug>: <judul ide> — <URL sumber resmi> (<Claude|ChatGPT|Gemini|OpenCode>)`.
 
 - nano-banana-edit-foto: Edit foto journalis pakai Nano Banana, ganti background tanpa brush — https://ai.google.dev/gemini-api/docs/image-generation (Gemini)
 - nano-banana-iterasi-gambar: Iterasi gambar bertahap lewat previous_interaction_id, satu objek tetap konsisten — https://ai.google.dev/gemini-api/docs/image-generation (Gemini)
-- nano-banana-14 referensi: Campur 14 foto referensi untuk bikin karakter sama di beberapa gambar — https://ai.google.dev/gemini-api/docs/image-generation (Gemini)
+- nano-banana-14-referensi: Campur 14 foto referensi untuk bikin karakter sama di beberapa gambar — https://ai.google.dev/gemini-api/docs/image-generation (Gemini)
 - nano-banana-search-grounding: Gambar dari data real-time pakai Google Search grounding — https://ai.google.dev/gemini-api/docs/image-generation (Gemini)
 - gemini-omni-flash-video: Bikin video 15 detik lengkap dengan suara pakai Gemini Omni Flash — https://ai.google.dev/gemini-api/docs/omni (Gemini)
 - veo-dimatikan-pindah: Veo 3.1 Preview dimatikan, pindah ke Gemini Omni Flash — https://ai.google.dev/gemini-api/docs/veo (Gemini)
@@ -22,7 +17,7 @@ Format baris: `- <slug>: <judul ide> — <URL sumber resmi> (<Claude|ChatGPT|Gem
 - gemini-function-calling: Function calling, Gemini memanggil tool aplikasi kamu — https://ai.google.dev/gemini-api/docs/function-calling (Gemini)
 - gemini-code-execution: Code execution, Gemini menulis lalu menjalankan kode sendiri — https://ai.google.dev/gemini-api/docs/code-execution (Gemini)
 - gemini-context-satu-juta: Context window 1 juta token untuk muat repo penuh — https://ai.google.dev/gemini-api/docs/long-context (Gemini)
-- gemini-thinking-mode: Thinking mode, kapan_ON dan kapan hemat token — https://ai.google.dev/gemini-api/docs/thinking (Gemini)
+- gemini-thinking-mode: Thinking mode, kapan perlu dan kapan hemat token — https://ai.google.dev/gemini-api/docs/thinking (Gemini)
 - gemini-file-search-rag: File Search untuk RAG tanpa bangun infrastruktur — https://ai.google.dev/gemini-api/docs/file-search (Gemini)
 - gemini-computer-use: Computer use, Gemini klik aplikasi di layar buat kamu — https://ai.google.dev/gemini-api/docs/computer-use (Gemini)
 - gemini-speech-multi-speaker: Bikin suara AI multi-speaker tanpa rekam sample — https://ai.google.dev/gemini-api/docs/speech-generation (Gemini)

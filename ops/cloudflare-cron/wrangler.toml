@@ -2,9 +2,10 @@ name = "video-short-cron"
 main = "worker.js"
 compatibility_date = "2026-11-11"
 
-# Satu dispatch per akun per tick. Persempit ke "kali-aja" selama AI Labs belum dikonfigurasi.
+# Satu dispatch per akun per tick. AI Labs tetap dimatikan sampai ID Buffer + secret AI_LABS_* terisi
+# di src/accounts.ts — set "kali-aja,ai-labs" setelahnya (lihat docs/PUBLISHING.md § Channel IDs).
 [vars]
-ACCOUNTS = "kali-aja,ai-labs"
+ACCOUNTS = "kali-aja"
 
 [triggers]
 crons = ["30 0,2,4,5,9,12 * * *"]

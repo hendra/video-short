@@ -1,12 +1,50 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ACCOUNTS } from "../src/accounts.ts";
+import { accountProblems, brandProblems, envLines, missingSecrets, secretNameFor } from "./account-core.mts";
 
 const ALL_ACCOUNTS = Object.values(ACCOUNTS);
-import { accountProblems, brandProblems, envLines, secretNameFor } from "./account-core.mts";
-
 const kaliAja = ACCOUNTS["kali-aja"];
 const aiLabs = ACCOUNTS["ai-labs"];
+
+describe("missingSecrets", () => {
+  const fill = (account: (typeof ACCOUNTS)["kali-aja"] | (typeof ACCOUNTS)["ai-labs"]) =>
+    Object.fromEntries(
+      ["GEMINI_API_KEY", "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "BUFFER_ACCESS_TOKEN"]
+        .map((k) => [secretNameFor(account, k), "value"]),
+    );
+
+  test("AI Labs reports every missing AI_LABS_* secret by the secret name", () => {
+    assert.deepEqual(missingSecrets(aiLabs, {}), [
+      "AI_LABS_GEMINI_API_KEY",
+      "AI_LABS_CLOUDINARY_CLOUD_NAME",
+      "AI_LABS_CLOUDINARY_API_KEY",
+      "AI_LABS_CLOUDINARY_API_SECRET",
+      "AI_LABS_BUFFER_ACCESS_TOKEN",
+    ]);
+  });
+
+  test("AI Labs passes when all five AI_LABS_* secrets are present", () => {
+    assert.deepEqual(missingSecrets(aiLabs, fill(aiLabs)), []);
+  });
+
+  test("Kali Aja reads the canonical names", () => {
+    assert.deepEqual(missingSecrets(kaliAja, {}), [
+      "GEMINI_API_KEY",
+      "CLOUDINARY_CLOUD_NAME",
+      "CLOUDINARY_API_KEY",
+      "CLOUDINARY_API_SECRET",
+      "BUFFER_ACCESS_TOKEN",
+    ]);
+    assert.deepEqual(missingSecrets(kaliAja, fill(kaliAja)), []);
+  });
+
+  test("ordering is canonical, not insertion order", () => {
+    const partial = fill(aiLabs);
+    delete partial.AI_LABS_BUFFER_ACCESS_TOKEN;
+    assert.deepEqual(missingSecrets(aiLabs, partial), ["AI_LABS_BUFFER_ACCESS_TOKEN"]);
+  });
+});
 
 describe("secretNameFor", () => {
   test("Kali Aja keeps the canonical secret name", () => {

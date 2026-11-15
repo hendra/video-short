@@ -8,7 +8,7 @@ const briefPath = path.join(ROOT, "ops", "accounts", "ai-labs.md");
 const topicsPath = path.join(ROOT, "ops", "topics", "ai-labs.md");
 
 const ENTRY = /^- ([a-z0-9-]+): (.+) — (https:\/\/\S+) \((Claude|ChatGPT|Gemini|OpenCode)\)$/;
-/** An entry line starts with a slug; the file may also contain prose bullets. */
+/** An entry line starts with a slug; the file may also contain prose lines. */
 const ENTRY_LINE = /^- [a-z0-9-]+: /;
 
 const entryLines = (text: string): string[] => text.split(/\r?\n/).filter((l) => ENTRY_LINE.test(l));
@@ -50,6 +50,12 @@ describe("AI Labs topic backlog", () => {
     for (const line of entryLines(fs.readFileSync(topicsPath, "utf8"))) {
       assert.ok(ENTRY.test(line), `malformed entry: ${line}`);
     }
+  });
+
+  test("every dash line is a valid entry — nothing is silently skipped", () => {
+    const lines = fs.readFileSync(topicsPath, "utf8").split(/\r?\n/);
+    const bad = lines.filter((l) => l.startsWith("- ") && !ENTRY.test(l));
+    assert.deepEqual(bad, [], `malformed dash lines: ${bad.join(" | ")}`);
   });
 
   test("slugs are unique", () => {

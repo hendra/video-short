@@ -6,13 +6,13 @@
  * Weker saja — semua kerja berat terjadi di runner GitHub-hosted (ubuntu-latest).
  *
  * Env:
- *   ACCOUNTS            — comma-separated account ids to dispatch. Default: "kali-aja,ai-labs".
- *                        Persempit ("kali-aja") selama AI Labs belum dikonfigurasi.
+ *   ACCOUNTS            — comma-separated account ids to dispatch. Default: "kali-aja".
+ *                        Tambahkan "ai-labs" setelah ID Buffer + secret AI_LABS_* terisi.
  *   VIDEO_SHORT_PAT     — fine-grained PAT with Contents: read+write on the repo
  *   SLACK_BOT_TOKEN, SLACK_SOCIAL_CHANNEL_ID — warning saat dispatch gagal
  */
 
-const DEFAULT_ACCOUNTS = "kali-aja,ai-labs";
+const DEFAULT_ACCOUNTS = "kali-aja";
 
 /** Dispatch one account; returns null on success, or a failure record. */
 async function dispatchOne(account, env) {
