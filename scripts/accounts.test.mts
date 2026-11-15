@@ -31,7 +31,7 @@ describe("account registry", () => {
     const a = ACCOUNTS["ai-labs"];
     assert.equal(a.label, "AI Labs");
     assert.deepEqual(a.brand, { prefix: "AI ", accent: "Labs" });
-    assert.equal(a.youtubeCategoryId, "30");
+    assert.equal(a.youtubeCategoryId, "28");
     assert.deepEqual(a.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/ai-labs.md", "ops/topics/ai-labs.md"]);
   });
 

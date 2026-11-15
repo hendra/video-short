@@ -27,7 +27,7 @@ Sekarang di `src/accounts.ts` (sumber kebenaran tunggal). Ringkasan:
 | YouTube | `6aedb753e29c69a171803f6e` | `TODO_AI_LABS_YOUTUBE_CHANNEL_ID` |
 | TikTok | `6aedb7fee29c69a171804662` | `TODO_AI_LABS_TIKTOK_CHANNEL_ID` |
 | Buffer organization | `6aed53e7ec5c7c6d73f3e437` | `TODO_AI_LABS_BUFFER_ORG_ID` |
-| `categoryId` YouTube | `27` (Education) | `30` (Science & Technology) |
+| `categoryId` YouTube | `27` (Education) | `28` (Science & Technology) |
 | Brand overlay | prefix `Kali Aja ` + accent `Tau` | prefix `AI ` + accent `Labs` |
 | Token Buffer (scope `posts:read`+`posts:write`) | `BUFFER_ACCESS_TOKEN` (repo) | `BUFFER_ACCESS_TOKEN` (environment `ai-labs` menimpa, atau fallback repo) |
 
