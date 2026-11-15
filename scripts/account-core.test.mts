@@ -51,7 +51,7 @@ describe("envLines", () => {
     assert.equal(env.get("ACCOUNT"), "ai-labs");
     assert.equal(env.get("ACCOUNT_LABEL"), "AI Labs");
     assert.equal(env.get("BRAND_LINE"), 'brand: { prefix: "AI ", accent: "Labs" }');
-    assert.equal(env.get("YOUTUBE_CATEGORY_ID"), "30");
+    assert.equal(env.get("YOUTUBE_CATEGORY_ID"), "28");
     assert.equal(env.get("AGENT_MODEL"), "opencode/inkling-2-small-free");
     assert.equal(env.get("AGENT_FILES"), "AGENTS.md ops/ci-prompt.md ops/accounts/ai-labs.md ops/topics/ai-labs.md");
     assert.equal(env.get("CATALOG_PATH"), "/tmp/published-videos-ai-labs.json");

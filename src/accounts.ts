@@ -55,7 +55,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       youtubeChannelId: "6af91d59ece6dfde5fcb8689",
       tiktokChannelId: "6af91d8bece6dfde5fcb87ac",
     },
-    youtubeCategoryId: "30",
+    youtubeCategoryId: "28",
     agent: {
       model: "opencode/inkling-2-small-free",
       prompt:
