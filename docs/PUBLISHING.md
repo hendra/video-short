@@ -24,14 +24,14 @@ Sekarang di `src/accounts.ts` (sumber kebenaran tunggal). Ringkasan:
 
 | Channel | Akun `kali-aja` | Akun `ai-labs` |
 |---|---|---|
-| YouTube | `6aedb753e29c69a171803f6e` | `TODO_AI_LABS_YOUTUBE_CHANNEL_ID` |
-| TikTok | `6aedb7fee29c69a171804662` | `TODO_AI_LABS_TIKTOK_CHANNEL_ID` |
-| Buffer organization | `6aed53e7ec5c7c6d73f3e437` | `TODO_AI_LABS_BUFFER_ORG_ID` |
+| YouTube | `6aedb753e29c69a171803f6e` | `6af91d59ece6dfde5fcb8689` |
+| TikTok | `6aedb7fee29c69a171804662` | `6af91d8bece6dfde5fcb87ac` |
+| Buffer organization | `6aed53e7ec5c7c6d73f3e437` | `67654dffc44cce0b50102d9e` |
 | `categoryId` YouTube | `27` (Education) | `28` (Science & Technology) |
 | Brand overlay | prefix `Kali Aja ` + accent `Tau` | prefix `AI ` + accent `Labs` |
-| Token Buffer (scope `posts:read`+`posts:write`) | `BUFFER_ACCESS_TOKEN` (repo) | `BUFFER_ACCESS_TOKEN` (environment `ai-labs` menimpa, atau fallback repo) |
+| Token Buffer (scope `posts:read`+`posts:write`) | `BUFFER_ACCESS_TOKEN` (repo) | `BUFFER_ACCESS_TOKEN` (di environment `ai-labs`) |
 
-AI Labs belum bisa dipublish sampai ID `TODO_` di atas diisi di `src/accounts.ts` (job `Resolve account` gagal cepat + laporan ke Slack kalau masih placeholder).
+Kedua akun sudah **aktif dan tayang**: AI Labs tayang perdana pada **2026-11-15** (slug `claude-skills-packaging`, `workflow_dispatch` manual; `Resolve account` → video dibangun → posting ke kedua platform). Environment `kali-aja` kosong (fallback repo secrets), `ai-labs` berisi 5 kunci AI Labs dan dipakai oleh job `build` serta `publish`.
 
 Publikasi tetap per akun: `npm run publish -- <slug>` membaca `account` dari `src/videos/<slug>/publish.json`; `--account <id>` (opsional) hanyalah cross-check dan menolak kalau tidak cocok. Hal yang sama berlaku untuk `scripts/fetch-published-videos.mts --account` dan `scripts/check-duplicates.mts --db`.
 

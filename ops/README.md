@@ -34,7 +34,7 @@ Kenapa dipecah: render CPU sudah memakai semua core (`--concurrency` tidak berpe
    **Wajib: buat dua GitHub Environments** (Settings → Environments → New environment; salah satunya harus ada karena job `build` dan `publish` mereferensi `environment:` sesuai id akun — **environment yang tidak ada membatalkan run**): `kali-aja` (boleh kosong) dan `ai-labs` (isi hanya kredensial khusus AI Labs). Environment secrets menimpa repo secrets dengan nama yang sama; kalau environment tidak meng-set suatu secret, otomatis dipakai repo secret. Jadi AI Labs boleh tidak setup apa-apa (kredensial Kali Aja dipakai — termasuk kuota TTS sama) atau hanya beberapa kunci (mis. `GEMINI_API_KEY` di environment `ai-labs` untuk kuota TTS terpisah).
    AI Labs juga butuh 3 ID Buffer di `src/accounts.ts` (lihat `docs/PUBLISHING.md`).
 3. **`VIDEO_SHORT_PAT`** (fine-grained, repo `hendra/yt-video-short-generator`, minimal **Contents: write**) → Cloudflare Worker secret (`npx wrangler secret put VIDEO_SHORT_PAT`) — dipakai Worker untuk memicu dispatch.
-4. **Worker deploy**: `npx wrangler deploy --config ops/cloudflare-cron/wrangler.toml` (butuh `CF_ACCOUNT_ID` + `CF_API_TOKEN` dengan izin Workers Scripts:Edit). Cron dipicu 6×/hari; setiap tick dispatch **sekali per akun** (`ACCOUNTS`, default `kali-aja,ai-labs`, bisa dipersempit ke `kali-aja` selama AI Labs belum dikonfigurasi).
+4. **Worker deploy**: `npx wrangler deploy --config ops/cloudflare-cron/wrangler.toml` (butuh `CF_ACCOUNT_ID` + `CF_API_TOKEN` dengan izin Workers Scripts:Edit). Cron dipicu 6×/hari; setiap tick dispatch **sekali per akun** (`ACCOUNTS = "kali-aja,ai-labs"` — sudah di-deploy di Cloudflare dan AI Labs sudah terkonfigurasi: ID Buffer diisi + environment `ai-labs` terpasang).
 5. opencode tidak perlu dipasang manual — workflow meng-install sendiri via `https://opencode.ai/v2/install` pada path autopilot.
 
 ## Trigger manual
@@ -43,8 +43,10 @@ Autopilot (agent bikin video baru):
 
 ```bash
 gh workflow run video-run --ref main                    # channel Kali Aja
-gh workflow run video-run --ref main -f account=ai-labs # channel AI Labs (selama belum dikonfigurasi → gagal cepat + lapor Slack)
+gh workflow run video-run --ref main -f account=ai-labs # channel AI Labs
 ```
+
+⚠️ Dispatch manual **tanpa `dry_run` adalah live run** — video akan benar-benar diposting ke YouTube + TikTok. Untuk rehearsal, pakai `-f dry_run=true` (lihat bawah). Video untuk `account=ai-labs` butuh isi `accounts.ts` (ID Buffer AI Labs — sudah terisi) dan environment `ai-labs` (sudah terpasang).
 
 Render+publish video yang **sudah di-commit & push ke main** (mis. video yang kamu bangun sendiri, tanpa agent):
 
@@ -52,7 +54,7 @@ Render+publish video yang **sudah di-commit & push ke main** (mis. video yang ka
 gh workflow run video-run --ref main -f slug=<slug>
 ```
 
-Prasyarat manual path: video source `src/videos/<slug>/` harus ada di tree (tidak di-commit — generated di CI; untuk manual path kamu tambahkan sendiri sementara, boleh lewat `git add -f`, lalu hapus lagi), `public/<slug>/vo.mp3` ada di tree, Buffer harus berisi publish sebelumnya karena duplicate/re-publish lookup di-fetch dari sana. Jalankan gates lokal dulu (`npm run lint && npm test`). Manual path tetap publish **for real** ke YouTube + TikTok kecuali `dry_run` dinyalakan; tidak ada katalog yang di-commit atau di-push.
+Prasyarat manual path: video source `src/videos/<slug>/` harus ada di tree (tidak di-commit — generated di CI; untuk manual path kamu tambahkan sendiri sementara, boleh lewat `git add -f`, lalu hapus lagi), `public/<slug>/vo.mp3` ada di tree, dan `src/videos/<slug>/publish.json` harus berisi `"account": "kali-aja"` (atau `"ai-labs"`) — job `Account gate` menolak kalau tidak cocok dengan akun yang dipakai run ini. Buffer harus berisi publish sebelumnya karena duplicate/re-publish lookup di-fetch dari sana. Jalankan gates lokal dulu (`npm run lint && npm test`). Manual path tetap publish **for real** ke YouTube + TikTok kecuali `dry_run=true`; tidak ada katalog yang di-commit atau di-push.
 
 Dry-run (semua langkah kecuali Publish + laporan sukses; MP4 final disimpan sebagai artifact `final-video` selama 3 hari):
 
@@ -65,6 +67,8 @@ Pakai ini untuk menguji perubahan workflow sebelum merge. `repository_dispatch` 
 ## Kalau gagal
 
 - **Agent/no-video**: agent exits non-zero but Discover/Gates still run. Jika tidak ada satu folder video baru, job gagal di "Discover slug"; kalau output parsial/rusak, job gagal di duplicate gate/gates/still per shot. Slack #social melaporkan. Tidak ada commit, tidak ada upload.
+- **Resolve account gagal** (mis. `TODO_` placeholder atau environment hilang): job berhenti **sebelum** agent dan render dimulai — tidak ada video, tidak ada upload. Cek ID Buffer di `src/accounts.ts` + Settings → Environments (`kali-aja`, `ai-labs` harus ada).
+- **`Account gate` gagal**: video yang dihasilkan tidak cocok dengan akun run (mis. `publish.json.account` ≠ akun run, atau brand bukan milik akun itu di `src/videos/<slug>/index.ts`). Tidak ada upload/post.
 - **Duplicate gate gagal**: kandidat terlalu mirip dengan post YouTube/TikTok yang tercatat di Buffer; ganti topik/angle/title dan jalankan ulang. Jangan cukup ubah beberapa kata.
 - **Agent install gagal**: step "Install opencode" gagal → failure report ke Slack, publish tidak jalan. Installer upstream `opencode.ai/v2/install` berubah/mati → pin ulang URL atau pasang via npm `@opencode/cli`.
 - **Quota**: opencode free model menolak/rate-limit → publish tidak terjadi; coba lagi lewat `workflow_dispatch` nanti.
