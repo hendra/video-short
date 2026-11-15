@@ -1,7 +1,7 @@
 # Design: Channel kedua "AI Labs" (YouTube + TikTok) di pipeline video-short
 
 **Date:** 2026-11-15
-**Status:** Approved 2026-11-15 (user) — semua keputusan di bawah sudah dikonfirmasi user
+**Status:** **Implemented & live.** Di-approve 2026-11-15 (user); diimplementasikan & merge 2026-11-15 lewat PR #36 (multi-akun), #37 (ID Buffer AI Labs), #38 (fix argumen `--file` agent), #39 (fix test stale), #40 (categoryId 28). AI Labs tayang perdana hari itu (slug `claude-skills-packaging`).
 
 ## Amendment 2026-11-15 — mekanisme kredensial: GitHub Environments (menggantikan §4)
 
