@@ -114,6 +114,7 @@ Aturan scene:
 - Warna cerah dan hangat. Latar langit terang; jangan gelap atau suram, juga di adegan sedih.
 - Peta skematis (kalau perlu menunjukkan pulau) diberi `tag: "ILUSTRASI"`.
 - Tidak boleh `Math.random()` atau `Date.now()`.
+- Setiap frame dihitung ulang dari `t` dan frame bisa dirender tidak berurutan. Jadi **tulis `visible` dan posisi setiap frame dengan nilai langsung** — `putri.root.visible = t >= L(7).s;` — jangan hanya di dalam `if` yang mengubah satu arah (`if (belum) x.visible = false`), karena nilainya akan tertinggal dari frame sebelumnya.
 - Caption: satu potongan ≤ 5 token per saat, tidak pernah dua; `line-height: 1.8` jangan dikecilkan.
 - Kamera pelan dan tenang (`keyframes` dengan dua atau tiga posisi); jangan berputar cepat.
 
