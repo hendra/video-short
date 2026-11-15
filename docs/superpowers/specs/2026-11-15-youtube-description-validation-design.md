@@ -19,7 +19,7 @@ Non-goals: rescuing the `geoglif-amazon-lidar` run; changing TikTok text; a buil
 
 ## Constraints
 
-- YouTube: title ≤ 100 chars, description ≤ 5,000 chars, neither may contain `<` or `>`.
+- YouTube: title ≤ 100 chars, description ≤ 5,000 bytes (UTF-8), neither may contain `<` or `>`.
 - TikTok: caption ≤ 2,200 chars, title ≤ 90 chars; no banned characters.
 - These limits come from platform knowledge, not a fresh read of the Buffer/YouTube docs.
 
@@ -34,7 +34,7 @@ Non-goals: rescuing the `geoglif-amazon-lidar` run; changing TikTok text; a buil
 ## Design
 
 - `scripts/publish-lib.mts`: new pure helper `youtubeSafe(text)` — `<` → `＜`, `>` → `＞`.
-  `validatePublishJson` gains two caps: `description` > 5,000 chars, `tiktokCaption` > 2,200 chars.
+  `validatePublishJson` gains two caps: `description` > 5,000 UTF-8 bytes (measured after `youtubeSafe`), `tiktokCaption` > 2,200 chars.
 - `scripts/publish.mts`: apply `youtubeSafe` to `PUB.description` (post `text`) and `PUB.title`
   (`metadata.youtube.title`) in `ytInput` only. TikTok input and the duplicate check use the
   original text.

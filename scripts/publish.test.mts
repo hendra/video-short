@@ -33,6 +33,12 @@ describe("validatePublishJson", () => {
     assert.ok(validatePublishJson({ ...ok, tiktokCaption: "x".repeat(2201) }).join().includes("tiktokCaption > 2200"));
     assert.deepEqual(validatePublishJson({ ...ok, description: "x".repeat(5000), tiktokCaption: "x".repeat(2200) }), []);
   });
+  test("description cap counts UTF-8 bytes of the text YouTube receives", () => {
+    assert.ok(validatePublishJson({ ...ok, description: "é".repeat(2501) }).join().includes("description > 5000"));
+    // each "<" becomes a 3-byte full-width character before it is sent
+    assert.ok(validatePublishJson({ ...ok, description: "<".repeat(1667) }).join().includes("description > 5000"));
+    assert.deepEqual(validatePublishJson({ ...ok, description: "é".repeat(2500) }), []);
+  });
 });
 
 describe("youtubeSafe", () => {

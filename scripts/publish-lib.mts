@@ -25,7 +25,11 @@ export const validatePublishJson = (obj: unknown): string[] => {
   }
   if (typeof PUB.title === "string" && PUB.title.length > 100) problems.push(`title > 100 chars (${PUB.title.length})`);
   if (typeof PUB.tiktokTitle === "string" && PUB.tiktokTitle.length > 90) problems.push(`tiktokTitle > 90 chars (${PUB.tiktokTitle.length})`);
-  if (typeof PUB.description === "string" && PUB.description.length > 5000) problems.push(`description > 5000 chars (${PUB.description.length})`);
+  if (typeof PUB.description === "string") {
+    // YouTube caps the description in UTF-8 bytes, measured on the text it actually receives.
+    const bytes = Buffer.byteLength(youtubeSafe(PUB.description));
+    if (bytes > 5000) problems.push(`description > 5000 bytes (${bytes})`);
+  }
   if (typeof PUB.tiktokCaption === "string" && PUB.tiktokCaption.length > 2200) problems.push(`tiktokCaption > 2200 chars (${PUB.tiktokCaption.length})`);
   return problems;
 };

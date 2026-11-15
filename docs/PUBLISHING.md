@@ -107,6 +107,7 @@ Video source is not committed: source lives only in the CI VM and is discarded w
 
 - Title ≤ 100 chars; `| 11.ai` suffix ONLY for ElevenLabs-Free VO (its ToS). Gemini/other VO: no suffix.
 - Description (YouTube): 2–3 kalimat ringkasan + CTA `Mau dibongkar apa lagi? Tulis di komentar.` + `Sumber: …` + "Animasi bersifat ilustrasi. Suara: AI (Google AI Studio)" + hashtag (`#shorts` + 5–6 topik). CategoryId `27` (Education). `isAiGenerated: true`, `madeForKids: false`, `notifySubscribers: true`, `privacy: "public"`.
+- YouTube menolak `<` dan `>` di judul dan deskripsi (`InvalidInputError`), dan deskripsi maks 5.000 byte. `npm run publish` otomatis mengganti keduanya dengan `＜` / `＞`; kalau posting manual lewat GraphQL, ganti sendiri atau tulis "lebih dari" / "kurang dari".
 - Caption (TikTok): hook + CTA + sumber + `Suara: AI (Google AI Studio)` + hashtag yang sama.
 - Video file: 1080×1920, 30 fps, h264 + AAC, durasi ≈ `timeline.dur`; loudness −14 LUFS (sudah termasuk di `-af loudnorm=I=-14:TP=-1.5:LRA=11`); `notification` scheduling hanya kalau halaman upload sengaja menunggu approval.
 - If in doubt on quality/facts but the video is complete: `saveToDraft: true` + report. If not complete: do NOT post.
