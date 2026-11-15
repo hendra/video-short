@@ -72,16 +72,16 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       files: ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/ai-labs.md", "ops/topics/ai-labs.md"],
     },
   },
-  // Cerpenek (Cerita Pendek Nenek): dongeng anak 5–10 tahun. Buffer ids stay TODO_
-  // until the owner supplies them — `--require-configured` refuses to run the account before that.
+  // Cerpenek (Cerita Pendek Nenek): dongeng anak 5–10 tahun. Own Buffer organization + channels;
+  // credentials come from the GitHub Environment `cerpenek`.
   cerpenek: {
     id: "cerpenek",
     label: "Cerpenek",
     brand: { prefix: "Cerpe", accent: "nek" },
     buffer: {
-      orgId: "TODO_CERPENEK_ORG",
-      youtubeChannelId: "TODO_CERPENEK_YOUTUBE",
-      tiktokChannelId: "TODO_CERPENEK_TIKTOK",
+      orgId: "6af9a85ef0ed12641d69eab4",
+      youtubeChannelId: "6af9a8caece6dfde5fd19e00",
+      tiktokChannelId: "6af9a8e0ece6dfde5fd19e93",
     },
     youtubeCategoryId: "27",
     madeForKids: true,

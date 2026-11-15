@@ -5,7 +5,7 @@
 Template video **explainer 3D vertikal** (YouTube Shorts / Reels / TikTok, 1080×1920) dengan **Remotion + React Three Fiber**:
 animasi 3D low-poly, voiceover **AI** (Google AI Studio TTS, gratis — lihat `.env.example`) dengan timing per kata, caption karaoke, callout berlabel, chip angka, dan musik latar orisinal.
 
-**Channel ketiga (belum aktif): Cerpenek** — dongeng anak 5–10 tahun (sejarah, legenda, asal-usul Indonesia) dengan suara wanita dan diorama mainan kayu; menunggu ID Buffer + environment `cerpenek` (lihat `docs/PUBLISHING.md`).
+**Channel ketiga (belum aktif): Cerpenek** — dongeng anak 5–10 tahun (sejarah, legenda, asal-usul Indonesia) dengan suara wanita dan diorama mainan kayu; sudah terkonfigurasi, menunggu dry run sebelum masuk cron (lihat `docs/PUBLISHING.md`).
 
 **Dua channel, satu pipeline.** Saat ini dua brand tayang otomatis di slot cron yang sama (6×/hari, 07:30/09:30/11:30/12:30/16:30/19:30 WIB), masing-masing sekali run per akun: **Kali Aja Tau** (sains & teknik Indonesia) dan **AI Labs** (tips & trik Claude/ChatGPT/Gemini/OpenCode). Konfigurasi akun ada di `src/accounts.ts`; kredensial terpisah lewat GitHub Environments (`kali-aja` / `ai-labs`) — detail & fallback di `docs/PUBLISHING.md` dan `ops/README.md`.
 
