@@ -56,7 +56,7 @@ Penontonnya anak 5–10 tahun. Ini aturan keras:
 ## Naskah
 
 - `src/videos/<slug>/naskah.txt`: 13–16 baris, format `NN  teks` (dua digit, dua spasi).
-- Durasi 60–90 detik. Target jumlah karakter: TODO setelah suara dipilih (suara Nenek lebih pelan daripada channel lain).
+- Durasi 60–90 detik. Total **650–800 karakter** (suara Nenek pelan, kira-kira 9 karakter per detik) — jauh lebih pendek daripada angka di `ops/ci-prompt.md`. Lebih dari 830 karakter akan melewati 90 detik.
 - Alur: pembuka yang menarik → cerita → akibat → pesan moral → ajakan.
 - **Ajakan penutup (CTA):** ajak menonton cerita berikutnya bersama ayah atau ibu ("Besok Nenek cerita lagi, ya. Ajak ayah dan ibu."). **Jangan meminta komentar, like, atau subscribe** — komentar mati di video anak.
 - Di `index.ts`, `cta.text` berisi ajakan yang sama.

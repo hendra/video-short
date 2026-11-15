@@ -50,6 +50,11 @@ describe("account registry", () => {
     assert.deepEqual(a.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/cerpenek.md", "ops/topics/cerpenek.md"]);
   });
 
+  test("Cerpenek speaks with the chosen female storyteller voice", () => {
+    assert.equal(ACCOUNTS.cerpenek.tts.voice, "id-id-tutor-1");
+    assert.match(ACCOUNTS.cerpenek.tts.style, /nenek mendongeng/);
+  });
+
   test("a placeholder voice counts as unconfigured and is named", () => {
     const a = { ...ACCOUNTS["kali-aja"], tts: { voice: "TODO_VOICE", style: "x" } };
     assert.deepEqual(missingConfigFields(a), ["tts.voice"]);

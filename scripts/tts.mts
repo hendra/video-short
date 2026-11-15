@@ -8,7 +8,7 @@
  */
 import { loadDotenv, readScript, videoIdArg } from "./lib.mts";
 import { synthesizeAndPublish, type TtsProvider } from "./lib-tts.mts";
-import { resolveAccountArg } from "./account-core.mts";
+import { resolveAccountArg, voiceProblem } from "./account-core.mts";
 
 loadDotenv();
 const id = videoIdArg();
@@ -33,8 +33,9 @@ try {
   console.error((e as Error).message);
   process.exit(1);
 }
-if (account.tts.voice.startsWith("TODO_")) {
-  console.error(`suara akun ${account.id} belum dipilih (tts.voice di src/accounts.ts)`);
+const voiceIssue = voiceProblem(account);
+if (voiceIssue) {
+  console.error(voiceIssue);
   process.exit(1);
 }
 

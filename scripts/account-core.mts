@@ -76,3 +76,7 @@ export const resolveAccountArg = (flag: string | undefined, envValue: string | u
   if (raw !== undefined && !isAccountId(raw)) throw new Error(`Unknown account "${raw}". Valid accounts: ${ACCOUNT_IDS.join(", ")}`);
   return accountById(raw);
 };
+
+/** Why an account cannot be voiced yet (its voice is still a TODO_ placeholder), or null when it can. */
+export const voiceProblem = (account: Account): string | null =>
+  account.tts.voice.startsWith("TODO_") ? `suara akun ${account.id} belum dipilih (tts.voice di src/accounts.ts)` : null;

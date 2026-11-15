@@ -72,7 +72,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       files: ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/ai-labs.md", "ops/topics/ai-labs.md"],
     },
   },
-  // Cerpenek (Cerita Pendek Nenek): dongeng anak 5–10 tahun. Buffer ids and the voice stay TODO_
+  // Cerpenek (Cerita Pendek Nenek): dongeng anak 5–10 tahun. Buffer ids stay TODO_
   // until the owner supplies them — `--require-configured` refuses to run the account before that.
   cerpenek: {
     id: "cerpenek",
@@ -85,7 +85,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
     },
     youtubeCategoryId: "27",
     madeForKids: true,
-    tts: { voice: "TODO_VOICE", style: "lembut, hangat, pelan; seperti nenek mendongeng untuk anak" },
+    tts: { voice: "id-id-tutor-1", style: "lembut, hangat, pelan; seperti nenek mendongeng untuk anak" },
     agent: {
       model: "opencode/inkling-2-small-free",
       prompt:
