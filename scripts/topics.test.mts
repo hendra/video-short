@@ -129,4 +129,18 @@ describe("Cerpenek topic backlog", () => {
     const urls = fs.readFileSync(cerpenekTopics, "utf8").split(/\r?\n/).filter((l) => CERPENEK_ENTRY.test(l)).map((l) => l.match(/https:\/\/\S+/)![0]);
     assert.equal(new Set(urls).size, urls.length, "duplicate source urls in backlog");
   });
+
+  test("stories whose core is an adult, violent, sectarian or health theme stay out", () => {
+    const slugs = fs.readFileSync(cerpenekTopics, "utf8").split(/\r?\n/).filter((l) => CERPENEK_ENTRY.test(l)).map((l) => l.slice(2).split(":")[0]);
+    const excluded = ["sangkuriang", "jaka-tarub", "rara-jonggrang", "rara-mendut", "nyi-roro-kidul", "nenek-pakande", "sureq-galigo", "asal-usul-danau-maninjau", "kisah-manik-angker", "putri-hijau", "angling-dharma", "tabuik", "pasola", "karapan-sapi", "jamu"];
+    assert.deepEqual(slugs.filter((s) => excluded.includes(s)), []);
+  });
+});
+
+describe("Cerpenek brief — review fixes", () => {
+  const text = () => fs.readFileSync(cerpenekBrief, "utf8");
+  test("tells the agent to voice with the account flag, not ambient env", () => assert.ok(text().includes("npm run tts -- <slug> --account cerpenek")));
+  test("keeps the region out of the title template", () => assert.equal(/title.*Legenda dari Sumatra Barat/.test(text()), false));
+  test("says how to stage object and building topics", () => assert.match(text(), /## Cerita tentang benda dan bangunan/));
+  test("says what to do when no unused story fits the picked format", () => assert.match(text(), /jalankan `pick-format` sekali lagi/));
 });

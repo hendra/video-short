@@ -23,14 +23,15 @@ Jangan pakai brand channel lain. Gate CI menolak video yang brand-nya beda.
 - Kalimat pendek, satu gagasan per kalimat. Kata sehari-hari yang dipahami anak SD. Hindari kata serapan sulit dan istilah teknis.
 - Pembuka **bervariasi** dari video ke video. Jangan selalu "Pada zaman dahulu". Boleh mulai dari tempat, dari pertanyaan, atau dari suara dan suasana.
 - Angka ditulis dengan kata ("tujuh hari", "seribu candi").
-- Suara dibuat otomatis oleh `npm run tts -- <slug>`; jangan mengganti suara atau provider.
+- Suara dibuat dengan **`npm run tts -- <slug> --account cerpenek`** (selalu tulis `--account cerpenek`; tanpa itu suaranya bisa jadi suara channel lain). Jangan mengganti suara atau provider.
 
 ## Format
 
 1. Jalankan `npx tsx scripts/pick-format.mts --account cerpenek` → dapat satu kerangka cerita (acak, berbobot).
 2. **Pakai kerangka itu** sebagai alur naskah; jangan ganti dengan kerangka lain.
-3. Catat di `publish.json`: `catatan` diawali `format: <id>;`.
-4. **Dilarang** gaya explainer: daftar bernomor, "tiga fakta", "mitos vs fakta", tutorial langkah demi langkah.
+3. Pilih cerita dari backlog yang **cocok** dengan kerangka itu: `tokoh-sejarah` → bagian "Tokoh sejarah"; `asal-usul-tempat` → legenda tempat atau bagian "Kerajaan, peristiwa, dan tempat bersejarah"; `asal-usul-benda` → bagian "Asal-usul benda…"; `sahabat-hewan` → legenda yang punya hewan penolong; sisanya → "Legenda dan cerita rakyat". Kalau tidak ada cerita belum-tayang yang cocok, jalankan `pick-format` sekali lagi (paling banyak tiga kali) — jangan memaksa cerita masuk kerangka yang salah.
+4. Catat di `publish.json`: `catatan` diawali `format: <id>;`.
+5. **Dilarang** gaya explainer: daftar bernomor, "tiga fakta", "mitos vs fakta", tutorial langkah demi langkah.
 
 ## Topik
 
@@ -65,7 +66,7 @@ Penontonnya anak 5–10 tahun. Ini aturan keras:
 
 Tampilannya **diorama mainan kayu**: adegan kecil di atas alas bulat, tokoh seperti boneka kayu. Hangat dan sederhana.
 
-**Pakai prefab di bawah ini. Jangan merakit tokoh atau hewan sendiri dari `kit.box/cyl/ball`.** `kit.box/cyl/ball` hanya untuk benda kecil pendukung (batu, peti, meja, candi dari balok).
+**Pakai prefab di bawah ini. Jangan merakit tokoh atau hewan sendiri dari `kit.box/cyl/ball`.** `kit.box/cyl/ball` hanya untuk benda: benda kecil pendukung (batu, peti, meja) dan benda pusat cerita (lihat "Cerita tentang benda dan bangunan").
 
 ```ts
 const kit = new Kit(root);
@@ -120,6 +121,15 @@ Aturan scene:
 - **Bingkai:** tokoh yang sedang diceritakan harus berada di **tengah layar**, di antara judul (atas) dan teks cerita (bawah). Arahkan `target` kamera sedikit **di atas** kepala tokoh dan mundurkan kamera secukupnya, supaya adegan tidak menumpuk di balik judul dan separuh bawah layar tidak kosong.
 - **Setiap shot punya sesuatu yang jelas untuk dilihat** — tokoh atau tempat. Kalau cerita membuat tokoh pergi atau tempat hilang (tenggelam, berubah jadi batu), shot penutup tetap menampilkan hasilnya dengan jelas (danau dengan pulau dan perahu, batu di pantai), bukan layar yang hampir kosong.
 
+## Cerita tentang benda dan bangunan
+
+Banyak cerita di backlog tentang benda (batik, angklung, keris, rendang), bangunan (candi, tugu, istana, jembatan), atau kendaraan (perahu, kapal, pesawat). Untuk cerita seperti itu:
+
+- **Benda pusat cerita boleh dirakit** dari `kit.box/cyl/ball` dengan bentuk sederhana seperti mainan balok: candi = tumpukan balok yang mengecil ke atas; tugu = silinder tinggi dengan bola di puncak; angklung = beberapa silinder bambu berjajar; kain = balok tipis berwarna dengan garis-garis; makanan = bentuk bulat atau kerucut di atas piring silinder. Cukup dikenali, tidak perlu detail.
+- Buat benda itu **besar dan di tengah**, lalu letakkan satu atau dua `kit.figure` di dekatnya yang membuat, memakai, atau menunjuknya. Tokoh tetap dari prefab.
+- Kapal memakai `kit.boat`; pesawat cukup silinder badan dengan dua balok sayap.
+- Jangan mencoba menggambar wajah, tulisan, atau ukiran pada benda.
+
 ## publish.json
 
 `src/videos/<slug>/publish.json` — bentuk persis:
@@ -136,7 +146,7 @@ Aturan scene:
 ```
 
 - `account` wajib `"cerpenek"` (kena gate CI kalau beda).
-- `title` ≤ 100 karakter, tanpa `<` dan `>`. Judul cerita + daerah, mis. "Malin Kundang, Legenda dari Sumatra Barat".
+- `title` ≤ 100 karakter, tanpa `<` dan `>`. Judul cerita dengan kata-kata khasnya sendiri, mis. "Malin Kundang, Anak yang Lupa pada Ibunya". **Jangan menaruh nama daerah atau kata "Legenda dari …" di judul** — itu membuat judul mirip dengan video lain dari daerah yang sama dan ditolak gate duplikat. Daerah cukup di deskripsi.
 - `description`: ringkasan 2–3 kalimat untuk orang tua + `Legenda dari <daerah>.` atau `Kisah sejarah dari <daerah>.` + `Sumber: <URL sumber>` + `Animasi bersifat ilustrasi. Suara: AI (Google AI Studio).` + `#shorts` + 5–6 hashtag (mis. `#dongenganak #ceritarakyat`).
 - `tiktokTitle` ≤ 90 karakter, `tiktokCaption` seperti description + `Suara: AI (Google AI Studio)`.
 - `catatan` diawali `format: <id>;` dari `pick-format`.

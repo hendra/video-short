@@ -59,4 +59,5 @@ if (!result.ok) {
   }
   process.exit(1);
 }
+console.log(`account=${account.id} voice=${account.tts.voice}`);
 console.log(`vo.mp3 + alignment.json written via ${result.provider} (${result.bytes} bytes, ${result.wordCount} words). Next: npm run timeline -- ${id}`);

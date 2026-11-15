@@ -30,3 +30,16 @@ describe("findDuplicate", () => {
     assert.equal(findDuplicate(candidate, [{ text: "", title: null }]), null);
   });
 });
+
+describe("Cerpenek story titles", () => {
+  const earlier = [{ title: "Asal-usul Danau Maninjau, Legenda dari Sumatra Barat", text: "Nenek bercerita tentang Bujang Sembilan dan Siti Rasani di tepi Danau Maninjau. Legenda dari Sumatra Barat." }];
+  const candidate = (title: string) => ({ title, tiktokTitle: title, description: title, tiktokCaption: title });
+
+  test("another story from the same province is not a duplicate", () => {
+    assert.equal(findDuplicate(candidate("Malin Kundang, Legenda dari Sumatra Barat"), earlier), null);
+  });
+
+  test("the same story retold under a new title is still a duplicate", () => {
+    assert.notEqual(findDuplicate(candidate("Bujang Sembilan dan Siti Rasani di Danau Maninjau"), earlier), null);
+  });
+});

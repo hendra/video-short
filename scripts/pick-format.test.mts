@@ -61,3 +61,13 @@ describe("pickFormat", () => {
     assert.throws(() => pickFormat("kali-aja", Number.NaN));
   });
 });
+
+describe("Cerpenek weights follow the backlog mix", () => {
+  const weight = (id: string) => formatsFor("cerpenek").find((f) => f.id === id)!.weight;
+  test("historical figures (the largest backlog group) are the heaviest format", () => {
+    for (const f of formatsFor("cerpenek")) assert.ok(weight("tokoh-sejarah") >= f.weight, `${f.id} outweighs tokoh-sejarah`);
+  });
+  test("the animal-helper format, which few stories fit, is the lightest", () => {
+    for (const f of formatsFor("cerpenek")) assert.ok(weight("sahabat-hewan") <= f.weight, `${f.id} is lighter than sahabat-hewan`);
+  });
+});
