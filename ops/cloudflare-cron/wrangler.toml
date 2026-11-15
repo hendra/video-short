@@ -2,5 +2,9 @@ name = "video-short-cron"
 main = "worker.js"
 compatibility_date = "2026-11-11"
 
+# Satu dispatch per akun per tick. Persempit ke "kali-aja" selama AI Labs belum dikonfigurasi.
+[vars]
+ACCOUNTS = "kali-aja,ai-labs"
+
 [triggers]
 crons = ["30 0,2,4,5,9,12 * * *"]
