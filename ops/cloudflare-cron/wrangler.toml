@@ -5,7 +5,7 @@ compatibility_date = "2026-11-11"
 # Satu dispatch per akun per tick. AI Labs tetap dimatikan sampai ID Buffer + environment `ai-labs` terisi
 # di src/accounts.ts — set "kali-aja,ai-labs" setelahnya (lihat docs/PUBLISHING.md § Channel IDs).
 [vars]
-ACCOUNTS = "kali-aja"
+ACCOUNTS = "kali-aja,ai-labs"
 
 [triggers]
 crons = ["30 0,2,4,5,9,12 * * *"]

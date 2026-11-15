@@ -51,9 +51,9 @@ export const ACCOUNTS: Record<AccountId, Account> = {
     label: "AI Labs",
     brand: { prefix: "AI ", accent: "Labs" },
     buffer: {
-      orgId: "TODO_AI_LABS_BUFFER_ORG_ID",
-      youtubeChannelId: "TODO_AI_LABS_YOUTUBE_CHANNEL_ID",
-      tiktokChannelId: "TODO_AI_LABS_TIKTOK_CHANNEL_ID",
+      orgId: "67654dffc44cce0b50102d9e",
+      youtubeChannelId: "6af91d59ece6dfde5fcb8689",
+      tiktokChannelId: "6af91d8bece6dfde5fcb87ac",
     },
     youtubeCategoryId: "30",
     agent: {
