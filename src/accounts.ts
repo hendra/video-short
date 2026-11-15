@@ -20,6 +20,8 @@ export type Account = {
   buffer: { orgId: string; youtubeChannelId: string; tiktokChannelId: string };
   /** YouTube video category id. */
   youtubeCategoryId: string;
+  /** YouTube "made for kids" declaration sent with every upload (true disables comments + notifications there). */
+  madeForKids: boolean;
   /** Gemini TTS voice id + speaking style for this channel's voiceover. */
   tts: { voice: string; style: string };
   /** Instruction files the agent reads, plus the model it runs on. */
@@ -41,6 +43,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       tiktokChannelId: "6aedb7fee29c69a171804662",
     },
     youtubeCategoryId: "27",
+    madeForKids: false,
     tts: { voice: "id-id-podcaster-1", style: "natural, warm, conversational" },
     agent: {
       model: "opencode/inkling-2-small-free",
@@ -59,6 +62,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       tiktokChannelId: "6af91d8bece6dfde5fcb87ac",
     },
     youtubeCategoryId: "28",
+    madeForKids: false,
     tts: { voice: "id-id-podcaster-1", style: "natural, warm, conversational" },
     agent: {
       model: "opencode/inkling-2-small-free",

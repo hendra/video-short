@@ -3,7 +3,7 @@
  * shipped code instead of a re-implementation. No I/O, no env access.
  */
 import crypto from "node:crypto";
-import { ACCOUNT_IDS, isAccountId } from "../src/accounts.ts";
+import { ACCOUNT_IDS, isAccountId, type Account } from "../src/accounts.ts";
 
 /** Cloudinary signed-upload signature: sha1 of the alphabetically sorted "k=v&…" param string + <secret>. */
 export const cloudinarySign = (params: Record<string, string | number>, secret: string): string =>
@@ -17,6 +17,16 @@ export type PublishMeta = { title: string; description: string; tiktokTitle: str
 export const youtubeSafe = (text: string): string => text.replaceAll("<", "＜").replaceAll(">", "＞");
 
 /** Minimal schema for publish.json: required non-empty strings, platform length caps. Returns a list of problems ([] = valid). */
+/** YouTube metadata for a Buffer post: category and the made-for-kids declaration follow the account. */
+export const youtubeMetadata = (account: Account, title: string) => ({
+  title: youtubeSafe(title),
+  categoryId: account.youtubeCategoryId,
+  privacy: "public" as const,
+  madeForKids: account.madeForKids,
+  isAiGenerated: true as const,
+  notifySubscribers: true as const,
+});
+
 export const validatePublishJson = (obj: unknown): string[] => {
   const problems: string[] = [];
   if (!obj || typeof obj !== "object") return ["publish.json: not an object"];

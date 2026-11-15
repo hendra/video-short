@@ -22,7 +22,7 @@ import path from "node:path";
 import { ROOT, loadDotenv } from "./lib.mts";
 import { fetchPublishedVideos } from "./fetch-published-videos.mts";
 import { findDuplicate, type CandidatePost } from "./duplicate-core.mts";
-import { cloudinarySign, validatePublishJson, extractBufferError, youtubeSafe } from "./publish-lib.mts";
+import { cloudinarySign, validatePublishJson, extractBufferError, youtubeSafe, youtubeMetadata } from "./publish-lib.mts";
 import { ACCOUNT_IDS, accountById, isAccountId, isConfigured, missingConfigFields } from "../src/accounts.ts";
 
 loadDotenv();
@@ -134,7 +134,7 @@ const ytInput = {
   channelId: YT, mode: "shareNow", schedulingType: "automatic", needsApproval: false,
   text: youtubeSafe(PUB.description),
   assets: [{ video: { url: up.secure_url! } }],
-  metadata: { youtube: { title: youtubeSafe(PUB.title), categoryId: account.youtubeCategoryId, privacy: "public" as const, madeForKids: false, isAiGenerated: true, notifySubscribers: true } },
+  metadata: { youtube: youtubeMetadata(account, PUB.title) },
 };
 const ttInput = {
   channelId: TT, mode: "shareNow", schedulingType: "automatic", needsApproval: false,

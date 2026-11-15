@@ -33,6 +33,8 @@ Sekarang di `src/accounts.ts` (sumber kebenaran tunggal). Ringkasan:
 
 Kedua akun sudah **aktif dan tayang**: AI Labs tayang perdana pada **2026-11-15** (slug `claude-skills-packaging`, `workflow_dispatch` manual; `Resolve account` → video dibangun → posting ke kedua platform). Environment `kali-aja` kosong (fallback repo secrets), `ai-labs` berisi 5 kunci AI Labs dan dipakai oleh job `build` serta `publish`.
 
+**"Made for kids" per akun.** `madeForKids` di `src/accounts.ts` menentukan nilai yang dikirim ke YouTube di setiap post (`youtubeMetadata` di `scripts/publish-lib.mts`); `kali-aja` dan `ai-labs` = `false`. Akun yang ditujukan untuk anak memakai `true` — akibatnya komentar dan notifikasi mati di video itu — dan audiens channel juga disetel "untuk anak" di YouTube Studio. TikTok tidak punya setelan setara.
+
 Publikasi tetap per akun: `npm run publish -- <slug>` membaca `account` dari `src/videos/<slug>/publish.json`; `--account <id>` (opsional) hanyalah cross-check dan menolak kalau tidak cocok. Hal yang sama berlaku untuk `scripts/fetch-published-videos.mts --account` dan `scripts/check-duplicates.mts --db`.
 
 ## Step 1 — Host the MP4 (Cloudinary signed upload)
@@ -123,7 +125,7 @@ Video source is not committed: source lives only in the CI VM and is discarded w
 ## Content requirements (not negotiable for this channel)
 
 - Title ≤ 100 chars; `| 11.ai` suffix ONLY for ElevenLabs-Free VO (its ToS). Gemini/other VO: no suffix.
-- Description (YouTube): 2–3 kalimat ringkasan + CTA `Mau dibongkar apa lagi? Tulis di komentar.` + `Sumber: …` + "Animasi bersifat ilustrasi. Suara: AI (Google AI Studio)" + hashtag (`#shorts` + 5–6 topik). CategoryId `27` (Education). `isAiGenerated: true`, `madeForKids: false`, `notifySubscribers: true`, `privacy: "public"`.
+- Description (YouTube): 2–3 kalimat ringkasan + CTA `Mau dibongkar apa lagi? Tulis di komentar.` + `Sumber: …` + "Animasi bersifat ilustrasi. Suara: AI (Google AI Studio)" + hashtag (`#shorts` + 5–6 topik). CategoryId `27` (Education). `isAiGenerated: true`, `madeForKids` per akun (`false` untuk dua akun ini), `notifySubscribers: true`, `privacy: "public"`.
 - YouTube menolak `<` dan `>` di judul dan deskripsi (`InvalidInputError`), dan deskripsi maks 5.000 byte. `npm run publish` otomatis mengganti keduanya dengan `＜` / `＞`; kalau posting manual lewat GraphQL, ganti sendiri atau tulis "lebih dari" / "kurang dari".
 - Caption (TikTok): hook + CTA + sumber + `Suara: AI (Google AI Studio)` + hashtag yang sama.
 - Video file: 1080×1920, 30 fps, h264 + AAC, durasi ≈ `timeline.dur`; loudness −14 LUFS (sudah termasuk di `-af loudnorm=I=-14:TP=-1.5:LRA=11`); `notification` scheduling hanya kalau halaman upload sengaja menunggu approval.

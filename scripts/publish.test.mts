@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { describe, test } from "node:test";
-import { cloudinarySign, validatePublishJson, extractBufferError, youtubeSafe } from "./publish-lib.mts";
+import { cloudinarySign, validatePublishJson, extractBufferError, youtubeSafe, youtubeMetadata } from "./publish-lib.mts";
+import { ACCOUNTS } from "../src/accounts.ts";
 
 describe("cloudinary signature (shipped helper)", () => {
   test("sorts params alphabetically", () => {
@@ -73,4 +74,21 @@ describe("extractBufferError", () => {
     assert.match(extractBufferError(null), /no createPost payload/);
     assert.match(extractBufferError({}), /no createPost payload/);
   });
+});
+
+describe("youtubeMetadata", () => {
+  test("existing accounts are unchanged", () => {
+    for (const id of ["kali-aja", "ai-labs"] as const) {
+      const m = youtubeMetadata(ACCOUNTS[id], "Judul <a>");
+      assert.equal(m.madeForKids, false);
+      assert.equal(m.notifySubscribers, true);
+      assert.equal(m.isAiGenerated, true);
+      assert.equal(m.privacy, "public");
+      assert.equal(m.categoryId, ACCOUNTS[id].youtubeCategoryId);
+      assert.equal(m.title, "Judul ＜a＞");
+    }
+  });
+
+  test("follows the account flag", () =>
+    assert.equal(youtubeMetadata({ ...ACCOUNTS["kali-aja"], madeForKids: true }, "x").madeForKids, true));
 });
