@@ -1,5 +1,5 @@
 /**
- * Cron weker untuk pipeline video (Kali Aja Tau + AI Labs).
+ * Cron weker untuk pipeline video (Kali Aja Tau + AI Labs + Cerpenek).
  * Setiap 00:30, 02:30, 04:30, 05:30, 09:30, 12:30 UTC (= 07:30, 09:30, 11:30, 12:30, 16:30, 19:30 WIB)
  * memicu `repository_dispatch` di repo GitHub **sekali per akun** — workflow video.yml tahu akun mana
  * yang harus dijalankan dari `client_payload.account`.
@@ -7,7 +7,8 @@
  *
  * Env:
  *   ACCOUNTS            — comma-separated account ids to dispatch. Default: "kali-aja".
- *                        Tambahkan "ai-labs" setelah ID Buffer + environment `ai-labs` terisi.
+ *                        Daftar produksi ada di wrangler.toml; akun baru masuk setelah ID Buffer
+ *                        + GitHub Environment-nya terisi.
  *   VIDEO_SHORT_PAT     — fine-grained PAT with Contents: read+write on the repo
  *   SLACK_BOT_TOKEN, SLACK_SOCIAL_CHANNEL_ID — warning saat dispatch gagal
  */
