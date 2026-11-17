@@ -13,7 +13,7 @@ Your task: produce a **complete new vertical 3D explainer Short** end-to-end, EX
 - You MUST produce, before stopping:
   1. `src/videos/<slug>/naskah.txt` (13–16 lines, `NN  text`, 1.100–1.400 chars; narrative format from `pick-format`, not the old fixed mystery/hook pattern)
   2. `src/videos/<slug>/config.json` (shots list, tail)
-  3. `src/videos/<slug>/state.ts`, `world.ts`, `shots.ts`, `index.ts`
+  3. For 3D channels (`kali-aja`, `cerpenek`): `src/videos/<slug>/state.ts`, `world.ts`, `shots.ts`, `index.ts`. For `mode: "motion"` (`ai-labs`): `src/videos/<slug>/shots.tsx` and `index.ts` (without `world.ts` or `state.ts`).
   4. `src/videos/<slug>/timeline.json` (via `npm run timeline -- <slug>`)
   5. `src/videos/<slug>/alignment.json` (via `npm run tts -- <slug>`)
   6. `src/videos/<slug>/publish.json` — **exactly this shape**:
