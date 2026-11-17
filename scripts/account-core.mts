@@ -85,7 +85,7 @@ export const voiceProblem = (account: Account): string | null =>
 const lastThreeLines = (text: string | null): string =>
   (text ?? "").split(/\r?\n/).filter((l) => l.trim() !== "").slice(-3).join("\n");
 
-/** Rules specific to ai-labs videos: motion graphics only, no world.ts, and PromptCard must link to description. */
+/** Rules specific to ai-labs videos: motion graphics only, captions disabled, no world.ts, and PromptCard must link to description. */
 export const aiLabsVideoProblems = (opts: {
   indexSource: string;
   shotsSource: string | null;
@@ -94,8 +94,12 @@ export const aiLabsVideoProblems = (opts: {
   naskahText: string | null;
 }): string[] => {
   const problems: string[] = [];
-  if (!/mode\s*:\s*["']motion["']/.test(opts.indexSource)) {
+  const indexCode = opts.indexSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  if (!/mode\s*:\s*["']motion["']/.test(indexCode)) {
     problems.push('ai-labs wajib pakai mode: "motion" di index.ts');
+  }
+  if (!/(?:^|[{,\n])\s*captions\s*:\s*false\b/.test(indexCode)) {
+    problems.push("ai-labs wajib pakai captions: false di index.ts");
   }
   if (opts.hasWorldFile) {
     problems.push('ai-labs wajib pakai motion graphics (mode: "motion"), bukan world.ts 3D');

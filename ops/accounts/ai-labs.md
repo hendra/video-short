@@ -46,7 +46,7 @@ Jangan pakai brand channel lain. Gate CI menolak video yang brand-nya beda.
 
 `ai-labs` memakai engine **motion graphics 2D** (`mode: "motion"`), **bukan** scene 3D.
 
-- Di `src/videos/<slug>/index.ts`, tulis `mode: "motion"` (opsional `theme: "dark-tech"`, default sudah `"dark-tech"`). **Jangan** tulis `fov`, `createWorld`, `world.ts`, `state.ts`, atau `Kit` — gate CI menolak video `ai-labs` yang memakai `world.ts` atau tidak memakai `mode: "motion"`.
+- Di `src/videos/<slug>/index.ts`, tulis `mode: "motion"` dan `captions: false` (opsional `theme: "dark-tech"`, default sudah `"dark-tech"`). Caption teks di layar dimatikan agar kartu motion tidak penuh/bertumpuk. **Jangan** tulis `fov`, `createWorld`, `world.ts`, `state.ts`, atau `Kit` — gate CI menolak video `ai-labs` yang memakai `world.ts`, tidak memakai `mode: "motion"`, atau lupa `captions: false`.
 - Di `src/videos/<slug>/shots.tsx`, bangun tiap shot sebagai `MotionShotDef` dengan helper & blok dari `../../engine/motion`:
   ```ts
   import {
@@ -67,11 +67,11 @@ Jangan pakai brand channel lain. Gate CI menolak video yang brand-nya beda.
   7. `BentoGrid`: `{ t, columns?: 1 | 2, items: BentoItem[] }` — item `{ icon, title, detail, accent?: "mint" | "cyan" | "amber" | "violet", at, activeAt? }`. Batas padat: maks 4 item (grid 2×2).
   8. `IllustrationStage`: `{ t, at, title?, caption?, variant?: "photo-wipe" | "mcp-bridge" | "doc-to-json" | "custom", children? }` — SVG ilustrasi bawaan atau custom.
   - `TechIcon`: `{ name: TechIconName, size?, color?, accent? }`. Nilai `TECH_ICON_NAMES` yang tersedia: `"sparkle"`, `"terminal"`, `"code"`, `"brain"`, `"bot"`, `"folder"`, `"file"`, `"git"`, `"plug"`, `"shield"`, `"lock"`, `"image"`, `"video"`, `"clock"`, `"bolt"`, `"check"`, `"x"`, `"warning"`, `"search"`, `"copy"`, `"sliders"`, `"layers"`, `"database"`, `"globe"`.
-- **Kepadatan vertikal & zona aman:** `MotionStage` membatasi stage di atas `y = 1230` (`CAPTION_SAFE_BOTTOM`, dengan `overflow: "hidden"`). Jangan tumpuk terlalu banyak blok dalam satu shot agar tidak terpotong di bagian bawah.
+- **Kepadatan vertikal & zona aman:** karena caption di layar dimatikan (`captions: false`), `MotionStage` membatasi stage di atas `y = 1480` (`NO_CAPTION_SAFE_BOTTOM`, dengan `overflow: "hidden"`). Jangan tumpuk terlalu banyak blok dalam satu shot agar tidak terpotong di bagian bawah, dan sisakan sedikit ruang di kanan bawah untuk tombol YouTube Shorts/TikTok.
 - **Aturan gerak murni:** semua animasi harus fungsi murni dari `t` yang diikat ke `ctx.L(n).s` / `ctx.L(n).e` (`spring`, `ramp`, `sway`, `stagger`, `typewriter`, `countValue`). Dilarang `Math.random()`, state lintas-frame, atau CSS `@keyframes`.
 - **Tidak boleh** screenshot UI asli (CI tidak bisa login ke akun mana pun) — gambar ulang bentuknya memakai blok motion atau SVG di `IllustrationStage`.
 - Diagram/ilustrasi skematis diberi `tag: "ILUSTRASI"`.
-- Caption: satu potongan ≤ 5 token per saat, tidak pernah dua; `line-height: 1.8` jangan dikecilkan.
+- **Caption:** teks karaoke di layar **dimatikan** untuk `ai-labs` (`captions: false` di `index.ts`); `timeline.json` tetap dibuat seperti biasa lewat `npm run timeline -- <slug>`.
 
 ## publish.json
 
