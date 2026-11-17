@@ -5,6 +5,7 @@
  * re-implementation.
  */
 import { ACCOUNT_IDS, accountById, isAccountId, type Account, type AccountId } from "../src/accounts.ts";
+import { CERPENEK_MOODS } from "./music.mts";
 
 /** The brand line a generated video source must contain, exactly. */
 export const brandLine = (account: Account): string =>
@@ -111,4 +112,14 @@ export const aiLabsVideoProblems = (opts: {
     }
   }
   return problems;
+};
+
+/** Rules specific to cerpenek videos: config.json must pick one of the 5 mood tracks. */
+export const cerpenekMusicProblems = (configJson: { music?: unknown } | null): string[] => {
+  if (!configJson) return ['config.json wajib ada dan berisi field "music"'];
+  const mood = configJson.music;
+  if (typeof mood !== "string" || !(CERPENEK_MOODS as readonly string[]).includes(mood)) {
+    return [`config.json: field "music" wajib salah satu dari: ${CERPENEK_MOODS.join(", ")}`];
+  }
+  return [];
 };

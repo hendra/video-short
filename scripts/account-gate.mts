@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ACCOUNTS, accountById, isAccountId } from "../src/accounts.ts";
-import { accountProblems, aiLabsVideoProblems, brandProblems } from "./account-core.mts";
+import { accountProblems, aiLabsVideoProblems, brandProblems, cerpenekMusicProblems } from "./account-core.mts";
 import { videoDir } from "./lib.mts";
 
 const args = process.argv.slice(2);
@@ -68,6 +68,20 @@ if (account.id === "ai-labs") {
       naskahText: fs.existsSync(naskahPath) ? fs.readFileSync(naskahPath, "utf8") : null,
     }),
   );
+}
+
+if (account.id === "cerpenek") {
+  const configPath = path.join(dir, "config.json");
+  if (!fs.existsSync(configPath)) {
+    problems.push(`missing ${configPath}`);
+  } else {
+    try {
+      const configJson = JSON.parse(fs.readFileSync(configPath, "utf8")) as { music?: unknown };
+      problems.push(...cerpenekMusicProblems(configJson));
+    } catch {
+      problems.push(`${configPath}: not valid JSON`);
+    }
+  }
 }
 
 if (problems.length) {

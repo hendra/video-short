@@ -5,6 +5,7 @@ import {
   accountProblems,
   aiLabsVideoProblems,
   brandProblems,
+  cerpenekMusicProblems,
   envLines,
   resolveAccountArg,
   voiceProblem,
@@ -188,5 +189,23 @@ describe("aiLabsVideoProblems", () => {
       }),
       [],
     );
+  });
+});
+
+describe("cerpenekMusicProblems", () => {
+  test("accepts all 5 valid Cerpenek mood names", () => {
+    for (const music of ["ceria", "hangat", "petualang", "nusantara", "ajaib"]) {
+      assert.deepEqual(cerpenekMusicProblems({ music }), []);
+    }
+  });
+
+  test("rejects missing config or missing music field", () => {
+    assert.ok(cerpenekMusicProblems(null).some((p) => p.includes("config.json") && p.includes("music")));
+    assert.ok(cerpenekMusicProblems({}).some((p) => p.includes("config.json") && p.includes("music")));
+  });
+
+  test("rejects unknown mood names with valid choices", () => {
+    const problems = cerpenekMusicProblems({ music: "seram" });
+    assert.ok(problems.some((p) => p.includes("ceria, hangat, petualang, nusantara, ajaib")), problems.join("; "));
   });
 });

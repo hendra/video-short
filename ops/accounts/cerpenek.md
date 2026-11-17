@@ -135,6 +135,17 @@ Banyak cerita di backlog tentang benda (batik, angklung, keris, rendang), bangun
 - Kapal memakai `kit.boat`; pesawat cukup silinder badan dengan dua balok sayap.
 - Jangan mencoba menggambar wajah, tulisan, atau ukiran pada benda.
 
+## Musik latar
+
+Di `src/videos/<slug>/config.json`, **wajib** isi field `"music"` sesuai suasana cerita (dipakai `scripts/music.mts` untuk meracik `public/<slug>/music.wav` dari koleksi track Cerpenek). Di `index.ts`, tetap pakai `music: { src: "<slug>/music.wav", volume: 0.14 }`.
+
+Pilih satu dari 5 suasana ini:
+- `"ceria"` — cerita jenaka, fabel lucu, permainan/jajanan tradisional (mis. *Si Kabayan*, *Kancil*, *Congklak*).
+- `"hangat"` — kisah kasih sayang, keluarga, pendidikan, ketulusan (mis. *Malin Kundang*, *Kartini*, *Batu Menangis*).
+- `"petualang"` — kisah keberanian, pahlawan, perjalanan penuh aksi ringan (mis. *Diponegoro*, *Cut Nyak Dhien*, *Timun Mas*).
+- `"nusantara"` — kerajaan, candi, budaya daerah, alat musik & kain adat (mis. *Borobudur*, *Majapahit*, *Batik*, *Angklung*).
+- `"ajaib"` — legenda asal-usul danau/alam/benda ajaib yang penuh rasa ingin tahu (mis. *Danau Toba*, *Keong Mas*, *Rawa Pening*).
+
 ## publish.json
 
 `src/videos/<slug>/publish.json` — bentuk persis:

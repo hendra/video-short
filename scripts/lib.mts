@@ -16,6 +16,8 @@ export type VideoConfig = {
   shots: [string, number][];
   /** Seconds of picture after the last word. */
   tail: number;
+  /** Optional Cerpenek mood music track name (e.g. "ceria", "hangat"). */
+  music?: string;
 };
 
 /** naskah.txt: lines formatted "NN  text". Everything else is a comment. */
