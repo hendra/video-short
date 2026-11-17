@@ -23,7 +23,7 @@ describe("AI Labs brief", () => {
       "## Format",
       "## Topik",
       "## Naskah",
-      "## Scene 3D",
+      "## Visual: Motion Graphics",
       "## publish.json",
       "## Batas klaim",
       "## Refill backlog",
@@ -32,9 +32,11 @@ describe("AI Labs brief", () => {
     }
   });
 
-  test("states the exact brand line the video source must contain", () => {
+  test("states the exact brand line and motion/prompt rules", () => {
     const text = fs.readFileSync(briefPath, "utf8");
     assert.ok(text.includes('brand: { prefix: "AI ", accent: "Labs" }'), "brief must carry the literal brand line");
+    assert.ok(text.includes('mode: "motion"'), 'brief must document mode: "motion"');
+    assert.ok(text.includes("Prompt siap copy:"), 'brief must document "Prompt siap copy:" rule');
   });
 });
 

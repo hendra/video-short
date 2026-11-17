@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ACCOUNTS } from "../src/accounts.ts";
-import { accountProblems, brandProblems, envLines, resolveAccountArg, voiceProblem } from "./account-core.mts";
+import {
+  accountProblems,
+  aiLabsVideoProblems,
+  brandProblems,
+  envLines,
+  resolveAccountArg,
+  voiceProblem,
+} from "./account-core.mts";
 
 const ALL_ACCOUNTS = Object.values(ACCOUNTS);
 const kaliAja = ACCOUNTS["kali-aja"];
@@ -82,5 +89,104 @@ describe("voiceProblem", () => {
   test("a placeholder voice is reported with the account id", () => {
     const problem = voiceProblem({ ...kaliAja, id: "cerpenek", tts: { voice: "TODO_VOICE", style: "x" } });
     assert.match(problem ?? "", /suara akun cerpenek belum dipilih/);
+  });
+});
+
+describe("aiLabsVideoProblems", () => {
+  test("accepts valid motion video without PromptCard", () => {
+    assert.deepEqual(
+      aiLabsVideoProblems({
+        indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Follow!" } };',
+        shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
+        hasWorldFile: false,
+        publishJson: { description: "Penjelasan AI CLI tools." },
+        naskahText: "01  Line one\n02  Line two\n03  Follow akun ini.",
+      }),
+      [],
+    );
+  });
+
+  test('rejects missing mode: "motion" in indexSource', () => {
+    const problems = aiLabsVideoProblems({
+      indexSource: 'export const VIDEO = { cta: { text: "Follow!" } };',
+      shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
+      hasWorldFile: false,
+      publishJson: { description: "Penjelasan AI CLI tools." },
+      naskahText: "01  Line one",
+    });
+    assert.ok(problems.some((p) => p.includes('mode: "motion"')), problems.join("; "));
+  });
+
+  test("rejects world.ts when hasWorldFile is true", () => {
+    const problems = aiLabsVideoProblems({
+      indexSource: 'export const VIDEO = { mode: "motion" };',
+      shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
+      hasWorldFile: true,
+      publishJson: { description: "Penjelasan AI CLI tools." },
+      naskahText: "01  Line one",
+    });
+    assert.ok(problems.some((p) => p.includes("world.ts")), problems.join("; "));
+  });
+
+  test("accepts PromptCard when description has Prompt siap copy and naskah/CTA mentions deskripsi", () => {
+    assert.deepEqual(
+      aiLabsVideoProblems({
+        indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Simpan!" } };',
+        shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
+        hasWorldFile: false,
+        publishJson: { description: 'Ringkasan.\n\nPrompt siap copy:\n"Act as a senior engineer"' },
+        naskahText: "01  Intro\n02  Middle\n03  Cek deskripsi buat copy prompt-nya.",
+      }),
+      [],
+    );
+    assert.deepEqual(
+      aiLabsVideoProblems({
+        indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Copy prompt di deskripsi!" } };',
+        shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
+        hasWorldFile: false,
+        publishJson: { description: 'Prompt siap copy:\n"Act as a senior engineer"' },
+        naskahText: "01  Intro\n02  Middle\n03  Gas cobain sekarang.",
+      }),
+      [],
+    );
+  });
+
+  test('rejects PromptCard when description lacks "Prompt siap copy:"', () => {
+    const problems = aiLabsVideoProblems({
+      indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Cek deskripsi" } };',
+      shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
+      hasWorldFile: false,
+      publishJson: { description: "Prompt ini bagus banget." },
+      naskahText: "01  Cek deskripsi ya.",
+    });
+    assert.ok(problems.some((p) => p.includes("Prompt siap copy:")), problems.join("; "));
+  });
+
+  test('rejects PromptCard when neither CTA nor last 3 lines of naskah mentions "deskripsi"', () => {
+    const problems = aiLabsVideoProblems({
+      indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Follow!" } };',
+      shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
+      hasWorldFile: false,
+      publishJson: { description: 'Prompt siap copy:\n"Act as a senior engineer"' },
+      naskahText: "01  Di deskripsi ada bahannya\n02  Langkah satu\n03  Langkah dua\n04  Follow sekarang!",
+    });
+    assert.ok(problems.some((p) => p.includes("deskripsi")), problems.join("; "));
+  });
+
+  test("ignores PromptCard in imports or comments when <PromptCard is not rendered", () => {
+    assert.deepEqual(
+      aiLabsVideoProblems({
+        indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Follow!" } };',
+        shotsSource: [
+          'import { TerminalCard, PromptCard } from "../../engine/motion/index.ts";',
+          "// Not using PromptCard here",
+          'export const shots = () => <TerminalCard title="CLI" />;',
+        ].join("\n"),
+        hasWorldFile: false,
+        publishJson: { description: "Penjelasan AI CLI tools tanpa prompt block." },
+        naskahText: "01  Intro\n02  Middle\n03  Follow akun ini.",
+      }),
+      [],
+    );
   });
 });

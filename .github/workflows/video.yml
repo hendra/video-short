@@ -202,7 +202,7 @@ jobs:
         id: gates
         run: npm run lint && npm test && npx remotion bundle --out-dir /tmp/rbundle
 
-      # One still per shot, frame = shot span start (fps=30 from src/Root.tsx).
+      # One still per shot, ~0.5s into each shot (past transitions, capped at midpoint; fps=30 from src/Root.tsx).
       # Slug passed via env, not interpolated into the JS expression.
       - name: Still check (one frame per shot)
         id: stills
@@ -211,7 +211,7 @@ jobs:
             npx remotion still /tmp/rbundle "$SLUG" "/tmp/s_${shot}.jpg" --frame="$frame" --gl=swangle --image-format=jpeg
             SZ=$(stat -c%s "/tmp/s_${shot}.jpg")
             if [ "$SZ" -lt 10000 ]; then echo "still for shot $shot too small or missing ($SZ bytes)"; exit 1; fi
-          done < <(node -e 'const fs=require("fs"); const t=JSON.parse(fs.readFileSync(`src/videos/${process.env.SLUG}/timeline.json`,"utf8")); console.log(t.shots.map(s=>s.id+" "+(Math.floor(s.s*30)+1)).join("\n"));')
+          done < <(node -e 'const fs=require("fs"); const t=JSON.parse(fs.readFileSync(`src/videos/${process.env.SLUG}/timeline.json`,"utf8")); console.log(t.shots.map(s=>s.id+" "+Math.max(1, Math.floor(Math.min(s.s+0.5, (s.s+s.e)/2)*30))).join("\n"));')
 
       # Must equal durationInFrames in src/Root.tsx: ceil(timeline.dur * 30).
       - name: Count frames

@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ACCOUNTS, accountById, isAccountId } from "../src/accounts.ts";
-import { accountProblems, brandProblems } from "./account-core.mts";
+import { accountProblems, aiLabsVideoProblems, brandProblems } from "./account-core.mts";
 import { videoDir } from "./lib.mts";
 
 const args = process.argv.slice(2);
@@ -33,22 +33,41 @@ const account = accountById(accountId);
 
 const problems: string[] = [];
 
-const publishPath = path.join(videoDir(slug), "publish.json");
+const dir = videoDir(slug);
+const publishPath = path.join(dir, "publish.json");
+let publishJson: { description?: unknown } | null = null;
 if (!fs.existsSync(publishPath)) {
   problems.push(`missing ${publishPath}`);
 } else {
   try {
-    problems.push(...accountProblems(JSON.parse(fs.readFileSync(publishPath, "utf8")), account.id));
+    publishJson = JSON.parse(fs.readFileSync(publishPath, "utf8")) as { description?: unknown };
+    problems.push(...accountProblems(publishJson, account.id));
   } catch {
     problems.push(`${publishPath}: not valid JSON`);
   }
 }
 
-const indexPath = path.join(videoDir(slug), "index.ts");
+const indexPath = path.join(dir, "index.ts");
+let indexSource = "";
 if (!fs.existsSync(indexPath)) {
   problems.push(`missing ${indexPath}`);
 } else {
-  problems.push(...brandProblems(fs.readFileSync(indexPath, "utf8"), account, Object.values(ACCOUNTS)));
+  indexSource = fs.readFileSync(indexPath, "utf8");
+  problems.push(...brandProblems(indexSource, account, Object.values(ACCOUNTS)));
+}
+
+if (account.id === "ai-labs") {
+  const shotsPath = [path.join(dir, "shots.tsx"), path.join(dir, "shots.ts")].find((p) => fs.existsSync(p));
+  const naskahPath = path.join(dir, "naskah.txt");
+  problems.push(
+    ...aiLabsVideoProblems({
+      indexSource,
+      shotsSource: shotsPath ? fs.readFileSync(shotsPath, "utf8") : null,
+      hasWorldFile: fs.existsSync(path.join(dir, "world.ts")),
+      publishJson,
+      naskahText: fs.existsSync(naskahPath) ? fs.readFileSync(naskahPath, "utf8") : null,
+    }),
+  );
 }
 
 if (problems.length) {
