@@ -36,6 +36,8 @@ describe("AI Labs brief", () => {
     const text = fs.readFileSync(briefPath, "utf8");
     assert.ok(text.includes('brand: { prefix: "AI ", accent: "Labs" }'), "brief must carry the literal brand line");
     assert.ok(text.includes('mode: "motion"'), 'brief must document mode: "motion"');
+    assert.ok(text.includes("captions: false"), "brief must require captions: false");
+    assert.ok(text.includes("1480"), "brief must document expanded y = 1480 stage bottom");
     assert.ok(text.includes("Prompt siap copy:"), 'brief must document "Prompt siap copy:" rule');
   });
 });

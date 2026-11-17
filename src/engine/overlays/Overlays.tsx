@@ -192,6 +192,8 @@ const Callouts: React.FC<{ shot: OverlayShot; t: number; pose: CamPose; fov: num
   );
 };
 
+export const shouldShowCaptions = (captions?: boolean): boolean => captions !== false;
+
 /** Karaoke captions: one short phrase at a time, current word highlighted. */
 const Captions: React.FC<{ tl: Timeline; t: number; theme: OverlayTheme }> = ({ tl, t, theme }) => {
   const i = tl.chunks.findIndex((c, k) => {
@@ -318,7 +320,7 @@ export const Overlays: React.FC<{
           {shot.tag}
         </div>
       ) : null}
-      <Captions tl={tl} t={t} theme={theme} />
+      {shouldShowCaptions(video.captions) ? <Captions tl={tl} t={t} theme={theme} /> : null}
       {dark ? null : <AbsoluteFill style={{ background: CREAM, opacity: clamp(flash) * 0.85 }} />}
     </AbsoluteFill>
   );

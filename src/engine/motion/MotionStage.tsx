@@ -2,8 +2,8 @@ import React, { useMemo } from "react";
 import { AbsoluteFill } from "remotion";
 import type { Ctx, MotionFrameCtx, ShotSpan, VideoDefMotion } from "../types";
 import {
-  CAPTION_SAFE_BOTTOM,
   clamp,
+  safeStageBottom,
   safeStageTop,
   sway,
   transitionLayers,
@@ -88,7 +88,7 @@ export const MotionStage: React.FC<{ video: VideoDefMotion; ctx: Ctx; t: number 
         style={{
           position: "absolute",
           top: stageTop,
-          bottom: 1920 - CAPTION_SAFE_BOTTOM,
+          bottom: 1920 - safeStageBottom(video.captions),
           left: 64,
           right: 64,
           overflow: "hidden",

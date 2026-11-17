@@ -4,9 +4,11 @@ import React from "react";
 import { DARK_TECH, TECH_ICON_NAMES, TechIcon, type TechIconName } from "../src/engine/motion/icons.tsx";
 import {
   CAPTION_SAFE_BOTTOM,
+  NO_CAPTION_SAFE_BOTTOM,
   TRANSITION_DUR,
   countValue,
   parseAccentTokens,
+  safeStageBottom,
   safeStageTop,
   stagger,
   transitionLayers,
@@ -14,6 +16,7 @@ import {
   typewriter,
   type TransitionKind,
 } from "../src/engine/motion/math.ts";
+import { shouldShowCaptions } from "../src/engine/overlays/Overlays.tsx";
 import type { ShotSpan } from "../src/engine/types.ts";
 
 describe("motion timing helpers", () => {
@@ -61,6 +64,22 @@ describe("safeStageTop", () => {
   test("estimates wrapped title lines across explicit newline segments", () => {
     assert.equal(safeStageTop("Satu Jembatan Semua Tool", "chip"), safeStageTop("Satu Jembatan\nSemua Tool", "chip"));
     assert.equal(safeStageTop("Template *Siap* Pakai", null), safeStageTop("Template *Siap*\nPakai", null) - 69);
+  });
+});
+
+describe("captions toggle and safeStageBottom", () => {
+  test("NO_CAPTION_SAFE_BOTTOM is 1480 and safeStageBottom switches on captions === false", () => {
+    assert.equal(CAPTION_SAFE_BOTTOM, 1230);
+    assert.equal(NO_CAPTION_SAFE_BOTTOM, 1480);
+    assert.equal(safeStageBottom(undefined), 1230);
+    assert.equal(safeStageBottom(true), 1230);
+    assert.equal(safeStageBottom(false), 1480);
+  });
+
+  test("shouldShowCaptions defaults to true and returns false only when captions === false", () => {
+    assert.equal(shouldShowCaptions(undefined), true);
+    assert.equal(shouldShowCaptions(true), true);
+    assert.equal(shouldShowCaptions(false), false);
   });
 });
 

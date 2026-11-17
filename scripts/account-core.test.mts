@@ -97,7 +97,7 @@ describe("aiLabsVideoProblems", () => {
   test("accepts valid motion video without PromptCard", () => {
     assert.deepEqual(
       aiLabsVideoProblems({
-        indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Follow!" } };',
+        indexSource: 'export const VIDEO = { mode: "motion", captions: false, cta: { text: "Follow!" } };',
         shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
         hasWorldFile: false,
         publishJson: { description: "Penjelasan AI CLI tools." },
@@ -132,7 +132,7 @@ describe("aiLabsVideoProblems", () => {
   test("accepts PromptCard when description has Prompt siap copy and naskah/CTA mentions deskripsi", () => {
     assert.deepEqual(
       aiLabsVideoProblems({
-        indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Simpan!" } };',
+        indexSource: 'export const VIDEO = { mode: "motion", captions: false, cta: { text: "Simpan!" } };',
         shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
         hasWorldFile: false,
         publishJson: { description: 'Ringkasan.\n\nPrompt siap copy:\n"Act as a senior engineer"' },
@@ -142,7 +142,7 @@ describe("aiLabsVideoProblems", () => {
     );
     assert.deepEqual(
       aiLabsVideoProblems({
-        indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Copy prompt di deskripsi!" } };',
+        indexSource: 'export const VIDEO = { mode: "motion", captions: false, cta: { text: "Copy prompt di deskripsi!" } };',
         shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
         hasWorldFile: false,
         publishJson: { description: 'Prompt siap copy:\n"Act as a senior engineer"' },
@@ -154,7 +154,7 @@ describe("aiLabsVideoProblems", () => {
 
   test('rejects PromptCard when description lacks "Prompt siap copy:"', () => {
     const problems = aiLabsVideoProblems({
-      indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Cek deskripsi" } };',
+      indexSource: 'export const VIDEO = { mode: "motion", captions: false, cta: { text: "Cek deskripsi" } };',
       shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
       hasWorldFile: false,
       publishJson: { description: "Prompt ini bagus banget." },
@@ -165,7 +165,7 @@ describe("aiLabsVideoProblems", () => {
 
   test('rejects PromptCard when neither CTA nor last 3 lines of naskah mentions "deskripsi"', () => {
     const problems = aiLabsVideoProblems({
-      indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Follow!" } };',
+      indexSource: 'export const VIDEO = { mode: "motion", captions: false, cta: { text: "Follow!" } };',
       shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
       hasWorldFile: false,
       publishJson: { description: 'Prompt siap copy:\n"Act as a senior engineer"' },
@@ -177,7 +177,7 @@ describe("aiLabsVideoProblems", () => {
   test("ignores PromptCard in imports or comments when <PromptCard is not rendered", () => {
     assert.deepEqual(
       aiLabsVideoProblems({
-        indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Follow!" } };',
+        indexSource: 'export const VIDEO = { mode: "motion", captions: false, cta: { text: "Follow!" } };',
         shotsSource: [
           'import { TerminalCard, PromptCard } from "../../engine/motion/index.ts";',
           "// Not using PromptCard here",
@@ -186,6 +186,48 @@ describe("aiLabsVideoProblems", () => {
         hasWorldFile: false,
         publishJson: { description: "Penjelasan AI CLI tools tanpa prompt block." },
         naskahText: "01  Intro\n02  Middle\n03  Follow akun ini.",
+      }),
+      [],
+    );
+  });
+
+  test("rejects missing captions: false or captions: true in indexSource", () => {
+    const missing = aiLabsVideoProblems({
+      indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Follow!" } };',
+      shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
+      hasWorldFile: false,
+      publishJson: { description: "Penjelasan AI CLI tools." },
+      naskahText: "01  Line one",
+    });
+    assert.ok(missing.some((p) => p.includes("captions: false")), missing.join("; "));
+
+    const enabled = aiLabsVideoProblems({
+      indexSource: 'export const VIDEO = { mode: "motion", captions: true };',
+      shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
+      hasWorldFile: false,
+      publishJson: { description: "Penjelasan AI CLI tools." },
+      naskahText: "01  Line one",
+    });
+    assert.ok(enabled.some((p) => p.includes("captions: false")), enabled.join("; "));
+
+    const commented = aiLabsVideoProblems({
+      indexSource: 'export const VIDEO = {\n  mode: "motion",\n  // captions: false,\n};',
+      shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
+      hasWorldFile: false,
+      publishJson: { description: "Penjelasan AI CLI tools." },
+      naskahText: "01  Line one",
+    });
+    assert.ok(commented.some((p) => p.includes("captions: false")), commented.join("; "));
+  });
+
+  test("accepts multiline captions: false in indexSource", () => {
+    assert.deepEqual(
+      aiLabsVideoProblems({
+        indexSource: 'export const VIDEO = {\n  mode: "motion",\n  captions: false,\n};',
+        shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
+        hasWorldFile: false,
+        publishJson: { description: "Penjelasan AI CLI tools." },
+        naskahText: "01  Line one",
       }),
       [],
     );
