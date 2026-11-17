@@ -73,6 +73,15 @@ Jangan pakai brand channel lain. Gate CI menolak video yang brand-nya beda.
 - Diagram/ilustrasi skematis diberi `tag: "ILUSTRASI"`.
 - **Caption:** teks karaoke di layar **dimatikan** untuk `ai-labs` (`captions: false` di `index.ts`); `timeline.json` tetap dibuat seperti biasa lewat `npm run timeline -- <slug>`.
 
+## Musik latar
+
+Di `src/videos/<slug>/config.json`, **wajib** isi field `"music"` sesuai jenis konten (dipakai `scripts/music.mts` untuk meracik `public/<slug>/music.wav` dari koleksi track AI Labs). Di `index.ts`, tetap pakai `music: { src: "<slug>/music.wav", volume: 0.14 }`.
+
+Pilih satu dari 3 suasana ini:
+- `"build"` — coding, CLI, MCP, agent workflows, prompt recipes.
+- `"debug"` — debug postmortem, pitfalls, security, troubleshooting config.
+- `"showcase"` — fitur baru AI, edit foto/video, perbandingan tool, demo AI.
+
 ## publish.json
 
 `src/videos/<slug>/publish.json` — bentuk persis:
