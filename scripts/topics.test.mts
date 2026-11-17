@@ -145,4 +145,6 @@ describe("Cerpenek brief — review fixes", () => {
   test("keeps the region out of the title template", () => assert.equal(/title.*Legenda dari Sumatra Barat/.test(text()), false));
   test("says how to stage object and building topics", () => assert.match(text(), /## Cerita tentang benda dan bangunan/));
   test("says what to do when no unused story fits the picked format", () => assert.match(text(), /jalankan `pick-format` sekali lagi/));
+  test("quotes a tempo range that keeps 1000 chars under 90 s", () => assert.match(text(), /11–13 karakter per detik/));
+  test("keeps the hook on line one even when the picked format opens on scenery", () => assert.match(text(), /[Kk]erangka mulai dari \*{0,2}baris kedua/));
 });

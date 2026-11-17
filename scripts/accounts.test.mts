@@ -59,8 +59,10 @@ describe("account registry", () => {
   });
 
   test("Cerpenek speaks with the young storyteller voice", () => {
-    assert.equal(ACCOUNTS.cerpenek.tts.voice, "id-id-storyteller-1");
-    assert.match(ACCOUNTS.cerpenek.tts.style, /bersemangat/);
+    assert.deepEqual(ACCOUNTS.cerpenek.tts, {
+      voice: "id-id-storyteller-1",
+      style: "hangat, ceria, bersemangat; intonasi naik-turun seperti bercerita",
+    });
   });
 
   test("a placeholder voice counts as unconfigured and is named", () => {
