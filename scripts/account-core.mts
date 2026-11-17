@@ -80,3 +80,35 @@ export const resolveAccountArg = (flag: string | undefined, envValue: string | u
 /** Why an account cannot be voiced yet (its voice is still a TODO_ placeholder), or null when it can. */
 export const voiceProblem = (account: Account): string | null =>
   account.tts.voice.startsWith("TODO_") ? `suara akun ${account.id} belum dipilih (tts.voice di src/accounts.ts)` : null;
+
+const lastThreeLines = (text: string | null): string =>
+  (text ?? "").split(/\r?\n/).filter((l) => l.trim() !== "").slice(-3).join("\n");
+
+/** Rules specific to ai-labs videos: motion graphics only, no world.ts, and PromptCard must link to description. */
+export const aiLabsVideoProblems = (opts: {
+  indexSource: string;
+  shotsSource: string | null;
+  hasWorldFile: boolean;
+  publishJson: { description?: unknown } | null;
+  naskahText: string | null;
+}): string[] => {
+  const problems: string[] = [];
+  if (!/mode\s*:\s*["']motion["']/.test(opts.indexSource)) {
+    problems.push('ai-labs wajib pakai mode: "motion" di index.ts');
+  }
+  if (opts.hasWorldFile) {
+    problems.push('ai-labs wajib pakai motion graphics (mode: "motion"), bukan world.ts 3D');
+  }
+  if (opts.shotsSource && /\bPromptCard\b/.test(opts.shotsSource)) {
+    const desc = opts.publishJson?.description;
+    if (typeof desc !== "string" || !/Prompt siap copy:/i.test(desc)) {
+      problems.push('shots pakai PromptCard — publish.json description wajib berisi "Prompt siap copy:"');
+    }
+    const mentionsDeskripsi =
+      /deskripsi/i.test(lastThreeLines(opts.naskahText)) || /cta\s*:\s*\{[^}]*deskripsi/i.test(opts.indexSource);
+    if (!mentionsDeskripsi) {
+      problems.push('shots pakai PromptCard — CTA di index.ts atau 3 baris terakhir naskah.txt wajib menyebut "deskripsi"');
+    }
+  }
+  return problems;
+};
