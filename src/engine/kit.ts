@@ -407,8 +407,10 @@ export class Kit {
     const c = new Color();
     for (let i = 0; i < pos.count; i++) {
       // 0 at the horizon, 1 at the zenith
-      const u = Math.max(0, Math.min(1, (pos.getY(i) / radius + 0.15) / 1.15));
-      c.copy(b).lerp(a, Math.pow(u, 0.45));
+      // the camera only ever sees a slice near the horizon: keep the warm band low and narrow so the
+      // zenith blue does not blend into a grey band across the top of the frame
+      const u = Math.max(0, Math.min(1, (pos.getY(i) / radius + 0.06) / 0.55));
+      c.copy(b).lerp(a, Math.pow(u, 1.7));
       // vertex colours are consumed as linear; without this the sky renders washed out
       const lin = c.clone().convertSRGBToLinear();
       colors[i * 3] = lin.r;
@@ -467,8 +469,8 @@ export class Kit {
     for (let i = 0; i < count; i++) {
       const ang = rnd() * Math.PI * 2;
       const rad = Math.sqrt(rnd()) * r;
-      const s = (0.65 + rnd() * 0.55) * scale;
-      setInstance(mesh, i, x + Math.cos(ang) * rad, 0.07 * s, z + Math.sin(ang) * rad, s, new Euler(0, rnd() * Math.PI, (rnd() - 0.5) * 0.28));
+      const s = (0.55 + rnd() * 0.5) * scale;
+      setInstance(mesh, i, x + Math.cos(ang) * rad, 0.04 * s, z + Math.sin(ang) * rad, s, new Euler(0, rnd() * Math.PI, (rnd() - 0.5) * 0.55));
     }
     this.root.add(mesh);
     return mesh;
