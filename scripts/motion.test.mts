@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import React from "react";
+import { DARK_TECH, TECH_ICON_NAMES, TechIcon, type TechIconName } from "../src/engine/motion/icons.tsx";
 import {
   CAPTION_SAFE_BOTTOM,
   TRANSITION_DUR,
@@ -149,6 +151,74 @@ describe("transitionStyles", () => {
         clipInsetRight: 0,
         wipeGlowOpacity: 0,
       });
+    }
+  });
+});
+
+describe("DARK_TECH and TechIcon", () => {
+  const expectedIcons: TechIconName[] = [
+    "sparkle",
+    "terminal",
+    "code",
+    "brain",
+    "bot",
+    "folder",
+    "file",
+    "git",
+    "plug",
+    "shield",
+    "lock",
+    "image",
+    "video",
+    "clock",
+    "bolt",
+    "check",
+    "x",
+    "warning",
+    "search",
+    "copy",
+    "sliders",
+    "layers",
+    "database",
+    "globe",
+  ];
+
+  const expectedPaletteKeys = [
+    "bg",
+    "surface",
+    "surfaceAlt",
+    "border",
+    "mint",
+    "cyan",
+    "violet",
+    "amber",
+    "red",
+    "ink",
+    "muted",
+  ] as const;
+
+  test("DARK_TECH has all required non-empty hex/rgba color tokens", () => {
+    assert.deepEqual(Object.keys(DARK_TECH).sort(), [...expectedPaletteKeys].sort());
+    for (const key of expectedPaletteKeys) {
+      const value = DARK_TECH[key];
+      assert.equal(typeof value, "string");
+      assert.ok(value.length > 0, `DARK_TECH.${key} is empty`);
+      assert.match(
+        value,
+        /^(#[0-9a-f]{6}|rgba?\([^)]+\))$/i,
+        `DARK_TECH.${key} (${value}) must be hex or rgb/rgba`,
+      );
+    }
+  });
+
+  test("TECH_ICON_NAMES contains all 24 expected icon names without duplicates and TechIcon renders each", () => {
+    assert.equal(TECH_ICON_NAMES.length, 24);
+    assert.equal(new Set(TECH_ICON_NAMES).size, 24);
+    assert.deepEqual([...TECH_ICON_NAMES].sort(), [...expectedIcons].sort());
+
+    for (const name of TECH_ICON_NAMES) {
+      const el = TechIcon({ name, size: 28, color: DARK_TECH.ink, accent: DARK_TECH.mint });
+      assert.equal(React.isValidElement(el), true, `TechIcon("${name}") should return a valid React element`);
     }
   });
 });
