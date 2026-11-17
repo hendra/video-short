@@ -99,7 +99,7 @@ export const aiLabsVideoProblems = (opts: {
   if (opts.hasWorldFile) {
     problems.push('ai-labs wajib pakai motion graphics (mode: "motion"), bukan world.ts 3D');
   }
-  if (opts.shotsSource && /\bPromptCard\b/.test(opts.shotsSource)) {
+  if (opts.shotsSource && /<PromptCard\b/.test(opts.shotsSource)) {
     const desc = opts.publishJson?.description;
     if (typeof desc !== "string" || !/Prompt siap copy:/i.test(desc)) {
       problems.push('shots pakai PromptCard — publish.json description wajib berisi "Prompt siap copy:"');

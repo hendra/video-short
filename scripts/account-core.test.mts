@@ -172,4 +172,21 @@ describe("aiLabsVideoProblems", () => {
     });
     assert.ok(problems.some((p) => p.includes("deskripsi")), problems.join("; "));
   });
+
+  test("ignores PromptCard in imports or comments when <PromptCard is not rendered", () => {
+    assert.deepEqual(
+      aiLabsVideoProblems({
+        indexSource: 'export const VIDEO = { mode: "motion", cta: { text: "Follow!" } };',
+        shotsSource: [
+          'import { TerminalCard, PromptCard } from "../../engine/motion/index.ts";',
+          "// Not using PromptCard here",
+          'export const shots = () => <TerminalCard title="CLI" />;',
+        ].join("\n"),
+        hasWorldFile: false,
+        publishJson: { description: "Penjelasan AI CLI tools tanpa prompt block." },
+        naskahText: "01  Intro\n02  Middle\n03  Follow akun ini.",
+      }),
+      [],
+    );
+  });
 });
