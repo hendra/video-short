@@ -96,11 +96,12 @@ const ikan = kit.swimmer(-0.5, 2.6, 1.2, { s: 1.2 });               // kind "ika
 const buaya = kit.swimmer(1.0, 2.8, -1.0, { kind: "buaya" });
 ```
 
-Menggerakkan tokoh di `update(t)` (semua fungsi murni dari `t`, pakai `sway`, `spring`, `ramp` dari `engine/math.ts`):
+Menggerakkan tokoh di `update(t)` (semua fungsi murni dari `t`, pakai `sway`, `spring`, `ramp` dari `engine/math.ts`). Tokoh mengembalikan `root`, `head`, `armL`, `armR`, `legL`, `legR`:
 
 ```ts
-ibu.armR.rotation.z = 2.3 + sway(t, 1) * 0.25;   // melambai (armL: nilai negatif)
-anak.head.rotation.x = 0.25;                     // menunduk; rotation.y = menoleh
+ibu.armR.rotation.z = 0.35 + sway(t, 1) * 0.12;   // melambai (armL: nilai negatif)
+anak.head.rotation.x = 0.25;                      // menunduk; rotation.y = menoleh
+anak.legL.rotation.x = Math.sin(t * 6) * 0.3;     // berjalan di tempat
 raja.root.position.x = lerp(1.0, 0.2, ramp(t, L(4).s, L(4).e));   // berjalan
 burung.wingL.rotation.z = -0.5 + Math.sin(t * 9) * 0.5;
 burung.wingR.rotation.z = 0.5 - Math.sin(t * 9) * 0.5;
@@ -111,6 +112,9 @@ Aturan scene:
 
 - Paling banyak **3 tokoh** (orang atau hewan besar) per shot, supaya anak tahu siapa yang sedang diceritakan.
 - Tokoh yang sama memakai **warna dan `headwear` yang sama** di semua shot.
+- **Beri tokoh pose, jangan biarkan berdiri kaku.** Lengan yang sedang diceritakan selalu diberi gerak (`armR.rotation.z`), kepala sedikit menoleh ke arah lawan bicara, dan tokoh anak boleh diberi langkah kaki kecil.
+- **Latar belakang harus terisi.** Selain alas diorama, taruh satu atau dua `kit.mountain` jauh di belakang (`z` sekitar -6 sampai -8), dan tutup sisa ruang dengan pohon atau bukit. Jangan tinggalkan dinding atau langit kosong setinggi setengah layar.
+- **Isi lantai di sekitar tokoh:** 3–6 batu kecil, beberapa rumpun rumput, pagar pendek, jalan setapak. Alas kosong membuat adegan terasa belum jadi.
 - **Tanpa `callouts` dan tanpa `chip`** di `shots.ts`. Layar hanya berisi adegan, judul, dan teks cerita. Cerita disampaikan lewat gerak tokoh, bukan label.
 - `label` = jenis cerita dan daerah (mis. `"LEGENDA · SUMATRA BARAT"`); `title` = judul cerita.
 - Warna cerah dan hangat. Latar langit terang; jangan gelap atau suram, juga di adegan sedih.

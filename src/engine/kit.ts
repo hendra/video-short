@@ -7,9 +7,12 @@
  * map alone tripled render time, and bump maps alias into noise on faces seen at a grazing angle.
  */
 import {
+  BackSide,
   BoxGeometry,
+  BufferAttribute,
   BufferGeometry,
   CapsuleGeometry,
+  Color,
   ConeGeometry,
   CylinderGeometry,
   DirectionalLight,
@@ -22,15 +25,17 @@ import {
   Material,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   MeshStandardMaterialParameters,
   Object3D,
   Quaternion,
   SphereGeometry,
+  TorusGeometry,
   Vector3,
 } from "three";
 import { bevelBoxGeometry, grainTexture, worldUV } from "./surface";
-import { rng } from "./math";
+import { lerp, rng } from "./math";
 import type { Vec3 } from "./types";
 
 /** Physically plausible looks. `grain` adds the shared surface texture (subtle albedo + roughness variation). */
@@ -59,6 +64,10 @@ export type FigureOpts = {
   skin?: string;
   hair?: string;
   headwear?: "none" | "caping" | "mahkota" | "ikat" | "kerudung";
+  /** Extra costume trim: "selempang" (sash), "rompi" (open vest) or "none". */
+  costume?: "none" | "selempang" | "rompi";
+  /** Trim colour for the sash / vest edge / crown band. Defaults to warm gold. */
+  trim?: string;
 };
 
 /** Options for `Kit.animal` — one generic four-legged animal. */
@@ -229,9 +238,10 @@ export class Kit {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Wooden-toy diorama prefabs (storytelling channels). Rounded peg-doll shapes, warm matte colours,
-  // faces are two dots. The returned parts (head, arms, wings, tail) are pivoted at the joint, so
-  // rotating them in update(t) moves them the way the real limb would.
+  // Wooden-toy diorama prefabs (storytelling channels). Rounded toy-doll shapes, warm matte colours.
+  // People get the full cartoon face (face()); animals, birds and swimmers keep the two-dot eyes().
+  // The returned parts (head, arms, legs, wings, tail) are pivoted at the joint, so rotating them in
+  // update(t) moves them the way the real limb would.
   // ---------------------------------------------------------------------------------------------
 
   /** Mesh from a raw geometry, placed inside `parent`. */
@@ -258,56 +268,120 @@ export class Kit {
   }
 
   /**
-   * Peg-doll person standing on the ground at x/z, facing +z when ry = 0. ~0.8 units tall as an adult.
-   * Rotate `armL` / `armR` around x (swing) or z (raise) and `head` around x/y (nod, turn).
+   * Cartoon face on a head of radius `r` centred at `c` (looking down +z): white eye + pupil + specular dot,
+   * brows, a smile arc and optional blush. `blush` suits the toy-doll channels (Cerpenek).
+   */
+  private face(parent: Object3D, c: Vec3, r: number, o: { blush?: boolean; brows?: boolean } = {}) {
+    const sclera = this.mat("#fdfbf7", "gloss");
+    const pupil = this.mat("#241d19", "gloss");
+    const dot = this.mat("#ffffff", "gloss");
+    for (const sx of [-1, 1]) {
+      const ex = c[0] + sx * r * 0.36;
+      const ey = c[1] + r * 0.02;
+      const ez = c[2] + r * 0.82;
+      this.part(new SphereGeometry(r * 0.21, 14, 11), sclera, parent, [ex, ey, ez], [1, 1.18, 0.55]);
+      this.part(new SphereGeometry(r * 0.125, 12, 10), pupil, parent, [ex + sx * r * 0.015, ey - r * 0.02, ez + r * 0.1], [1, 1.1, 0.6]);
+      this.part(new SphereGeometry(r * 0.05, 8, 7), dot, parent, [ex + sx * r * 0.055, ey + r * 0.08, ez + r * 0.16]);
+      if (o.brows) {
+        const b = this.part(new BoxGeometry(r * 0.28, r * 0.05, r * 0.04), this.mat("#3a2a22"), parent, [ex, ey + r * 0.34, ez + r * 0.1]);
+        b.rotation.z = -sx * 0.1;
+      }
+      if (o.blush) {
+        this.part(new SphereGeometry(r * 0.12, 10, 8), this.mat("#e88a7a"), parent, [c[0] + sx * r * 0.62, c[1] - r * 0.26, c[2] + r * 0.68], [1, 0.7, 0.25]);
+      }
+    }
+    // pushed forward onto the skin surface: at 0.86r the whole torus sat inside the head and was invisible
+    this.part(new TorusGeometry(r * 0.24, r * 0.042, 12, 24, Math.PI), this.mat("#4a2e23"), parent, [c[0], c[1] - r * 0.12, c[2] + r * 0.97], undefined, [0, 0, Math.PI]);
+  }
+
+  /**
+   * Wooden-toy person standing on the ground at x/z, facing +z when ry = 0. ~1 unit tall as an adult.
+   * Body parts are separate meshes on pivots (`armL`, `armR`, `legL`, `legR`, `head`), so swinging a limb in
+   * update(t) moves the way a real joint would; headwear and colours carry across shots unchanged.
    */
   figure(x: number, z: number, ry: number, o: FigureOpts = {}) {
     const { age = "dewasa", top = "#c2573f", bottom = "#7a4a33", skin = "#e3b48d", headwear = "none" } = o;
+    const costume = o.costume ?? "none";
+    const trim = o.trim ?? "#e2b23c";
     const hair = o.hair ?? (age === "lansia" ? "#dcd8d2" : "#2e2520");
     const root = new Group();
     root.position.set(x, 0, z);
     root.rotation.y = ry;
-    root.scale.setScalar(age === "anak" ? 0.7 : age === "lansia" ? 0.92 : 1);
+    root.scale.setScalar(age === "anak" ? 0.78 : age === "lansia" ? 0.95 : 1);
 
-    this.cyl(0, 0, 0, 0.16, 0.24, bottom, root, 0.145); // kain / skirt
-    this.cyl(0, 0.24, 0, 0.145, 0.27, top, root, 0.105); // torso
-    this.ball(0, 0.5, 0, 0.108, top, root); // shoulders
-
-    const head = this.pivot(root, [0, 0.56, 0]);
-    const hc: Vec3 = [0, 0.13, 0];
-    this.ball(...hc, 0.135, skin, head);
-    this.eyes(head, hc, 0.135);
-    if (headwear !== "kerudung") {
-      // hair cap: upper back of the head
-      this.part(new SphereGeometry(0.142, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.52), hair, head, hc, undefined, [-0.35, 0, 0]);
-      if (age === "lansia") this.ball(0, 0.19, -0.13, 0.055, hair, head); // bun
-    }
-    if (headwear === "caping") {
-      this.part(new ConeGeometry(0.27, 0.13, 28), "#d9b56c", head, [0, 0.3, 0]);
-    } else if (headwear === "mahkota") {
-      const gold = this.mat("#e2b23c", "gloss");
-      this.part(new CylinderGeometry(0.1, 0.085, 0.075, 24), gold, head, [0, 0.275, 0]);
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2;
-        this.part(new SphereGeometry(0.024, 16, 12), gold, head, [Math.sin(a) * 0.095, 0.325, Math.cos(a) * 0.095]);
+    // torso: a rounded barrel with a waist, not a straight cylinder
+    this.part(new CylinderGeometry(0.165, 0.2, 0.34, 28), top, root, [0, 0.56, 0]);
+    this.part(new SphereGeometry(0.185, 28, 20), top, root, [0, 0.5, 0], [1, 0.75, 0.92]);
+    this.part(new TorusGeometry(0.145, 0.032, 12, 28), "#f7f1e4", root, [0, 0.71, 0], undefined, [Math.PI / 2, 0, 0]);
+    this.part(new SphereGeometry(0.17, 26, 18), bottom, root, [0, 0.36, 0], [1, 0.6, 0.9]);
+    if (costume === "selempang") {
+      // sash across the chest: a thin rotated band with a gold edge
+      const sash = this.part(new BoxGeometry(0.1, 0.42, 0.02), trim, root, [0.02, 0.58, 0.175]);
+      sash.rotation.z = 0.62;
+      this.part(new BoxGeometry(0.05, 0.2, 0.015), "#f4e7c8", root, [0.16, 0.38, 0.185]).rotation.z = 0.62;
+    } else if (costume === "rompi") {
+      // open vest: two panels leaving the shirt visible between them, gold edge on the opening
+      for (const sx of [-1, 1]) {
+        this.part(new BoxGeometry(0.085, 0.3, 0.03), bottom, root, [sx * 0.085, 0.56, 0.155]).rotation.z = -sx * 0.08;
+        this.part(new BoxGeometry(0.012, 0.3, 0.032), trim, root, [sx * 0.045, 0.56, 0.157]).rotation.z = -sx * 0.08;
       }
-    } else if (headwear === "ikat") {
-      this.part(new CylinderGeometry(0.139, 0.139, 0.04, 28), "#b3352b", head, [0, 0.185, 0]);
-    } else if (headwear === "kerudung") {
-      this.part(new SphereGeometry(0.148, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.56), top, head, hc, undefined, [-0.62, 0, 0]);
-      this.part(new CylinderGeometry(0.115, 0.15, 0.12, 24), top, head, [0, -0.01, -0.035]);
     }
+
+    const limb = (px: number, py: number, rTop: number, rBot: number, len: number, m: string) => {
+      const g = this.pivot(root, [px, py, 0]);
+      this.part(new CylinderGeometry(rTop, rBot, len, 18), m, g, [0, -len / 2, 0]);
+      return g;
+    };
+
+    const legL = limb(-0.082, 0.34, 0.068, 0.06, 0.28, bottom);
+    const legR = limb(0.082, 0.34, 0.068, 0.06, 0.28, bottom);
+    for (const g of [legL, legR]) this.part(new BoxGeometry(0.115, 0.075, 0.17), "#3d3430", g, [0, -0.3025, 0.03]);
 
     const arm = (sx: number) => {
-      const a = this.pivot(root, [sx * 0.15, 0.5, 0]);
-      a.rotation.z = sx * 0.16;
-      this.part(new CapsuleGeometry(0.036, 0.19, 4, 12), top, a, [0, -0.13, 0]);
-      this.ball(0, -0.27, 0, 0.042, skin, a);
-      return a;
+      const g = limb(sx * 0.2, 0.66, 0.05, 0.045, 0.24, top);
+      g.rotation.z = sx * 0.22;
+      this.part(new SphereGeometry(0.072, 20, 16), top, g, [0, 0, 0]);
+      this.part(new SphereGeometry(0.062, 20, 16), skin, g, [0, -0.26, 0]);
+      return g;
     };
     const armL = arm(-1), armR = arm(1);
+
+
+    const head = this.pivot(root, [0, 0.86, 0]);
+    const hc: Vec3 = [0, 0, 0];
+    this.part(new SphereGeometry(0.215, 24, 18), skin, head, hc);
+    this.face(head, hc, 0.215, { blush: age === "anak", brows: true });
+
+    if (headwear === "kerudung") {
+      this.part(new SphereGeometry(0.226, 26, 16, 0, Math.PI * 2, 0, Math.PI * 0.46), top, head, [0, 0.045, -0.035], undefined, [-0.85, 0, 0]);
+      this.part(new CylinderGeometry(0.12, 0.185, 0.17, 24), top, head, [0, -0.09, -0.03]);
+      for (const sx of [-1, 1]) this.part(new SphereGeometry(0.07, 20, 14), top, head, [sx * 0.192, -0.03, 0.0], [0.75, 1.3, 0.9]);
+    } else {
+      const lift = age === "lansia" ? 0.03 : 0;
+      this.part(new SphereGeometry(0.228, 26, 16, 0, Math.PI * 2, 0, Math.PI * 0.52), hair, head, [0, 0.012 + lift, -0.02], undefined, [-0.42, 0, 0]);
+      this.part(new SphereGeometry(0.12, 20, 14), hair, head, [0, 0.163 + lift, 0.1], [1.18, 0.34, 0.45]);
+      for (const sx of [-1, 1]) this.part(new SphereGeometry(0.075, 20, 14), hair, head, [sx * 0.185, 0.02 + lift, 0.03], [0.7, 1.25, 0.85]);
+      if (age === "lansia") this.part(new SphereGeometry(0.095, 20, 16), hair, head, [0, 0.1 + lift, -0.21]);
+    }
+
+    if (headwear === "caping") {
+      this.part(new ConeGeometry(0.28, 0.14, 24), "#d9b56c", head, [0, 0.288, 0]);
+    } else if (headwear === "mahkota") {
+      const gold = this.mat("#e2b23c", "gloss");
+      this.part(new CylinderGeometry(0.13, 0.115, 0.085, 20), gold, head, [0, 0.258, 0]);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        this.part(new SphereGeometry(0.03, 12, 10), gold, head, [Math.sin(a) * 0.12, 0.313, Math.cos(a) * 0.12]);
+      }
+    } else if (headwear === "ikat") {
+      // tied headband with a knot and two loose tails
+      this.part(new CylinderGeometry(0.192, 0.198, 0.055, 24), "#b3352b", head, [0, 0.098, 0]);
+      this.part(new SphereGeometry(0.045, 14, 10), "#c04336", head, [0, 0.098, -0.195]);
+      for (const sx of [-1, 1]) this.part(new BoxGeometry(0.03, 0.12, 0.02), "#b3352b", head, [sx * 0.04, 0.04, -0.2], undefined, [0, 0, sx * 0.5]);
+    }
+
     this.root.add(root);
-    return { root, head, armL, armR };
+    return { root, head, armL, armR, legL, legR };
   }
 
   /** Round diorama base: a disc of sand or grass on a thick soil rim. Top surface is y = 0. */
@@ -316,6 +390,123 @@ export class Kit {
     g.position.set(x, 0, z);
     this.part(new CylinderGeometry(r, r * 0.94, 0.36, 64), "#a57c50", g, [0, -0.2, 0]);
     this.part(new CylinderGeometry(r * 1.005, r * 1.005, 0.05, 64), ground === "pasir" ? "#ecd9a6" : "#7fae5b", g, [0, -0.025, 0]);
+    this.root.add(g);
+    return g;
+  }
+
+  /**
+   * Sunset sky dome: one inward-facing sphere with a vertical gradient (no IBL, no post-processing).
+   * `top` is the zenith colour, `horizon` the warm band behind the mountains. One mesh per scene.
+   */
+  sky(top = "#8fb6d8", horizon = "#f7c98b", radius = 60) {
+    const geo = new SphereGeometry(radius, 32, 20);
+    const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    const a = new Color(top);
+    const b = new Color(horizon);
+    const c = new Color();
+    for (let i = 0; i < pos.count; i++) {
+      // 0 at the horizon, 1 at the zenith
+      // the camera only ever sees a slice near the horizon: keep the warm band low and narrow so the
+      // zenith blue does not blend into a grey band across the top of the frame
+      const u = Math.max(0, Math.min(1, (pos.getY(i) / radius + 0.06) / 0.55));
+      c.copy(b).lerp(a, Math.pow(u, 1.7));
+      // vertex colours are consumed as linear; without this the sky renders washed out
+      const lin = c.clone().convertSRGBToLinear();
+      colors[i * 3] = lin.r;
+      colors[i * 3 + 1] = lin.g;
+      colors[i * 3 + 2] = lin.b;
+    }
+    geo.setAttribute("color", new BufferAttribute(colors, 3));
+    // Basic material: the sky must not be lit or shaded by the scene lights.
+    const mesh = new Mesh(geo, new MeshBasicMaterial({ vertexColors: true, side: BackSide, depthWrite: false, toneMapped: false }));
+    mesh.frustumCulled = false;
+    this.root.add(mesh);
+    return mesh;
+  }
+
+  /**
+   * Receding mountain range for depth: one call places `count` faceted cones on an arc behind the scene,
+   * each paler and flatter with distance (aerial perspective without fog or an env map).
+   */
+  range(x: number, z: number, o: { count?: number; spread?: number; scale?: number; depth?: number; near?: string; far?: string } = {}) {
+    const { count = 5, spread = 26, scale = 3.4, depth = 14, near = "#5d8a4f", far = "#a9b8a0" } = o;
+    const g = new Group();
+    g.position.set(x, 0, z);
+    const a = new Color(near).convertSRGBToLinear();
+    const b = new Color(far).convertSRGBToLinear();
+    const c = new Color();
+    for (let i = 0; i < count; i++) {
+      const u = count === 1 ? 0 : i / (count - 1);
+      const px = (u - 0.5) * spread + (i % 2 ? 1.6 : -1.2);
+      const pz = -u * depth;
+      const s = scale * (1 - u * 0.35);
+      c.copy(a).lerp(b, u);
+      const m = this.add(new Mesh(new ConeGeometry(s, s * 1.25, 7), new MeshStandardMaterial({ color: c.clone(), flatShading: true, roughness: 0.9 })));
+      m.position.set(px, s * 0.62, pz);
+      m.rotation.y = u * 2.1;
+      g.add(m);
+    }
+    this.root.add(g);
+    return g;
+  }
+
+  /**
+   * Grass tufts, scattered deterministically inside a disc. One InstancedMesh per colour, so a hundred tufts
+   * cost a handful of draw calls instead of a hundred meshes (the CPU renderer is fill-rate bound).
+   */
+  grass(x: number, z: number, r: number, o: { count?: number; seed?: number; color?: string; scale?: number } = {}) {
+    const { count = 90, seed = 11, color = "#6f9f4c", scale = 1 } = o;
+    const rnd = rng(seed);
+    // a flattened cone reads as a blade of grass; a round one reads as a tiny fir tree
+    const blade = new ConeGeometry(0.03, 0.15, 4);
+    blade.scale(1, 1, 0.32);
+    const mesh = new InstancedMesh(blade, this.mat(color, { flatShading: true }), count);
+    mesh.instanceMatrix.setUsage(DynamicDrawUsage);
+    mesh.castShadow = false; // hundreds of tiny shadow casters cost more than they add
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    for (let i = 0; i < count; i++) {
+      const ang = rnd() * Math.PI * 2;
+      const rad = Math.sqrt(rnd()) * r;
+      const s = (0.55 + rnd() * 0.5) * scale;
+      setInstance(mesh, i, x + Math.cos(ang) * rad, 0.04 * s, z + Math.sin(ang) * rad, s, new Euler(0, rnd() * Math.PI, (rnd() - 0.5) * 0.55));
+    }
+    this.root.add(mesh);
+    return mesh;
+  }
+
+  /** Winding dirt path: a chain of overlapping flat discs laid on the ground from one point to another. */
+  path(x0: number, z0: number, x1: number, z1: number, o: { width?: number; color?: string; steps?: number } = {}) {
+    const { width = 0.5, color = "#b99468", steps = 24 } = o;
+    const g = new Group();
+    const m = this.mat(color);
+    for (let i = 0; i < steps; i++) {
+      const u = i / (steps - 1);
+      const wobble = Math.sin(u * 4.5) * 0.4;
+      const px = lerp(x0, x1, u) + wobble;
+      const pz = lerp(z0, z1, u);
+      // slightly wider at the near end so the path reads as receding, not as a row of coins
+      const w = width * (0.78 + 0.3 * (1 - u));
+      const disc = this.add(new Mesh(new CylinderGeometry(w, w, 0.02, 14), m));
+      disc.position.set(px, 0.012, pz);
+      disc.scale.z = 1.35;
+      g.add(disc);
+    }
+    this.root.add(g);
+    return g;
+  }
+
+  /** Low bush: three faceted clumps, cheaper than a tree and good for filling the middle distance. */
+  bush(x: number, z: number, s = 1, color = "#4f8a4a") {
+    const g = new Group();
+    g.position.set(x, 0, z);
+    g.scale.setScalar(s);
+    for (const [dx, dz, cr] of [[0, 0, 0.34], [0.26, 0.1, 0.24], [-0.22, -0.12, 0.22]] as const) {
+      const c = this.add(new Mesh(new IcosahedronGeometry(cr, 1), this.mat(color, { flatShading: true })), g);
+      c.position.set(dx, cr * 0.72, dz);
+      c.rotation.set(dx * 3, dz * 5, cr * 4);
+    }
     this.root.add(g);
     return g;
   }
@@ -486,8 +677,7 @@ export class Kit {
   }
 
   /** Instanced spheres for flowing water, bubbles, etc. */
-  particles(n: number, color: string, r = 0.09) {
-    const m = new InstancedMesh(
+  particles(n: number, color: string, r = 0.09) {    const m = new InstancedMesh(
       new SphereGeometry(r, 16, 12),
       new MeshStandardMaterial({ color, roughness: 0.3, emissive: color, emissiveIntensity: 0.25 }),
       n,
