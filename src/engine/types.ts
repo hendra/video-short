@@ -84,6 +84,8 @@ type BaseVideoDef = {
   voice: string; // path inside public/
   music?: { src: string; volume: number };
   cta?: { text: string; fromLine: number };
+  /** Show burned-in karaoke captions (defaults to true). */
+  captions?: boolean;
 };
 
 export type VideoDef3D = BaseVideoDef & {
