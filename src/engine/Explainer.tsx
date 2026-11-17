@@ -6,9 +6,10 @@ import { AbsoluteFill, getRemotionEnvironment, staticFile, useCurrentFrame, useV
 import { NeutralToneMapping, PCFSoftShadowMap, PerspectiveCamera } from "three";
 import { loadFonts } from "./fonts";
 import { applyPose, makeCtx, shotAt } from "./math";
+import { MotionStage } from "./motion/MotionStage";
 import { Overlays } from "./overlays/Overlays";
 import { VIDEOS } from "../videos/registry";
-import type { CamPose, Ctx, VideoDef } from "./types";
+import type { CamPose, Ctx, ShotSpan, VideoDef, VideoDef3D, VideoDefMotion } from "./types";
 
 loadFonts();
 
@@ -19,7 +20,7 @@ const getVideo = (id: string): VideoDef => {
 };
 
 /** Lives inside <ThreeCanvas>: owns the imperative world and drives it from the frame time. */
-const World: React.FC<{ video: VideoDef; ctx: Ctx; t: number; shotId: string; pose: CamPose }> = ({ video, ctx, t, shotId, pose }) => {
+const World: React.FC<{ video: VideoDef3D; ctx: Ctx; t: number; shotId: string; pose: CamPose }> = ({ video, ctx, t, shotId, pose }) => {
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
   const size = useThree((s) => s.size);
@@ -44,31 +45,38 @@ const World: React.FC<{ video: VideoDef; ctx: Ctx; t: number; shotId: string; po
 // overlays (2160x3840). Studio stays at 1 to keep the preview fast on HiDPI screens.
 const canvasDpr = () => (getRemotionEnvironment().isRendering && typeof window !== "undefined" ? window.devicePixelRatio : 1);
 
-/**
- * `audioOnly` (CI: `--props='{"videoId":"<id>","audioOnly":true}'` with a .wav output) renders just the sound
- * mix. Remotion still visits every frame for an audio render, so skipping the 3D scene makes it take seconds
- * instead of as long as the full video.
- */
-export const Explainer: React.FC<{ videoId: string; audioOnly?: boolean }> = ({ videoId, audioOnly }) => {
-  const video = getVideo(videoId);
-  const frame = useCurrentFrame();
-  const { fps, width, height } = useVideoConfig();
-  const t = frame / fps;
-  const ctx = useMemo(() => makeCtx(video.timeline), [video]);
+const MotionExplainer: React.FC<{
+  video: VideoDefMotion;
+  ctx: Ctx;
+  span: ShotSpan;
+  t: number;
+  audio: React.ReactNode;
+}> = ({ video, ctx, span, t, audio }) => {
   const shots = useMemo(() => video.shots(ctx), [video, ctx]);
-  const span = shotAt(video.timeline, t);
+  const shot = shots[span.id];
+  if (!shot) throw new Error(`No MotionShotDef for shot "${span.id}"`);
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#0b0f17" }}>
+      <MotionStage video={video} ctx={ctx} t={t} />
+      <Overlays video={video} shot={shot} shotStart={span.s} t={t} theme={video.theme ?? "dark-tech"} />
+      {audio}
+    </AbsoluteFill>
+  );
+};
+
+const ThreeExplainer: React.FC<{
+  video: VideoDef3D;
+  ctx: Ctx;
+  span: ShotSpan;
+  t: number;
+  width: number;
+  height: number;
+  audio: React.ReactNode;
+}> = ({ video, ctx, span, t, width, height, audio }) => {
+  const shots = useMemo(() => video.shots(ctx), [video, ctx]);
   const shot = shots[span.id];
   if (!shot) throw new Error(`No ShotDef for shot "${span.id}"`);
   const pose = shot.camera(t);
-
-  const audio = (
-    <>
-      <Audio src={staticFile(video.voice)} />
-      {video.music ? <Audio src={staticFile(video.music.src)} volume={video.music.volume} /> : null}
-    </>
-  );
-  if (audioOnly) return audio;
-
   return (
     <AbsoluteFill style={{ backgroundColor: "#dfe9ec" }}>
       <ThreeCanvas
@@ -85,4 +93,31 @@ export const Explainer: React.FC<{ videoId: string; audioOnly?: boolean }> = ({ 
       {audio}
     </AbsoluteFill>
   );
+};
+
+/**
+ * `audioOnly` (CI: `--props='{"videoId":"<id>","audioOnly":true}'` with a .wav output) renders just the sound
+ * mix. Remotion still visits every frame for an audio render, so skipping the 3D scene makes it take seconds
+ * instead of as long as the full video.
+ */
+export const Explainer: React.FC<{ videoId: string; audioOnly?: boolean }> = ({ videoId, audioOnly }) => {
+  const video = getVideo(videoId);
+  const frame = useCurrentFrame();
+  const { fps, width, height } = useVideoConfig();
+  const t = frame / fps;
+  const ctx = useMemo(() => makeCtx(video.timeline), [video]);
+
+  const audio = (
+    <>
+      <Audio src={staticFile(video.voice)} />
+      {video.music ? <Audio src={staticFile(video.music.src)} volume={video.music.volume} /> : null}
+    </>
+  );
+  if (audioOnly) return audio;
+
+  const span = shotAt(video.timeline, t);
+  if (video.mode === "motion") {
+    return <MotionExplainer video={video} ctx={ctx} span={span} t={t} audio={audio} />;
+  }
+  return <ThreeExplainer video={video} ctx={ctx} span={span} t={t} width={width} height={height} audio={audio} />;
 };
