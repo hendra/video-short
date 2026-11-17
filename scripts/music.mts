@@ -1,8 +1,8 @@
 /**
  * Background music generator for public/<id>/music.wav (16-bit stereo, 44.1 kHz).
  *
- * When config.json sets `music` (e.g. "ceria" for Cerpenek), loops/trims the corresponding
- * MP3 in public/cerpenek/music/<mood>.mp3 via ffmpeg with fade-in/fade-out and loudness norm.
+ * When config.json sets `music`, loops/trims the corresponding MP3 in
+ * public/<account>/music/<mood>.mp3 via ffmpeg with fade-in/fade-out and loudness norm.
  * Otherwise synthesises the original royalty-free lo-fi bed (A minor, 92 BPM) from scratch.
  *
  *   npm run music -- <id>
@@ -11,21 +11,35 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { DEFAULT_ACCOUNT, accountById, type AccountId } from "../src/accounts.ts";
 import type { Timeline } from "../src/engine/types";
 import { ROOT, publicDir, readConfig, videoDir, videoIdArg } from "./lib.mts";
 
-export const CERPENEK_MOODS = ["ceria", "hangat", "petualang", "nusantara", "ajaib"] as const;
-export type CerpenekMood = (typeof CERPENEK_MOODS)[number];
-export const CERPENEK_MUSIC_DIR = path.join(ROOT, "public", "cerpenek", "music");
+export const MOODS_BY_ACCOUNT: Record<AccountId, readonly string[]> = {
+  cerpenek: ["ceria", "hangat", "petualang", "nusantara", "ajaib"],
+  "ai-labs": ["build", "debug", "showcase"],
+  "kali-aja": ["teknik", "misteri", "fenomena"],
+};
+export const CERPENEK_MOODS = MOODS_BY_ACCOUNT.cerpenek;
+export const musicDirFor = (accountId: AccountId): string => path.join(ROOT, "public", accountId, "music");
+
+export const readVideoAccount = (id: string, dir = videoDir(id)): AccountId => {
+  const pubPath = path.join(dir, "publish.json");
+  if (!fs.existsSync(pubPath)) return DEFAULT_ACCOUNT;
+  const pub = JSON.parse(fs.readFileSync(pubPath, "utf8")) as { account?: string | null };
+  return accountById(pub.account).id;
+};
 
 export const resolveMusicTrack = (
   mood: string | undefined,
-  musicDir = CERPENEK_MUSIC_DIR,
+  accountId: AccountId = DEFAULT_ACCOUNT,
+  musicDir = musicDirFor(accountId),
   exists: (p: string) => boolean = fs.existsSync,
 ): string | null => {
   if (mood === undefined) return null;
-  if (!(CERPENEK_MOODS as readonly string[]).includes(mood)) {
-    throw new Error(`Unknown music mood "${mood}". Valid moods: ${CERPENEK_MOODS.join(", ")}`);
+  const validMoods = MOODS_BY_ACCOUNT[accountId];
+  if (!validMoods.includes(mood)) {
+    throw new Error(`Unknown music mood "${mood}" for account "${accountId}". Valid moods: ${validMoods.join(", ")}`);
   }
   const mp3Path = path.join(musicDir, `${mood}.mp3`);
   if (!exists(mp3Path)) {
@@ -35,7 +49,7 @@ export const resolveMusicTrack = (
 };
 
 export const ffmpegMusicArgs = (inputMp3: string, outputWav: string, dur: number): string[] => {
-  const safeDur = Math.max(0.1, dur);
+  const safeDur = Math.max(0.1, Number.isFinite(dur) ? dur : 0.1);
   const fadeIn = Math.min(0.5, safeDur / 2);
   const fadeOut = Math.min(2, Math.max(0, safeDur - fadeIn));
   const fadeOutStart = Math.max(0, safeDur - fadeOut);
@@ -166,7 +180,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const id = videoIdArg();
   const tl: Timeline = JSON.parse(fs.readFileSync(path.join(videoDir(id), "timeline.json"), "utf8"));
   const cfg = readConfig(id);
-  const track = resolveMusicTrack(cfg.music);
+  const track = resolveMusicTrack(cfg.music, readVideoAccount(id));
   fs.mkdirSync(publicDir(id), { recursive: true });
   const outWav = path.join(publicDir(id), "music.wav");
 
