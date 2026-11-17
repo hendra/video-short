@@ -27,6 +27,7 @@ import {
   Object3D,
   Quaternion,
   SphereGeometry,
+  TorusGeometry,
   Vector3,
 } from "three";
 import { bevelBoxGeometry, grainTexture, worldUV } from "./surface";
@@ -258,8 +259,35 @@ export class Kit {
   }
 
   /**
-   * Peg-doll person standing on the ground at x/z, facing +z when ry = 0. ~0.8 units tall as an adult.
-   * Rotate `armL` / `armR` around x (swing) or z (raise) and `head` around x/y (nod, turn).
+   * Cartoon face on a head of radius `r` centred at `c` (looking down +z): white eye + pupil + specular dot,
+   * brows, a smile arc and optional blush. `blush` suits the toy-doll channels (Cerpenek).
+   */
+  private face(parent: Object3D, c: Vec3, r: number, o: { blush?: boolean; brows?: boolean } = {}) {
+    const sclera = this.mat("#fdfbf7", "gloss");
+    const pupil = this.mat("#241d19", "gloss");
+    const dot = this.mat("#ffffff", "gloss");
+    for (const sx of [-1, 1]) {
+      const ex = c[0] + sx * r * 0.36;
+      const ey = c[1] + r * 0.02;
+      const ez = c[2] + r * 0.82;
+      this.part(new SphereGeometry(r * 0.21, 20, 16), sclera, parent, [ex, ey, ez], [1, 1.18, 0.55]);
+      this.part(new SphereGeometry(r * 0.125, 18, 14), pupil, parent, [ex + sx * r * 0.015, ey - r * 0.02, ez + r * 0.1], [1, 1.1, 0.6]);
+      this.part(new SphereGeometry(r * 0.05, 12, 10), dot, parent, [ex + sx * r * 0.055, ey + r * 0.08, ez + r * 0.16]);
+      if (o.brows) {
+        const b = this.part(new BoxGeometry(r * 0.28, r * 0.05, r * 0.04), this.mat("#3a2a22"), parent, [ex, ey + r * 0.36, ez - r * 0.02]);
+        b.rotation.z = -sx * 0.1;
+      }
+      if (o.blush) {
+        this.part(new SphereGeometry(r * 0.12, 14, 10), this.mat("#e88a7a"), parent, [c[0] + sx * r * 0.62, c[1] - r * 0.26, c[2] + r * 0.68], [1, 0.7, 0.25]);
+      }
+    }
+    this.part(new TorusGeometry(r * 0.24, r * 0.042, 12, 28, Math.PI), this.mat("#4a2e23"), parent, [c[0], c[1] - r * 0.12, c[2] + r * 0.86], undefined, [0, 0, Math.PI]);
+  }
+
+  /**
+   * Wooden-toy person standing on the ground at x/z, facing +z when ry = 0. ~1 unit tall as an adult.
+   * Body parts are separate meshes on pivots (`armL`, `armR`, `legL`, `legR`, `head`), so swinging a limb in
+   * update(t) moves the way a real joint would; headwear and colours carry across shots unchanged.
    */
   figure(x: number, z: number, ry: number, o: FigureOpts = {}) {
     const { age = "dewasa", top = "#c2573f", bottom = "#7a4a33", skin = "#e3b48d", headwear = "none" } = o;
@@ -267,47 +295,67 @@ export class Kit {
     const root = new Group();
     root.position.set(x, 0, z);
     root.rotation.y = ry;
-    root.scale.setScalar(age === "anak" ? 0.7 : age === "lansia" ? 0.92 : 1);
+    root.scale.setScalar(age === "anak" ? 0.78 : age === "lansia" ? 0.95 : 1);
 
-    this.cyl(0, 0, 0, 0.16, 0.24, bottom, root, 0.145); // kain / skirt
-    this.cyl(0, 0.24, 0, 0.145, 0.27, top, root, 0.105); // torso
-    this.ball(0, 0.5, 0, 0.108, top, root); // shoulders
+    // torso: a rounded barrel with a waist, not a straight cylinder
+    this.part(new CylinderGeometry(0.165, 0.2, 0.34, 28), top, root, [0, 0.56, 0]);
+    this.part(new SphereGeometry(0.185, 28, 20), top, root, [0, 0.5, 0], [1, 0.75, 0.92]);
+    this.part(new TorusGeometry(0.145, 0.032, 12, 28), "#f7f1e4", root, [0, 0.71, 0], undefined, [Math.PI / 2, 0, 0]);
+    this.part(new SphereGeometry(0.17, 26, 18), bottom, root, [0, 0.36, 0], [1, 0.6, 0.9]);
 
-    const head = this.pivot(root, [0, 0.56, 0]);
-    const hc: Vec3 = [0, 0.13, 0];
-    this.ball(...hc, 0.135, skin, head);
-    this.eyes(head, hc, 0.135);
-    if (headwear !== "kerudung") {
-      // hair cap: upper back of the head
-      this.part(new SphereGeometry(0.142, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.52), hair, head, hc, undefined, [-0.35, 0, 0]);
-      if (age === "lansia") this.ball(0, 0.19, -0.13, 0.055, hair, head); // bun
-    }
-    if (headwear === "caping") {
-      this.part(new ConeGeometry(0.27, 0.13, 28), "#d9b56c", head, [0, 0.3, 0]);
-    } else if (headwear === "mahkota") {
-      const gold = this.mat("#e2b23c", "gloss");
-      this.part(new CylinderGeometry(0.1, 0.085, 0.075, 24), gold, head, [0, 0.275, 0]);
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2;
-        this.part(new SphereGeometry(0.024, 16, 12), gold, head, [Math.sin(a) * 0.095, 0.325, Math.cos(a) * 0.095]);
-      }
-    } else if (headwear === "ikat") {
-      this.part(new CylinderGeometry(0.139, 0.139, 0.04, 28), "#b3352b", head, [0, 0.185, 0]);
-    } else if (headwear === "kerudung") {
-      this.part(new SphereGeometry(0.148, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.56), top, head, hc, undefined, [-0.62, 0, 0]);
-      this.part(new CylinderGeometry(0.115, 0.15, 0.12, 24), top, head, [0, -0.01, -0.035]);
-    }
+    const limb = (px: number, py: number, rTop: number, rBot: number, len: number, m: string) => {
+      const g = this.pivot(root, [px, py, 0]);
+      this.part(new CylinderGeometry(rTop, rBot, len, 18), m, g, [0, -len / 2, 0]);
+      return g;
+    };
+
+    const legL = limb(-0.082, 0.34, 0.068, 0.06, 0.28, bottom);
+    const legR = limb(0.082, 0.34, 0.068, 0.06, 0.28, bottom);
+    for (const g of [legL, legR]) this.part(new BoxGeometry(0.115, 0.075, 0.17), "#3d3430", g, [0, -0.29, 0.03]);
 
     const arm = (sx: number) => {
-      const a = this.pivot(root, [sx * 0.15, 0.5, 0]);
-      a.rotation.z = sx * 0.16;
-      this.part(new CapsuleGeometry(0.036, 0.19, 4, 12), top, a, [0, -0.13, 0]);
-      this.ball(0, -0.27, 0, 0.042, skin, a);
-      return a;
+      const g = limb(sx * 0.2, 0.66, 0.05, 0.045, 0.24, top);
+      g.rotation.z = sx * 0.22;
+      this.part(new SphereGeometry(0.072, 20, 16), top, g, [0, 0, 0]);
+      this.part(new SphereGeometry(0.062, 20, 16), skin, g, [0, -0.26, 0]);
+      return g;
     };
     const armL = arm(-1), armR = arm(1);
+
+    this.part(new CylinderGeometry(0.058, 0.062, 0.07, 18), skin, root, [0, 0.75, 0]);
+
+    const head = this.pivot(root, [0, 0.86, 0]);
+    const hc: Vec3 = [0, 0, 0];
+    this.part(new SphereGeometry(0.215, 34, 26), skin, head, hc);
+    this.face(head, hc, 0.215, { blush: age === "anak", brows: true });
+
+    if (headwear === "kerudung") {
+      this.part(new SphereGeometry(0.226, 34, 22, 0, Math.PI * 2, 0, Math.PI * 0.46), top, head, [0, 0.045, -0.035], undefined, [-0.85, 0, 0]);
+      this.part(new CylinderGeometry(0.12, 0.185, 0.17, 24), top, head, [0, -0.09, -0.03]);
+      for (const sx of [-1, 1]) this.part(new SphereGeometry(0.07, 20, 14), top, head, [sx * 0.192, -0.03, 0.0], [0.75, 1.3, 0.9]);
+    } else {
+      const lift = age === "lansia" ? 0.03 : 0;
+      this.part(new SphereGeometry(0.228, 34, 22, 0, Math.PI * 2, 0, Math.PI * 0.52), hair, head, [0, 0.012 + lift, -0.02], undefined, [-0.42, 0, 0]);
+      this.part(new SphereGeometry(0.12, 26, 18), hair, head, [0, 0.163 + lift, 0.1], [1.18, 0.34, 0.45]);
+      for (const sx of [-1, 1]) this.part(new SphereGeometry(0.075, 20, 14), hair, head, [sx * 0.185, 0.02 + lift, 0.03], [0.7, 1.25, 0.85]);
+      if (age === "lansia") this.part(new SphereGeometry(0.095, 20, 16), hair, head, [0, 0.1 + lift, -0.21]);
+    }
+
+    if (headwear === "caping") {
+      this.part(new ConeGeometry(0.28, 0.14, 28), "#d9b56c", head, [0, 0.3, 0]);
+    } else if (headwear === "mahkota") {
+      const gold = this.mat("#e2b23c", "gloss");
+      this.part(new CylinderGeometry(0.13, 0.115, 0.085, 24), gold, head, [0, 0.27, 0]);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        this.part(new SphereGeometry(0.03, 16, 12), gold, head, [Math.sin(a) * 0.12, 0.325, Math.cos(a) * 0.12]);
+      }
+    } else if (headwear === "ikat") {
+      this.part(new CylinderGeometry(0.222, 0.222, 0.045, 28), "#b3352b", head, [0, 0.16, 0]);
+    }
+
     this.root.add(root);
-    return { root, head, armL, armR };
+    return { root, head, armL, armR, legL, legR };
   }
 
   /** Round diorama base: a disc of sand or grass on a thick soil rim. Top surface is y = 0. */
