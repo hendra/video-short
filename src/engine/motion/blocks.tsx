@@ -415,7 +415,6 @@ export const TerminalCard: React.FC<{
           const kind = line.kind ?? "info";
           const isCmd = kind === "cmd";
           const appearP = ramp(t, line.at, line.at + 0.16);
-          if (appearP <= 0) return null;
 
           const typed = isCmd ? typewriter(line.text, t, line.at, 32) : line.text;
           const typingNow = isCmd && typed.length < line.text.length;
@@ -453,7 +452,7 @@ export const TerminalCard: React.FC<{
               }}
             >
               {isCmd ? <span style={{ color: DARK_TECH.mint, marginRight: 10 }}>$</span> : null}
-              <span>{typed}</span>
+              <span>{typed || "\u00A0"}</span>
               {showCursor ? (
                 <span
                   style={{
