@@ -5,7 +5,7 @@
  * re-implementation.
  */
 import { ACCOUNT_IDS, accountById, isAccountId, type Account, type AccountId } from "../src/accounts.ts";
-import { CERPENEK_MOODS } from "./music.mts";
+import { MOODS_BY_ACCOUNT } from "./music.mts";
 
 /** The brand line a generated video source must contain, exactly. */
 export const brandLine = (account: Account): string =>
@@ -118,12 +118,17 @@ export const aiLabsVideoProblems = (opts: {
   return problems;
 };
 
-/** Rules specific to cerpenek videos: config.json must pick one of the 5 mood tracks. */
-export const cerpenekMusicProblems = (configJson: { music?: unknown } | null): string[] => {
+/** Rules for config.json.music per account: must pick one of that channel's moods. */
+export const accountMusicProblems = (configJson: { music?: unknown } | null, accountId: AccountId): string[] => {
   if (!configJson) return ['config.json wajib ada dan berisi field "music"'];
+  const validMoods = MOODS_BY_ACCOUNT[accountId];
   const mood = configJson.music;
-  if (typeof mood !== "string" || !(CERPENEK_MOODS as readonly string[]).includes(mood)) {
-    return [`config.json: field "music" wajib salah satu dari: ${CERPENEK_MOODS.join(", ")}`];
+  if (typeof mood !== "string" || !validMoods.includes(mood)) {
+    return [`config.json: field "music" wajib salah satu dari: ${validMoods.join(", ")}`];
   }
   return [];
 };
+
+/** Rules specific to cerpenek videos: config.json must pick one of the 5 mood tracks. */
+export const cerpenekMusicProblems = (configJson: { music?: unknown } | null): string[] =>
+  accountMusicProblems(configJson, "cerpenek");

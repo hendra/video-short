@@ -63,13 +63,13 @@ Tidak ada API kuota gratis untuk Gemini TTS. Kuota AI Studio gratis ±10 request
 ```bash
 npm run tts -- <slug>        # vo.mp3 + alignment.json (Gemini 3.8 locked voice; timing dari aligner offline, ±0,2 dtk/kata)
 npm run timeline -- <slug>   # caption + rentang shot
-npm run music -- <slug>      # musik orisinal sesuai titik potong
+npm run music -- <slug>      # musik latar dari koleksi Kali Aja sesuai field "music" di config.json
 ```
 Cek `timeline.json`: semua kata ter-match, durasi 60–90 dtk. Jika TTS gagal (kunci salah, 429, kuota habis, voice/model tidak tersedia, atau analisis timing gagal): **berhenti dan laporkan** (§10) — jangan coba berulang-ulang, jangan ganti voice/model/provider. Audio gagal menyimpan take segar di `os.tmpdir()/vo-<slug>-failed.mp3`; `vo.mp3`/`alignment.json` lama tidak tersentuh.
 
 ## 6. Adegan 3D — pola scene
 
-File: `config.json` (shot → baris pertama), `state.ts` (semua animasi = fungsi murni dari `t`, terikat `L(n)`), `world.ts` (diorama dibuat sekali, `update(t)` per frame), `shots.ts` (label, judul `*hijau*`, kamera keyframe, callout, chip), `index.ts`, lalu daftarkan di `src/videos/registry.ts`.
+File: `config.json` (shot → baris pertama, `tail`, dan `"music"` wajib salah satu dari `"teknik"` untuk mekanisme teknik/infrastruktur, `"misteri"` untuk teka-teki *"kok bisa?"*/myth-buster, atau `"fenomena"` untuk fenomena alam/sains skala besar), `state.ts` (semua animasi = fungsi murni dari `t`, terikat `L(n)`), `world.ts` (diorama dibuat sekali, `update(t)` per frame), `shots.ts` (label, judul `*hijau*`, kamera keyframe, callout, chip), `index.ts` (`music: { src: "<slug>/music.wav", volume: 0.14 }`), lalu daftarkan di `src/videos/registry.ts`.
 
 Supaya setiap objek tampak nyata (bukan kotak polos), bangun adegan dari `Kit` (`src/engine/kit.ts`):
 - **Cahaya:** panggil `kit.lights()` sekali di `createWorld` (matahari hangat + bayangan lembut + langit/pantulan tanah). Jangan menambah `AmbientLight`/`DirectionalLight` sendiri. `reach` = setengah lebar area yang perlu bayangan (default 16).

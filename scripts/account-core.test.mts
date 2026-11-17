@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ACCOUNTS } from "../src/accounts.ts";
 import {
+  accountMusicProblems,
   accountProblems,
   aiLabsVideoProblems,
   brandProblems,
@@ -249,5 +250,19 @@ describe("cerpenekMusicProblems", () => {
   test("rejects unknown mood names with valid choices", () => {
     const problems = cerpenekMusicProblems({ music: "seram" });
     assert.ok(problems.some((p) => p.includes("ceria, hangat, petualang, nusantara, ajaib")), problems.join("; "));
+  });
+});
+
+describe("accountMusicProblems", () => {
+  test("accepts valid moods for each account and rejects cross-account or empty values", () => {
+    for (const music of ["build", "debug", "showcase"]) {
+      assert.deepEqual(accountMusicProblems({ music }, "ai-labs"), []);
+    }
+    for (const music of ["teknik", "misteri", "fenomena"]) {
+      assert.deepEqual(accountMusicProblems({ music }, "kali-aja"), []);
+    }
+    assert.ok(accountMusicProblems({ music: "ceria" }, "ai-labs").some((p) => p.includes("build, debug, showcase")));
+    assert.ok(accountMusicProblems({ music: "" }, "kali-aja").some((p) => p.includes("teknik, misteri, fenomena")));
+    assert.ok(accountMusicProblems({ music: 123 }, "cerpenek").some((p) => p.includes("ceria, hangat, petualang, nusantara, ajaib")));
   });
 });
