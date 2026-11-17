@@ -6,6 +6,7 @@ import {
   CAPTION_SAFE_BOTTOM,
   TRANSITION_DUR,
   countValue,
+  parseAccentTokens,
   safeStageTop,
   stagger,
   transitionLayers,
@@ -55,6 +56,31 @@ describe("safeStageTop", () => {
     assert.equal(twoChip, 528);
     assert.ok(singleNull < twoChip);
     assert.ok(twoChip < CAPTION_SAFE_BOTTOM);
+  });
+
+  test("estimates wrapped title lines across explicit newline segments", () => {
+    assert.equal(safeStageTop("Satu Jembatan Semua Tool", "chip"), safeStageTop("Satu Jembatan\nSemua Tool", "chip"));
+    assert.equal(safeStageTop("Template *Siap* Pakai", null), safeStageTop("Template *Siap*\nPakai", null) - 69);
+  });
+});
+
+describe("parseAccentTokens", () => {
+  test("keeps punctuation attached to *accent* word tokens", () => {
+    assert.deepEqual(parseAccentTokens("*AI*, cepat"), [
+      [
+        { text: "AI", accent: true },
+        { text: ",", accent: false },
+      ],
+      [{ text: "cepat", accent: false }],
+    ]);
+    assert.deepEqual(parseAccentTokens("*AI Agents*, cepat"), [
+      [{ text: "AI", accent: true }],
+      [
+        { text: "Agents", accent: true },
+        { text: ",", accent: false },
+      ],
+      [{ text: "cepat", accent: false }],
+    ]);
   });
 });
 

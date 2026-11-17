@@ -37,12 +37,46 @@ export const typewriter = (text: string, t: number, start: number, cps = 24): st
   return text.slice(0, count);
 };
 
+export type AccentSeg = { text: string; accent: boolean };
+
+export const parseAccentTokens = (text: string): AccentSeg[][] => {
+  // Expand multi-word *...* spans per word before splitting on whitespace so punctuation stays attached to its flex token.
+  const expanded = text.replace(/\*([^*]+)\*/g, (_, inner: string) =>
+    inner
+      .split(/(\s+)/)
+      .map((part) => (/\S/.test(part) ? `*${part}*` : part))
+      .join(""),
+  );
+  return expanded
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) =>
+      token
+        .split(/(\*[^*]+\*)/g)
+        .filter(Boolean)
+        .map((seg) =>
+          seg.startsWith("*") && seg.endsWith("*") && seg.length > 2
+            ? { text: seg.slice(1, -1), accent: true }
+            : { text: seg, accent: false },
+        ),
+    );
+};
+
+export const fmtID = (v: number, dec = 0) =>
+  v.toLocaleString("id-ID", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
 export const countValue = (from: number, to: number, t: number, start: number, dur = 0.8): number =>
   lerp(from, to, ramp(t, start, start + dur));
 
-// Matches Overlays.tsx headerBottom + chip/cta clearance + 24px gap
-export const safeStageTop = (title: string, under: "chip" | "cta" | null): number =>
-  178 + 40 + 69 * title.split("\n").length + 22 + (under === "chip" ? 126 : under === "cta" ? 88 : 0) + 24;
+// Matches Overlays.tsx header (left: 72, right: 300 -> ~19 chars/line at 66px) + chip/cta clearance + 24px gap
+export const safeStageTop = (title: string, under: "chip" | "cta" | null): number => {
+  const lines = title.split("\n").reduce((sum, seg) => {
+    const clean = seg.replace(/\*/g, "").trim();
+    return sum + Math.max(1, Math.ceil(clean.length / 19));
+  }, 0);
+  return 178 + 40 + 69 * lines + 22 + (under === "chip" ? 126 : under === "cta" ? 88 : 0) + 24;
+};
 
 export const transitionLayers = (
   shots: readonly ShotSpan[],

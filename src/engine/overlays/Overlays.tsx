@@ -1,9 +1,9 @@
 import React from "react";
 import { AbsoluteFill } from "remotion";
 import { FONT } from "../fonts";
-import { clamp } from "../math";
+import { clamp, makeProjector } from "../math";
+import { safeStageTop } from "../motion/math";
 import type { CamPose, OverlayTheme, ShotDef, Timeline, VideoDef } from "../types";
-import { makeProjector } from "../math";
 
 const INK = "#1d2328";
 const CREAM = "#f4f1ea";
@@ -31,11 +31,11 @@ const Title: React.FC<{ text: string; highlightColor: string }> = ({ text, highl
   </>
 );
 
-const Header: React.FC<{ shot: OverlayShot; local: number; titleLines: number; theme: OverlayTheme }> = ({ shot, local, theme }) => {
+const Header: React.FC<{ shot: OverlayShot; local: number; theme: OverlayTheme }> = ({ shot, local, theme }) => {
   const k = clamp(local / 0.35);
   const dark = theme === "dark-tech";
   return (
-    <div style={{ position: "absolute", left: 72, right: 300, top: 178, opacity: k, transform: `translateY(${(1 - k) * 24}px)` }}>
+    <div style={{ alignSelf: "stretch", opacity: k, transform: `translateY(${(1 - k) * 24}px)` }}>
       <div style={{ font: `600 30px ${FONT.mono}`, letterSpacing: 5, color: dark ? MINT : "#5c6670", textTransform: "uppercase" }}>{shot.label}</div>
       <div style={{ font: `800 66px/1.05 ${FONT.display}`, letterSpacing: -1.5, color: dark ? "#f8fafc" : INK, marginTop: 10 }}>
         <Title text={shot.title} highlightColor={dark ? MINT : GREEN} />
@@ -44,20 +44,13 @@ const Header: React.FC<{ shot: OverlayShot; local: number; titleLines: number; t
   );
 };
 
-/** Header height in px (top of the chip / CTA goes below it). */
-const headerBottom = (title: string) => 178 + 40 + 69 * title.split("\n").length + 22;
-const CHIP_H = 40 + 86; // key tab + value block
-const CTA_H = 84;
-/** Top of the free zone for callout labels: below the header and whatever sits under it. */
-const labelTop = (title: string, under: "chip" | "cta" | null) => headerBottom(title) + (under === "chip" ? CHIP_H : under === "cta" ? CTA_H + 4 : 0) + 24;
-
 const Chip: React.FC<{ shot: OverlayShot; t: number; theme: OverlayTheme }> = ({ shot, t, theme }) => {
   const c = shot.chip?.(t);
   if (!c) return null;
   if (theme === "dark-tech") {
     const border = c.red ? "#f87171" : "#38bdf8";
     return (
-      <div style={{ position: "absolute", left: 72, top: headerBottom(shot.title) }}>
+      <div style={{ marginTop: 17 }}>
         <span style={{ display: "inline-block", padding: "8px 14px", border: `2px solid ${border}`, borderBottom: "none", borderRadius: "8px 8px 0 0", background: "#0b0f17", font: `400 22px ${FONT.mono}`, letterSpacing: 3, color: border }}>
           {c.key}
         </span>
@@ -70,7 +63,7 @@ const Chip: React.FC<{ shot: OverlayShot; t: number; theme: OverlayTheme }> = ({
   }
   const color = c.red ? "#c8352b" : INK;
   return (
-    <div style={{ position: "absolute", left: 72, top: headerBottom(shot.title) }}>
+    <div style={{ marginTop: 17 }}>
       <span style={{ display: "inline-block", padding: "8px 14px", border: `2px solid ${color}`, borderBottom: "none", borderRadius: "8px 8px 0 0", background: CREAM, font: `400 22px ${FONT.mono}`, letterSpacing: 3, color }}>
         {c.key}
       </span>
@@ -267,9 +260,30 @@ export const Overlays: React.FC<{
         }}
       />
       {pose && shot.callouts?.length && "fov" in video ? (
-        <Callouts shot={shot} t={t} pose={pose} fov={video.fov} top={labelTop(shot.title, ctaOn ? "cta" : shot.chip?.(t) ? "chip" : null)} />
+        <Callouts shot={shot} t={t} pose={pose} fov={video.fov} top={safeStageTop(shot.title, ctaOn ? "cta" : shot.chip?.(t) ? "chip" : null)} />
       ) : null}
-      <Header shot={shot} local={t - shotStart} titleLines={shot.title.split("\n").length} theme={theme} />
+      <div style={{ position: "absolute", left: 72, right: 300, top: 178, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+        <Header shot={shot} local={t - shotStart} theme={theme} />
+        {ctaOn ? null : <Chip shot={shot} t={t} theme={theme} />}
+        {ctaOn && video.cta ? (
+          <div
+            style={{
+              marginTop: 21,
+              padding: "16px 26px",
+              borderRadius: 16,
+              background: dark ? "rgba(15, 23, 42, 0.92)" : "#fff",
+              border: dark ? "2px solid rgba(127, 227, 196, 0.55)" : `3px solid ${INK}`,
+              font: `700 34px ${FONT.ui}`,
+              color: dark ? "#f8fafc" : INK,
+            }}
+          >
+            <svg width={34} height={34} viewBox="0 0 24 24" style={{ verticalAlign: -6, marginRight: 10 }}>
+              <path d="M4 4h16v11H9l-5 4z" fill="none" stroke={dark ? MINT : INK} strokeWidth={2.4} strokeLinejoin="round" />
+            </svg>
+            {video.cta.text}
+          </div>
+        ) : null}
+      </div>
       <div
         style={{
           position: "absolute",
@@ -302,27 +316,6 @@ export const Overlays: React.FC<{
           }}
         >
           {shot.tag}
-        </div>
-      ) : null}
-      {ctaOn ? null : <Chip shot={shot} t={t} theme={theme} />}
-      {ctaOn && video.cta ? (
-        <div
-          style={{
-            position: "absolute",
-            left: 72,
-            top: headerBottom(shot.title) + 4,
-            padding: "16px 26px",
-            borderRadius: 16,
-            background: dark ? "rgba(15, 23, 42, 0.92)" : "#fff",
-            border: dark ? "2px solid rgba(127, 227, 196, 0.55)" : `3px solid ${INK}`,
-            font: `700 34px ${FONT.ui}`,
-            color: dark ? "#f8fafc" : INK,
-          }}
-        >
-          <svg width={34} height={34} viewBox="0 0 24 24" style={{ verticalAlign: -6, marginRight: 10 }}>
-            <path d="M4 4h16v11H9l-5 4z" fill="none" stroke={dark ? MINT : INK} strokeWidth={2.4} strokeLinejoin="round" />
-          </svg>
-          {video.cta.text}
         </div>
       ) : null}
       <Captions tl={tl} t={t} theme={theme} />

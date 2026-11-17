@@ -1,8 +1,7 @@
 import React, { useId } from "react";
 import { FONT } from "../fonts";
-import { clamp, fmtID, ramp, spring, sway } from "../math";
 import { DARK_TECH, TechIcon, type TechIconName } from "./icons";
-import { countValue, stagger, typewriter } from "./math";
+import { clamp, countValue, fmtID, parseAccentTokens, ramp, spring, stagger, sway, typewriter } from "./math";
 
 type AccentKey = "mint" | "cyan" | "amber" | "violet" | "red";
 
@@ -35,19 +34,6 @@ const cardShell: React.CSSProperties = {
   border: `1px solid ${DARK_TECH.border}`,
   borderRadius: 20,
   boxShadow: "0 18px 44px rgba(2, 6, 23, 0.55)",
-};
-
-const parseAccentTokens = (text: string): Array<{ word: string; accent: boolean }> => {
-  const out: Array<{ word: string; accent: boolean }> = [];
-  for (const part of text.split(/(\*[^*]+\*)/g)) {
-    if (!part) continue;
-    const isAccent = part.startsWith("*") && part.endsWith("*") && part.length > 2;
-    const raw = isAccent ? part.slice(1, -1) : part;
-    for (const word of raw.trim().split(/\s+/)) {
-      if (word) out.push({ word, accent: isAccent });
-    }
-  }
-  return out;
 };
 
 // 1. KineticHeadline
@@ -111,20 +97,32 @@ export const KineticHeadline: React.FC<{
           color: DARK_TECH.ink,
         }}
       >
-        {words.map((item, idx) => {
+        {words.map((segs, idx) => {
           const p = stagger(t, at + 0.04, idx, 0.055, 0.34);
           return (
             <span
-              key={`${idx}-${item.word}`}
+              key={`${idx}-${segs.map((s) => s.text).join("")}`}
               style={{
                 display: "inline-block",
-                color: item.accent ? DARK_TECH.mint : DARK_TECH.ink,
-                textShadow: item.accent ? "0 0 24px rgba(127, 227, 196, 0.32)" : undefined,
                 opacity: clamp(p),
                 transform: `translate3d(0, ${(1 - p) * 24}px, 0) scale(${0.9 + 0.1 * p})`,
               }}
             >
-              {item.word}
+              {segs.map((seg, j) => (
+                <span
+                  key={j}
+                  style={
+                    seg.accent
+                      ? {
+                          color: DARK_TECH.mint,
+                          textShadow: "0 0 24px rgba(127, 227, 196, 0.32)",
+                        }
+                      : undefined
+                  }
+                >
+                  {seg.text}
+                </span>
+              ))}
             </span>
           );
         })}
