@@ -58,9 +58,11 @@ describe("account registry", () => {
     for (const id of Object.values(a.buffer)) assert.equal(others.includes(id), false, `buffer id ${id} belongs to another account`);
   });
 
-  test("Cerpenek speaks with the chosen female storyteller voice", () => {
-    assert.equal(ACCOUNTS.cerpenek.tts.voice, "id-id-tutor-1");
-    assert.match(ACCOUNTS.cerpenek.tts.style, /nenek mendongeng/);
+  test("Cerpenek speaks with the young storyteller voice", () => {
+    assert.deepEqual(ACCOUNTS.cerpenek.tts, {
+      voice: "id-id-storyteller-1",
+      style: "hangat, ceria, bersemangat; intonasi naik-turun seperti bercerita",
+    });
   });
 
   test("a placeholder voice counts as unconfigured and is named", () => {

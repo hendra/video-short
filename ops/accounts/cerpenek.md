@@ -19,16 +19,16 @@ Jangan pakai brand channel lain. Gate CI menolak video yang brand-nya beda.
 
 ## Suara dan gaya bercerita
 
-- Naratornya **Nenek** yang sedang mendongeng: hangat, sabar, pelan. Nenek boleh menyapa ("Cucuku…", "Nah, dengarkan ya…") tetapi tidak di setiap kalimat.
+- Naratornya **kakak perempuan muda** yang bercerita ke adik kecil: hangat, ceria, bersemangat, intonasi naik-turun. Bukan Nenek. Kata "Nenek" dan sapaan "Cucuku" **dilarang** di naskah.
+- Sapaan **"adik-adik"** boleh, **maksimal sekali** per naskah, dan **tidak di baris pertama**.
 - Kalimat pendek, satu gagasan per kalimat. Kata sehari-hari yang dipahami anak SD. Hindari kata serapan sulit dan istilah teknis.
-- Pembuka **bervariasi** dari video ke video. Jangan selalu "Pada zaman dahulu". Boleh mulai dari tempat, dari pertanyaan, atau dari suara dan suasana.
 - Angka ditulis dengan kata ("tujuh hari", "seribu candi").
 - Suara dibuat dengan **`npm run tts -- <slug> --account cerpenek`** (selalu tulis `--account cerpenek`; tanpa itu suaranya bisa jadi suara channel lain). Jangan mengganti suara atau provider.
 
 ## Format
 
 1. Jalankan `npx tsx scripts/pick-format.mts --account cerpenek` → dapat satu kerangka cerita (acak, berbobot).
-2. **Pakai kerangka itu** sebagai alur naskah; jangan ganti dengan kerangka lain.
+2. **Pakai kerangka itu** sebagai alur naskah; jangan ganti dengan kerangka lain. Kerangka mulai dari **baris kedua** — baris pertama tetap hook (lihat §Naskah), juga kalau kerangka itu membuka dengan tempat atau benda.
 3. Pilih cerita dari backlog yang **cocok** dengan kerangka itu: `tokoh-sejarah` → bagian "Tokoh sejarah"; `asal-usul-tempat` → legenda tempat atau bagian "Kerajaan, peristiwa, dan tempat bersejarah"; `asal-usul-benda` → bagian "Asal-usul benda…"; `sahabat-hewan` → legenda yang punya hewan penolong; sisanya → "Legenda dan cerita rakyat". Kalau tidak ada cerita belum-tayang yang cocok, jalankan `pick-format` sekali lagi (paling banyak tiga kali) — jangan memaksa cerita masuk kerangka yang salah.
 4. Catat di `publish.json`: `catatan` diawali `format: <id>;`.
 5. **Dilarang** gaya explainer: daftar bernomor, "tiga fakta", "mitos vs fakta", tutorial langkah demi langkah.
@@ -57,9 +57,10 @@ Penontonnya anak 5–10 tahun. Ini aturan keras:
 ## Naskah
 
 - `src/videos/<slug>/naskah.txt`: 13–16 baris, format `NN  teks` (dua digit, dua spasi).
-- Durasi 60–90 detik. Total **650–800 karakter** (suara Nenek pelan, kira-kira 9 karakter per detik) — jauh lebih pendek daripada angka di `ops/ci-prompt.md`. Lebih dari 830 karakter akan melewati 90 detik.
-- Alur: pembuka yang menarik → cerita → akibat → pesan moral → ajakan.
-- **Ajakan penutup (CTA):** ajak menonton cerita berikutnya bersama ayah atau ibu ("Besok Nenek cerita lagi, ya. Ajak ayah dan ibu."). **Jangan meminta komentar, like, atau subscribe** — komentar mati di video anak.
+- Durasi 60–90 detik. Total **800–1000 karakter** (suara kakak perempuan, kira-kira 11–13 karakter per detik) — jauh lebih pendek daripada angka di `ops/ci-prompt.md`. Lebih dari 1050 karakter berisiko melewati 90 detik.
+- **Baris pertama adalah hook 3 detik.** Wajib berbentuk pertanyaan, suara, atau aksi langsung, sekitar delapan kata. **Dilarang** membuka dengan sapaan ("Adik-adik…", "Halo…", "Cucuku…") atau dengan "Pada zaman dahulu" / "Alkisah". Baris pertama harus membuat penonton ingin tahu apa yang terjadi.
+- Alur: hook → cerita → akibat → pesan moral → ajakan.
+- **Ajakan penutup (CTA):** ajak menonton cerita berikutnya bersama ayah atau ibu ("Besok kakak cerita lagi ya. Ajak ayah dan ibu."). **Jangan meminta komentar, like, atau subscribe** — komentar mati di video anak.
 - Di `index.ts`, `cta.text` berisi ajakan yang sama.
 
 ## Scene 3D
