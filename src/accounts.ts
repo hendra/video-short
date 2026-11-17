@@ -85,7 +85,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
     },
     youtubeCategoryId: "27",
     madeForKids: true,
-    tts: { voice: "id-id-tutor-1", style: "lembut, hangat, pelan; seperti nenek mendongeng untuk anak" },
+    tts: { voice: "id-id-storyteller-1", style: "hangat, ceria, bersemangat; intonasi naik-turun seperti bercerita" },
     agent: {
       model: "opencode/inkling-2-small-free",
       prompt:

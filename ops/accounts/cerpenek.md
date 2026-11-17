@@ -19,9 +19,9 @@ Jangan pakai brand channel lain. Gate CI menolak video yang brand-nya beda.
 
 ## Suara dan gaya bercerita
 
-- Naratornya **Nenek** yang sedang mendongeng: hangat, sabar, pelan. Nenek boleh menyapa ("Cucuku…", "Nah, dengarkan ya…") tetapi tidak di setiap kalimat.
+- Naratornya **kakak perempuan muda** yang bercerita ke adik kecil: hangat, ceria, bersemangat, intonasi naik-turun. Bukan Nenek. Kata "Nenek" dan sapaan "Cucuku" **dilarang** di naskah.
+- Sapaan **"adik-adik"** boleh, **maksimal sekali** per naskah, dan **tidak di baris pertama**.
 - Kalimat pendek, satu gagasan per kalimat. Kata sehari-hari yang dipahami anak SD. Hindari kata serapan sulit dan istilah teknis.
-- Pembuka **bervariasi** dari video ke video. Jangan selalu "Pada zaman dahulu". Boleh mulai dari tempat, dari pertanyaan, atau dari suara dan suasana.
 - Angka ditulis dengan kata ("tujuh hari", "seribu candi").
 - Suara dibuat dengan **`npm run tts -- <slug> --account cerpenek`** (selalu tulis `--account cerpenek`; tanpa itu suaranya bisa jadi suara channel lain). Jangan mengganti suara atau provider.
 
@@ -57,9 +57,10 @@ Penontonnya anak 5–10 tahun. Ini aturan keras:
 ## Naskah
 
 - `src/videos/<slug>/naskah.txt`: 13–16 baris, format `NN  teks` (dua digit, dua spasi).
-- Durasi 60–90 detik. Total **650–800 karakter** (suara Nenek pelan, kira-kira 9 karakter per detik) — jauh lebih pendek daripada angka di `ops/ci-prompt.md`. Lebih dari 830 karakter akan melewati 90 detik.
-- Alur: pembuka yang menarik → cerita → akibat → pesan moral → ajakan.
-- **Ajakan penutup (CTA):** ajak menonton cerita berikutnya bersama ayah atau ibu ("Besok Nenek cerita lagi, ya. Ajak ayah dan ibu."). **Jangan meminta komentar, like, atau subscribe** — komentar mati di video anak.
+- Durasi 60–90 detik. Total **800–1000 karakter** (suara kakak perempuan, kira-kira 13 karakter per detik) — jauh lebih pendek daripada angka di `ops/ci-prompt.md`. Lebih dari 1050 karakter akan melewati 90 detik.
+- **Baris pertama adalah hook 3 detik.** Wajib berbentuk pertanyaan, suara, atau aksi langsung. **Dilarang** membuka dengan sapaan ("Adik-adik…", "Halo…", "Cucuku…") atau dengan "Pada zaman dahulu" / "Alkisah". Baris pertama harus membuat penonton ingin tahu apa yang terjadi.
+- Alur: hook → cerita → akibat → pesan moral → ajakan.
+- **Ajakan penutup (CTA):** ajak menonton cerita berikutnya bersama ayah atau ibu ("Besok kakak cerita lagi ya. Ajak ayah dan ibu."). **Jangan meminta komentar, like, atau subscribe** — komentar mati di video anak.
 - Di `index.ts`, `cta.text` berisi ajakan yang sama.
 
 ## Scene 3D
