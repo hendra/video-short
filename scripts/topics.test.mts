@@ -147,9 +147,10 @@ describe("Cerpenek brief — review fixes", () => {
   test("says what to do when no unused story fits the picked format", () => assert.match(text(), /jalankan `pick-format` sekali lagi/));
   test("quotes a tempo range that keeps 1000 chars under 90 s", () => assert.match(text(), /11–13 karakter per detik/));
   test("keeps the hook on line one even when the picked format opens on scenery", () => assert.match(text(), /[Kk]erangka mulai dari \*{0,2}baris kedua/));
-  test("tells the agent to pose figures and fill the backdrop", () => {
+  test("tells the agent to pose figures and fill the empty backdrop", () => {
     assert.match(text(), /Beri tokoh pose/);
     assert.match(text(), /Latar belakang harus terisi/);
     assert.match(text(), /legL/);
   });
+  test("documents the articulated figure parts the brief animates", () => assert.match(text(), /`armR`, `legL`/));
 });
