@@ -150,7 +150,7 @@ describe("Cerpenek brief — review fixes", () => {
   test("tells the agent to pose figures and fill the empty backdrop", () => {
     assert.match(text(), /Beri tokoh pose/);
     assert.match(text(), /Latar belakang harus terisi/);
-    assert.match(text(), /legL/);
+    assert.match(text(), /anak\.legL\.rotation\.x/);
   });
   test("documents the articulated figure parts the brief animates", () => assert.match(text(), /`armR`, `legL`/));
 });
