@@ -8,12 +8,12 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Chunk, Line, ShotSpan, Timeline, Word } from "../src/engine/types";
 import { type Alignment, readConfig, readScript, videoDir, videoIdArg } from "./lib.mts";
+import { chunksOf, normWord as norm } from "./timeline-core.mts";
 
 const id = videoIdArg();
 const lines = readScript(id);
 const cfg = readConfig(id);
 const al: Alignment = JSON.parse(fs.readFileSync(path.join(videoDir(id), "alignment.json"), "utf8"));
-const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 
 // ---------- map aligned words onto script words (tolerates small differences, e.g. normalised numbers)
 const script = lines.flatMap((text, li) => text.split(/\s+/).map((w) => ({ w, li })));
@@ -47,43 +47,6 @@ for (let i = 0; i < timed.length; i++) {
   timed[i] = { w: script[i].w, s: t0 + span * (i - a - 1), e: t0 + span * (i - a) };
 }
 const words = timed as Word[];
-
-// ---------- caption chunks: punctuation phrases, max 5 tokens, spelled-out numbers never split
-const NUM = new Set(["dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas", "puluh", "belas", "ratus", "ribu", "juta", "seratus", "seribu"]);
-const MAXW = 5;
-const endsPhrase = (w: string) => /[,.:?!…]$/.test(w);
-const chunksOf = (ws: Word[]): Word[][] => {
-  const toks: Word[][] = [];
-  for (const w of ws) {
-    const last = toks[toks.length - 1];
-    const isNum = NUM.has(norm(w.w));
-    if (last && isNum && NUM.has(norm(last[last.length - 1].w)) && !endsPhrase(last[last.length - 1].w)) last.push(w);
-    else toks.push([w]);
-  }
-  const phrases: Word[][][] = [];
-  let cur: Word[][] = [];
-  toks.forEach((t, i) => {
-    cur.push(t);
-    if (endsPhrase(t[t.length - 1].w) && i < toks.length - 1) {
-      phrases.push(cur);
-      cur = [];
-    }
-  });
-  if (cur.length) phrases.push(cur);
-  const merged: Word[][][] = [];
-  for (const p of phrases) {
-    const prev = merged[merged.length - 1];
-    if (prev && (p.length === 1 || prev.length === 1) && prev.length + p.length <= MAXW) merged[merged.length - 1] = [...prev, ...p];
-    else merged.push(p);
-  }
-  const out: Word[][] = [];
-  for (const p of merged) {
-    const parts = Math.ceil(p.length / MAXW);
-    const size = Math.ceil(p.length / parts);
-    for (let i = 0; i < p.length; i += size) out.push(p.slice(i, i + size).flat());
-  }
-  return out;
-};
 
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
 const outLines: Line[] = [];
