@@ -1,1 +1,111 @@
-# Brief — channel Sastra Mesin
+# Sastra Mesin — brief channel
+
+Brief ini **bagian dari instruksi kamu** di CI. Baca sebelum menulis naskah.
+`AGENTS.md` dan `ops/ci-prompt.md` mengatur pipeline; file ini mengatur **isi** dan **tampilan** channel. Kalau aturan di sini berbeda dari `ops/ci-prompt.md` (panjang naskah, scene, tema visual, CTA, deskripsi), **file ini yang berlaku**.
+
+Channel: **Sastra Mesin** (*Cerita di Balik Cara Kerja Benda*) — explainer 3D untuk penonton Indonesia umum tentang bagaimana benda sehari-hari bekerja. Tidak mengasumsikan penonton punya latar belakang teknik.
+
+## Brand
+
+Di `src/videos/<slug>/index.ts` tulis **persis**:
+
+```ts
+brand: { prefix: "Sastra ", accent: "Mesin" },
+theme: "blueprint",
+```
+
+Jangan pakai brand channel lain dan jangan hilangkan `theme: "blueprint"`. Gate CI menolak video yang tidak memakai 3D (`world.ts`) atau tidak memakai `theme: "blueprint"`.
+
+## Suara
+
+- Suara dibuat dengan **`npm run tts -- <slug> --account sastra-mesin`** (selalu tulis `--account sastra-mesin`; tanpa itu suaranya bisa jadi suara channel lain).
+- Suara akun ini adalah `id-id-tutor-1` (guru perempuan, artikulasi jelas, tempo sedang). Jangan mengganti suara atau provider.
+
+## Format
+
+1. Jalankan `npx tsx scripts/pick-format.mts --account sastra-mesin` → dapat satu kerangka cerita (acak, berbobot).
+2. **Pakai kerangka itu** sebagai alur naskah; jangan ganti dengan kerangka lain (termasuk pola lama `hook → "Tapi tunggu… kok bisa…?" → langkah 1/2/3`).
+3. Catat di `publish.json`: `catatan` diawali `format: <id>;`.
+
+## Topik
+
+1. Lihat `ops/topics/sastra-mesin.md` (backlog kurasi lintas 6 kategori).
+2. **Baca katalog video yang sudah tayang** (path ada di prompt run). Pilih benda yang belum pernah tayang di channel ini.
+3. **Batas topik ketat (benda sehari-hari saja):**
+   - **Boleh:** peralatan rumah tangga, dapur, benda pribadi, elektronik sehari-hari, utilitas rumah, transportasi sehari-hari.
+   - **Dilarang:** mesin pabrik/industri, alat berat konstruksi, mesin pesawat, pembangkit listrik skala besar, kapal/kapal selam, proyek teknik sipil raksasa, berita teknologi umum, sains abstrak tanpa kaitan dengan satu benda sehari-hari.
+   - Topik di luar batas ini → ganti ke entri backlog lain.
+
+## Riset
+
+- **Baca sumbernya** dengan `WebFetch` ke URL di backlog sebelum menulis naskah. Jika sumber tidak terjangkau, cari sumber tepercaya lain (dokumentasi pabrikan, ensiklopedia, materi edukasi sains) atau ganti topik.
+- **Jangan mengarang:** nama komponen, prinsip fisika, angka, suhu, spesifikasi listrik, hubungan mekanik. Setiap klaim teknis harus ada di sumber yang dibaca.
+- Bedakan dengan jelas antara fakta teknis terverifikasi, penyederhanaan edukatif, dan ilustrasi visual.
+- Jika mekanisme berbeda antar merek/model, jelaskan prinsip umumnya dengan kata hati-hati ("umumnya…", "pada kebanyakan model…").
+
+## Naskah
+
+- `src/videos/<slug>/naskah.txt`: format `NN  teks`, **13–15 baris**, **900–1.300 karakter** (≈ 60–85 detik pada suara `tutor-1` ~15 kar/dtk; verifikasi durasi akhir di `timeline.json` antara 60–90 dtk).
+- Bahasa Indonesia lisan yang ramah, jelas, penasaran — seperti teman berpengetahuan yang menjelaskan ke teman lain. Bukan ceramah kaku, bukan gaya anak-anak.
+- Kalimat pendek; **satu gagasan per kalimat**.
+- **Aturan istilah teknis:** jangan lempar istilah asing begitu saja. Jika istilah penting (mis. *kompresor*, *bimetal*, *magnet*):
+  1. Sebutkan namanya,
+  2. Jelaskan langsung maknanya dengan kata sederhana,
+  3. Beri analogi benda sehari-hari yang akrab.
+- Angka ditulis dengan kata ("seratus derajat", "dua puluh empat milimeter").
+- Buka dengan **hook 2–3 detik** (pertanyaan atau pengamatan yang membuat penasaran tentang benda itu). Akhiri dengan **CTA singkat** di baris terakhir (mengajak penonton menebak benda berikutnya atau menulis di komentar).
+
+## Scene 3D
+
+- Gunakan `theme: "blueprint"` di `index.ts` agar latar kertas teknis terang (`#F4F5F6` + grid sian), judul biru tua + aksen sian + garis oranye, label bernomor, takarir putih berbingkai, dan transisi garis pindai aktif otomatis.
+- **Semantik warna bahan 3D (wajib konsisten dengan makna fisik):**
+  - **Electric Cyan (`#20C9C3`):** aliran energi, aliran air, aliran udara, jalur listrik, komponen sensor/inti aktif.
+  - **Industrial Orange (`#FF8A36`):** panas, elemen pemanas, komponen mekanis yang sedang bergerak/bergesekan, titik interaksi utama.
+  - **Steel Gray (`#81909C`) & Soft White (`#F4F5F6`):** rangka luar, bagian diam, detail struktural.
+  - Jangan memakai warna yang membalik makna proses (mis. panas berwarna biru/sian).
+- **Wajib tunjukkan mekanismenya:** potong cangkang luar (*cutaway*) atau pisahkan lapisan (*exploded view*) agar bagian dalam terlihat jelas. Semua komponen yang terhubung secara mekanik bergerak selaras — bukan gerak hiasan yang keliru secara fisika.
+- Setiap proses penting yang sedang diceritakan di narasi harus tampak terjadi di layar pada detik yang sama (ikat animasi ke `L(n).s` / `L(n).e`).
+- Skema internal yang disederhanakan untuk kejelasan diberi `tag: "ILUSTRASI"` di shot terkait.
+- `label` di `shots.ts` berbentuk nomor langkah/komponen ringkas (mis. `"KOMPONEN 01"`, `"ALIRAN 02"`). `title` pendek dengan kata kunci di `*bintang*`.
+- Callout maksimal 3 per shot, `orange` untuk komponen bergerak/panas yang sedang disorot, `red` hanya untuk batas bahaya/gagal. Pastikan jangkar tidak tertutup judul atau takarir (antara bawah header dan y≈1240).
+- Caption: mengikuti aturan mesin (`≤ 5` token per potong, `line-height: 1.8`, jangan ubah posisi).
+- Pastikan frame selalu fungsi murni dari `t` (tanpa `Math.random()`, `Date.now()`, atau state lintas frame). Render minimal satu still tiap shot yang sibuk dan periksa hasilnya sebelum render penuh.
+
+## Batas isi
+
+- Tidak ada klaim medis, keuangan, saran hukum, politik partisan, SARA, atau tragedi/korban.
+- Tidak ada animasi atau aset gambar/video AI — seluruh visual 3D murni dari Three.js + Remotion di kode.
+
+## Musik latar
+
+Di `src/videos/<slug>/config.json`, **wajib** isi field `"music"` sesuai jenis mekanisme:
+- `"rakit"` — membongkar susunan komponen, roda gigi, pegas, kunci, ritsleting.
+- `"aliran"` — aliran air, udara, listrik, pendingin (kulkas, AC, keran, charger).
+- `"rahasia"` — prinsip mengejutkan atau mitos tentang benda (rice cooker, microwave, lampu LED).
+
+Di `index.ts`, pakai `music: { src: "<slug>/music.wav", volume: 0.25 }`.
+
+## publish.json
+
+`src/videos/<slug>/publish.json` — bentuk persis:
+
+```json
+{
+  "account": "sastra-mesin",
+  "title": "…",
+  "description": "…",
+  "tiktokTitle": "…",
+  "tiktokCaption": "…",
+  "catatan": "format: <id>; …"
+}
+```
+
+- `account` wajib `"sastra-mesin"`.
+- `title` ≤ 100 karakter, tanpa `<` dan `>`, jelas menyebut bendanya tanpa clickbait berlebihan.
+- `description`: 2 kalimat penjelasan singkat + `Sumber: <URL sumber yang dibaca>` + `Animasi bersifat ilustrasi. Suara: AI (Google AI Studio).` + `#shorts` + 4–6 hashtag relevan (mis. `#sastramesin #carakerja #teknologi`).
+- `tiktokTitle` ≤ 90 karakter, `tiktokCaption` mengikuti `description` + `Suara: AI (Google AI Studio).`.
+- `catatan` diawali `format: <id>;` dari `pick-format`.
+
+## Refill backlog
+
+Backlog diisi manual lewat PR setelah tiap URL sumber dicek bisa diakses dan menjelaskan cara kerja bendanya. Jika entri belum-tayang tinggal kurang dari 3, hentikan run dan lapor agar backlog diisi ulang.
