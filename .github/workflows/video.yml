@@ -15,7 +15,7 @@ on:
         default: false
         type: boolean
       account:
-        description: "Channel account for this run (kali-aja | ai-labs | cerpenek). Empty = kali-aja."
+        description: "Channel account for this run (kali-aja | ai-labs | cerpenek | sastra-mesin). Empty = kali-aja."
         required: false
         default: 'kali-aja'
         type: string
@@ -33,7 +33,7 @@ permissions:
   contents: read
 
 # build (agent + gates + bundle) -> render (N shards in parallel, video only) -> publish (concat + audio + upload)
-# A run is scoped to ONE channel account (Kali Aja, AI Labs or Cerpenek), selected by the trigger:
+# A run is scoped to ONE channel account (Kali Aja, AI Labs, Cerpenek or Sastra Mesin), selected by the trigger:
 #   repository_dispatch client_payload.account, or workflow_dispatch input `account`.
 # Publish/Slack secrets live in repo secrets + per-account environments (build and publish jobs
 # reference the environment matching their account). Environment secrets override repo secrets of the
