@@ -4,6 +4,7 @@
  */
 import crypto from "node:crypto";
 import { ACCOUNT_IDS, isAccountId, type Account } from "../src/accounts.ts";
+import type { RecentPost } from "./duplicate-core.mts";
 
 /** Cloudinary signed-upload signature: sha1 of the alphabetically sorted "k=v&…" param string + <secret>. */
 export const cloudinarySign = (params: Record<string, string | number>, secret: string): string =>
@@ -57,4 +58,47 @@ export const extractBufferError = (body: any): string => {
   if (!d) return `no createPost payload: ${JSON.stringify(body)}`;
   if (d.__typename === "PostActionSuccess") return "";
   return `${d.__typename ?? "unknown"}: ${d.message ?? JSON.stringify(d)}`;
+};
+
+/** Buffer CreatePostInput for an Instagram Reel shared to the main feed as well. */
+export const instagramInput = (channelId: string, videoUrl: string, caption: string) => ({
+  channelId,
+  mode: "shareNow",
+  schedulingType: "automatic",
+  needsApproval: false,
+  text: caption,
+  assets: [{ video: { url: videoUrl } }],
+  metadata: { instagram: { type: "reel", shouldShareToFeed: true, isAiGenerated: true } },
+});
+
+/** Buffer channel IDs belonging to an account (YouTube, TikTok, and optional Instagram). */
+export const bufferChannelIds = (buffer: Account["buffer"]): string[] => [
+  buffer.youtubeChannelId,
+  buffer.tiktokChannelId,
+  ...(buffer.instagramChannelId ? [buffer.instagramChannelId] : []),
+];
+
+export type BufferNode = {
+  id?: string;
+  channelService?: string;
+  createdAt?: string;
+  sentAt?: string | null;
+  text?: string;
+  externalLink?: string | null;
+  metadata?: { title?: string | null };
+};
+
+export const mapBufferPostNode = (node: BufferNode): RecentPost | null => {
+  if (!node.id || !node.text) return null;
+  const service = (node.channelService ?? "").toLowerCase();
+  const platform = service.includes("tiktok") ? "tiktok" : service.includes("instagram") ? "instagram" : "youtube";
+  return {
+    id: `buffer:${node.id}`,
+    platform,
+    date: (node.sentAt ?? node.createdAt ?? new Date().toISOString()).slice(0, 10),
+    title: node.metadata?.title ?? null,
+    text: node.text,
+    link: node.externalLink ?? null,
+    source: "buffer",
+  };
 };

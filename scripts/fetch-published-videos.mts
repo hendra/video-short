@@ -10,10 +10,12 @@ import { pathToFileURL } from "node:url";
 import { ACCOUNTS, DEFAULT_ACCOUNT, isAccountId, type AccountId } from "../src/accounts.ts";
 import { loadDotenv, publishedVideosPath } from "./lib.mts";
 import type { RecentPost } from "./duplicate-core.mts";
+import { bufferChannelIds, mapBufferPostNode, type BufferNode } from "./publish-lib.mts";
 
 export const fetchPublishedVideos = async (token = process.env.BUFFER_ACCESS_TOKEN, accountId: AccountId = DEFAULT_ACCOUNT): Promise<RecentPost[]> => {
   if (!token) throw new Error("Missing BUFFER_ACCESS_TOKEN in .env (posts:read only; see docs/PUBLISHING.md)");
-  const { orgId, youtubeChannelId, tiktokChannelId } = ACCOUNTS[accountId].buffer;
+  const buffer = ACCOUNTS[accountId].buffer;
+  const orgId = buffer.orgId;
 
   const query = `query($input: PostsInput!, $first: Int, $after: String) {
     posts(input: $input, first: $first, after: $after) {
@@ -30,16 +32,6 @@ export const fetchPublishedVideos = async (token = process.env.BUFFER_ACCESS_TOK
     }
   }`;
 
-  type BufferNode = {
-    id?: string;
-    channelService?: string;
-    createdAt?: string;
-    sentAt?: string | null;
-    text?: string;
-    externalLink?: string | null;
-    metadata?: { title?: string | null };
-  };
-
   const posts: RecentPost[] = [];
   let after: string | null = null;
   let truncated = false;
@@ -52,7 +44,7 @@ export const fetchPublishedVideos = async (token = process.env.BUFFER_ACCESS_TOK
         variables: {
           input: {
             organizationId: orgId,
-            filter: { channelIds: [youtubeChannelId, tiktokChannelId], status: ["sent"] },
+            filter: { channelIds: bufferChannelIds(buffer), status: ["sent"] },
             sort: [{ field: "createdAt", direction: "desc" }],
           },
           first: 100,
@@ -71,18 +63,8 @@ export const fetchPublishedVideos = async (token = process.env.BUFFER_ACCESS_TOK
       throw new Error(`Buffer: ${detail || `HTTP ${res.status}`}`);
     }
     for (const edge of body?.data?.posts?.edges ?? []) {
-      const node = edge?.node;
-      if (!node?.id || !node.text) continue;
-      const service = (node.channelService ?? "").toLowerCase();
-      posts.push({
-        id: `buffer:${node.id}`,
-        platform: service.includes("tiktok") ? "tiktok" : "youtube",
-        date: (node.sentAt ?? node.createdAt ?? new Date().toISOString()).slice(0, 10),
-        title: node.metadata?.title ?? null,
-        text: node.text,
-        link: node.externalLink ?? null,
-        source: "buffer",
-      });
+      const mapped = edge?.node ? mapBufferPostNode(edge.node) : null;
+      if (mapped) posts.push(mapped);
     }
     const pageInfo = body?.data?.posts?.pageInfo;
     if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;

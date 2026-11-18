@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { describe, test } from "node:test";
-import { cloudinarySign, validatePublishJson, extractBufferError, youtubeSafe, youtubeMetadata } from "./publish-lib.mts";
+import {
+  bufferChannelIds,
+  cloudinarySign,
+  extractBufferError,
+  instagramInput,
+  mapBufferPostNode,
+  validatePublishJson,
+  youtubeMetadata,
+  youtubeSafe,
+} from "./publish-lib.mts";
 import { ACCOUNTS } from "../src/accounts.ts";
 
 describe("cloudinary signature (shipped helper)", () => {
@@ -91,4 +100,37 @@ describe("youtubeMetadata", () => {
 
   test("follows the account flag", () =>
     assert.equal(youtubeMetadata({ ...ACCOUNTS["kali-aja"], madeForKids: true }, "x").madeForKids, true));
+});
+
+describe("instagramInput", () => {
+  test("builds a Buffer Reel payload sharing to feed with AI flag", () => {
+    const p = instagramInput("6afe07c2ece6dfde5f116be8", "https://cdn/v.mp4", "Caption #shorts");
+    assert.deepEqual(p, {
+      channelId: "6afe07c2ece6dfde5f116be8",
+      mode: "shareNow",
+      schedulingType: "automatic",
+      needsApproval: false,
+      text: "Caption #shorts",
+      assets: [{ video: { url: "https://cdn/v.mp4" } }],
+      metadata: { instagram: { type: "reel", shouldShareToFeed: true, isAiGenerated: true } },
+    });
+  });
+});
+
+describe("bufferChannelIds and mapBufferPostNode", () => {
+  test("includes instagramChannelId only when configured", () => {
+    assert.equal(bufferChannelIds(ACCOUNTS["kali-aja"].buffer).length, 2);
+    assert.deepEqual(bufferChannelIds(ACCOUNTS["sastra-mesin"].buffer), [
+      "6afdf52fece6dfde5f101631",
+      "6afdf54bece6dfde5f101af0",
+      "6afe07c2ece6dfde5f116be8",
+    ]);
+  });
+
+  test("maps instagram, tiktok, and youtube nodes and drops incomplete nodes", () => {
+    assert.equal(mapBufferPostNode({ id: "1", text: "x", channelService: "instagram" })?.platform, "instagram");
+    assert.equal(mapBufferPostNode({ id: "2", text: "x", channelService: "tiktok" })?.platform, "tiktok");
+    assert.equal(mapBufferPostNode({ id: "3", text: "x", channelService: "youtube" })?.platform, "youtube");
+    assert.equal(mapBufferPostNode({ id: "4" }), null);
+  });
 });

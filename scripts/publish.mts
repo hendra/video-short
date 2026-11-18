@@ -22,7 +22,7 @@ import path from "node:path";
 import { ROOT, loadDotenv } from "./lib.mts";
 import { fetchPublishedVideos } from "./fetch-published-videos.mts";
 import { findDuplicate, type CandidatePost } from "./duplicate-core.mts";
-import { cloudinarySign, validatePublishJson, extractBufferError, youtubeSafe, youtubeMetadata } from "./publish-lib.mts";
+import { cloudinarySign, validatePublishJson, extractBufferError, instagramInput, youtubeSafe, youtubeMetadata } from "./publish-lib.mts";
 import { ACCOUNT_IDS, accountById, isAccountId, isConfigured, missingConfigFields } from "../src/accounts.ts";
 
 loadDotenv();
@@ -101,7 +101,7 @@ if (up.resource_type && up.resource_type !== "video") fail(`Cloudinary resource_
 console.log(`  -> ${up.secure_url}`);
 
 // ---------- 2. Buffer GraphQL createPost
-const YT = account.buffer.youtubeChannelId, TT = account.buffer.tiktokChannelId;
+const YT = account.buffer.youtubeChannelId, TT = account.buffer.tiktokChannelId, IG = account.buffer.instagramChannelId;
 const bufferPost = async (input: Record<string, unknown>) => {
   const query = `mutation($input: CreatePostInput!) {
   createPost(input: $input) {
@@ -146,8 +146,10 @@ const yt = await bufferPost(ytInput);
 console.log(`youtube: ${yt.id} status=${yt.status} ${yt.externalLink ?? ""}`);
 const tt = await bufferPost(ttInput);
 console.log(`tiktok:  ${tt.id} status=${tt.status} ${tt.externalLink ?? ""}`);
+const ig = IG ? await bufferPost(instagramInput(IG, up.secure_url!, PUB.tiktokCaption)) : null;
+if (ig) console.log(`instagram: ${ig.id} status=${ig.status} ${ig.externalLink ?? ""}`);
 
-// ---------- 3. Poll until both settle (max 5 min)
+// ---------- 3. Poll until all settle (max 5 min)
 const deadline = Date.now() + 5 * 60_000;
 const poll = async (id: string) => {
   let lastStatus = "unknown";
@@ -169,13 +171,19 @@ const poll = async (id: string) => {
   }
   return { link: null, status: lastStatus };
 };
-const [ytP, ttP] = await Promise.all([poll(yt.id), poll(tt.id)]);
-const ytLink = ytP.link, ttLink = ttP.link;
-if (!ytLink || !ttLink) fail(`post settled with error or timeout (yt=${ytP.status}/${ytLink ?? "pending"}, tt=${ttP.status}/${ttLink ?? "pending"}) — do NOT retry blindly; check Buffer UI.`);
+const [ytP, ttP, igP] = await Promise.all([poll(yt.id), poll(tt.id), ig ? poll(ig.id) : Promise.resolve(null)]);
+const ytLink = ytP.link, ttLink = ttP.link, igLink = igP?.link ?? null;
+if (!ytLink || !ttLink || (igP && !igLink)) {
+  const igMsg = igP ? `, ig=${igP.status}/${igLink ?? "pending"}` : "";
+  fail(`post settled with error or timeout (yt=${ytP.status}/${ytLink ?? "pending"}, tt=${ttP.status}/${ttLink ?? "pending"}${igMsg}) — do NOT retry blindly; check Buffer UI.`);
+}
 
 // ---------- 4. Temporary same-run result — used by the Slack report, never committed
 const resultPath = path.join(os.tmpdir(), "publish-result.json");
-fs.writeFileSync(resultPath, JSON.stringify({ slug, account: account.id, date: today(), title: PUB.title, links: { youtube: ytLink, tiktok: ttLink } }, null, 1));
+fs.writeFileSync(
+  resultPath,
+  JSON.stringify({ slug, account: account.id, date: today(), title: PUB.title, links: { youtube: ytLink, tiktok: ttLink, ...(igLink ? { instagram: igLink } : {}) } }, null, 1),
+);
 console.log(`publish result: wrote ${resultPath}`);
 
 // Cleanup after the publish is durable (Cloudinary + both Buffer posts settled).
