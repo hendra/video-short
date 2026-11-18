@@ -65,7 +65,7 @@ describe("account registry", () => {
     });
   });
 
-  test("Sastra Mesin has its own identity and is not yet configured", () => {
+  test("Sastra Mesin is fully configured with its own Buffer org and channels", () => {
     const s = ACCOUNTS["sastra-mesin"];
     assert.equal(s.label, "Sastra Mesin");
     assert.deepEqual(s.brand, { prefix: "Sastra ", accent: "Mesin" });
@@ -75,8 +75,11 @@ describe("account registry", () => {
     assert.deepEqual(s.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/sastra-mesin.md", "ops/topics/sastra-mesin.md"]);
     assert.match(s.agent.prompt, /override ops\/ci-prompt\.md/);
     assert.match(s.agent.prompt, /docs\/AUTOPILOT\.md does NOT apply/);
-    assert.equal(isConfigured(s), false);
-    assert.deepEqual(missingConfigFields(s), ["buffer.orgId", "buffer.youtubeChannelId", "buffer.tiktokChannelId"]);
+    assert.deepEqual(s.buffer, { orgId: "6afdf08dd10011a8be72ed75", youtubeChannelId: "6afdf52fece6dfde5f101631", tiktokChannelId: "6afdf54bece6dfde5f101af0" });
+    assert.equal(isConfigured(s), true);
+    assert.deepEqual(missingConfigFields(s), []);
+    const others = [ACCOUNTS["kali-aja"], ACCOUNTS["ai-labs"], ACCOUNTS.cerpenek].flatMap((o) => Object.values(o.buffer));
+    for (const id of Object.values(s.buffer)) assert.equal(others.includes(id), false, `buffer id ${id} belongs to another account`);
   });
 
   test("a placeholder voice counts as unconfigured and is named", () => {
