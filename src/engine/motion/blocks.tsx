@@ -1046,7 +1046,7 @@ const PhotoWipeIllustration: React.FC<{ t: number; at: number; uid: string }> = 
   const clipAfterId = `${uid}-after`;
 
   return (
-    <svg width="100%" height={360} viewBox="0 0 840 360" aria-hidden="true">
+    <svg width="100%" viewBox="0 0 840 360" style={{ display: "block" }} aria-hidden="true">
       <defs>
         <clipPath id={clipAfterId}>
           <rect x={splitX} y={24} width={764 - splitX} height={312} rx={16} />
@@ -1102,7 +1102,7 @@ const McpBridgeIllustration: React.FC<{ t: number; at: number }> = ({ t, at }) =
   const toolColors = [DARK_TECH.cyan, DARK_TECH.mint, DARK_TECH.amber];
 
   return (
-    <svg width="100%" height={360} viewBox="0 0 840 360" aria-hidden="true">
+    <svg width="100%" viewBox="0 0 840 360" style={{ display: "block" }} aria-hidden="true">
       {/* Host -> Hub line */}
       <line x1={232} y1={180} x2={360} y2={180} stroke={DARK_TECH.cyan} strokeWidth={3} strokeOpacity={0.55 * clamp(hubP)} />
       {hubP > 0.5 ? (
@@ -1189,7 +1189,7 @@ const DocToJsonIllustration: React.FC<{ t: number; at: number }> = ({ t, at }) =
   ];
 
   return (
-    <svg width="100%" height={360} viewBox="0 0 840 360" aria-hidden="true">
+    <svg width="100%" viewBox="0 0 840 360" style={{ display: "block" }} aria-hidden="true">
       {/* Unstructured doc */}
       <g opacity={clamp(docP)} transform={`translate(0, ${(1 - docP) * 16 + bob})`}>
         <rect x={54} y={58} width={274} height={244} rx={16} fill="rgba(15, 23, 42, 0.92)" stroke={DARK_TECH.amber} strokeWidth={1.8} />
