@@ -236,6 +236,32 @@ export const themeOf = (video: VideoDef): OverlayTheme => video.theme ?? (video.
 
 export const shouldShowCaptions = (captions?: boolean): boolean => captions !== false;
 
+export const captionBoxStyle = (theme: OverlayTheme): React.CSSProperties => {
+  if (theme === "blueprint") {
+    return {
+      display: "inline-block",
+      padding: "14px 26px",
+      background: "#fff",
+      border: `3px solid ${BP.navy}`,
+      borderRadius: 8,
+      font: `800 60px ${FONT.ui}`,
+      lineHeight: 1.32,
+      color: BP.navy,
+    };
+  }
+  const dark = theme === "dark-tech";
+  return {
+    display: "inline-block",
+    padding: "14px 26px",
+    background: dark ? "rgba(11, 15, 23, 0.92)" : "rgba(24,30,34,.88)",
+    border: dark ? "1px solid rgba(56, 189, 248, 0.3)" : undefined,
+    borderRadius: 14,
+    font: `800 60px ${FONT.ui}`,
+    lineHeight: 1.32,
+    color: "#fff",
+  };
+};
+
 /** Karaoke captions: one short phrase at a time, current word highlighted. */
 const Captions: React.FC<{ tl: Timeline; t: number; theme: OverlayTheme }> = ({ tl, t, theme }) => {
   const i = tl.chunks.findIndex((c, k) => {
@@ -245,45 +271,20 @@ const Captions: React.FC<{ tl: Timeline; t: number; theme: OverlayTheme }> = ({ 
   });
   if (i < 0) return null;
   const ch = tl.chunks[i];
-  const dark = theme === "dark-tech";
-  if (theme === "blueprint") {
-    return (
-      <div style={{ position: "absolute", left: 90, right: 90, top: CAPTION_TOP, textAlign: "center" }}>
-        <span style={{ display: "inline", padding: "6px 16px", lineHeight: 1.8, background: "#fff", border: `3px solid ${BP.navy}`, borderRadius: 4, WebkitBoxDecorationBreak: "clone", boxDecorationBreak: "clone", font: `800 60px ${FONT.ui}`, color: BP.navy }}>
-          {ch.words.map((w, k) => {
-            const on = t >= w.s && t < w.e + 0.02;
-            return (
-              <React.Fragment key={k}>
-                <span style={on ? { textDecoration: "underline", textDecorationColor: BP.cyan, textDecorationThickness: 8, textUnderlineOffset: 8 } : undefined}>{w.w}</span>
-                {k < ch.words.length - 1 ? " " : ""}
-              </React.Fragment>
-            );
-          })}
-        </span>
-      </div>
-    );
-  }
+  const bp = theme === "blueprint";
   return (
     <div style={{ position: "absolute", left: 90, right: 90, top: CAPTION_TOP, textAlign: "center" }}>
-      <span
-        style={{
-          display: "inline",
-          padding: "6px 14px",
-          lineHeight: 1.8,
-          background: dark ? "rgba(11, 15, 23, 0.92)" : "rgba(24,30,34,.88)",
-          border: dark ? "1px solid rgba(56, 189, 248, 0.3)" : undefined,
-          borderRadius: 12,
-          WebkitBoxDecorationBreak: "clone",
-          boxDecorationBreak: "clone",
-          font: `800 60px ${FONT.ui}`,
-          color: "#fff",
-        }}
-      >
+      <span style={captionBoxStyle(theme)}>
         {ch.words.map((w, k) => {
           const on = t >= w.s && t < w.e + 0.02;
+          const activeStyle: React.CSSProperties | undefined = on
+            ? bp
+              ? { textDecoration: "underline", textDecorationColor: BP.cyan, textDecorationThickness: 8, textUnderlineOffset: 8 }
+              : { color: MINT, textDecoration: "underline", textDecorationThickness: 5, textUnderlineOffset: 8 }
+            : undefined;
           return (
             <React.Fragment key={k}>
-              <span style={on ? { color: MINT, textDecoration: "underline", textDecorationThickness: 5, textUnderlineOffset: 8 } : undefined}>{w.w}</span>
+              <span style={activeStyle}>{w.w}</span>
               {k < ch.words.length - 1 ? " " : ""}
             </React.Fragment>
           );

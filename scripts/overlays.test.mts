@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { themeOf } from "../src/engine/overlays/Overlays.tsx";
+import { blueprintTitleRight, captionBoxStyle, themeOf } from "../src/engine/overlays/Overlays.tsx";
 import type { VideoDef } from "../src/engine/types";
 
 const base3d = { id: "x", brand: { prefix: "A", accent: "B" }, voice: "x/vo.mp3", fov: 40 } as unknown as VideoDef;
@@ -16,11 +16,21 @@ describe("themeOf", () => {
   });
 });
 
-import { blueprintTitleRight } from "../src/engine/overlays/Overlays.tsx";
-
 describe("blueprintTitleRight", () => {
   test("reserves space for shot.tag when present so wide titles cannot overlap it", () => {
     assert.ok(blueprintTitleRight("ILUSTRASI") >= 260);
     assert.equal(blueprintTitleRight(undefined), 160);
+  });
+});
+
+describe("captionBoxStyle", () => {
+  test("every theme uses a single inline-block card with lineHeight 1.32 and no boxDecorationBreak", () => {
+    for (const theme of ["cream", "dark-tech", "blueprint"] as const) {
+      const s = captionBoxStyle(theme);
+      assert.equal(s.display, "inline-block", theme);
+      assert.equal(s.lineHeight, 1.32, theme);
+      assert.equal(s.padding, "14px 26px", theme);
+      assert.equal("boxDecorationBreak" in s, false, theme);
+    }
   });
 });
