@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { buildReportText } from "./report-lib.mts";
+import { buildReportText, formatLinksCsv } from "./report-lib.mts";
 
 describe("buildReportText (Slack payload, shipped helper)", () => {
   test("error report mentions step and truncates message", () => {
@@ -46,5 +46,16 @@ describe("buildReportText (Slack payload, shipped helper)", () => {
   });
   test("empty links and no error yields the informational fallback", () => {
     assert.match(buildReportText({ slug: "x" }), /tidak ada links\/error/);
+  });
+  test("success report includes instagram line when a 3rd link is provided and omits it for 2 links", () => {
+    const two = buildReportText({ slug: "video-id", links: "https://yt/1,https://tt/2", account: "kali-aja" });
+    assert.equal(two.includes("📸"), false);
+    const three = buildReportText({ slug: "video-id", links: "https://yt/1,https://tt/2,https://ig/3", account: "sastra-mesin" });
+    assert.match(three, /📸 https:\/\/ig\/3/);
+  });
+  test("formatLinksCsv omits null/missing links cleanly", () => {
+    assert.equal(formatLinksCsv({ youtube: "https://yt/1", tiktok: "https://tt/2" }), "https://yt/1,https://tt/2");
+    assert.equal(formatLinksCsv({ youtube: "https://yt/1", tiktok: "https://tt/2", instagram: "https://ig/3" }), "https://yt/1,https://tt/2,https://ig/3");
+    assert.equal(formatLinksCsv({ youtube: "https://yt/1", tiktok: null, instagram: null }), "https://yt/1");
   });
 });

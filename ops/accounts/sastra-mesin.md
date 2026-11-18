@@ -103,7 +103,7 @@ Di `index.ts`, pakai `music: { src: "<slug>/music.wav", volume: 0.25 }`.
 - `account` wajib `"sastra-mesin"`.
 - `title` ≤ 100 karakter, tanpa `<` dan `>`, jelas menyebut bendanya tanpa clickbait berlebihan.
 - `description`: 2 kalimat penjelasan singkat + `Sumber: <URL sumber yang dibaca>` + `Animasi bersifat ilustrasi. Suara: AI (Google AI Studio).` + `#shorts` + 4–6 hashtag relevan (mis. `#sastramesin #carakerja #teknologi`).
-- `tiktokTitle` ≤ 90 karakter, `tiktokCaption` mengikuti `description` + `Suara: AI (Google AI Studio).`.
+- `tiktokTitle` ≤ 90 karakter, `tiktokCaption` mengikuti `description` + `Suara: AI (Google AI Studio).` (caption ini juga dipakai otomatis untuk Instagram Reels Sastra Mesin, maks 2.200 karakter).
 - `catatan` diawali `format: <id>;` dari `pick-format`.
 
 ## Refill backlog

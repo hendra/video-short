@@ -1,6 +1,6 @@
 # AGENTS.md — explainer-3d
 
-Vertical (1080×1920) 3D explainer Shorts for YouTube/TikTok: Remotion + React Three Fiber, AI voiceover (Google AI Studio TTS, free) with per-word timing, karaoke captions. Content language is Indonesian (santai-profesional; the children's story channel Cerpenek has its own storytelling voice and wooden-toy diorama look — see `ops/accounts/cerpenek.md`; Sastra Mesin explains how everyday objects work in the light `"blueprint"` theme — see `ops/accounts/sastra-mesin.md`).
+Vertical (1080×1920) 3D explainer Shorts for YouTube/TikTok (plus Instagram Reels when configured, e.g. Sastra Mesin): Remotion + React Three Fiber, AI voiceover (Google AI Studio TTS, free) with per-word timing, karaoke captions. Content language is Indonesian (santai-profesional; the children's story channel Cerpenek has its own storytelling voice and wooden-toy diorama look — see `ops/accounts/cerpenek.md`; Sastra Mesin explains how everyday objects work in the light `"blueprint"` theme — see `ops/accounts/sastra-mesin.md`).
 
 **This pipeline publishes to more than one channel account.** Account config lives in `src/accounts.ts` (brand, Buffer org/channel ids, YouTube category, made-for-kids flag, voice, agent instruction files). A run is scoped to one account; `publish.json` carries `account` and the publish channel follows it. Brand is per video (`VideoDef.brand`) — do not hardcode one channel's brand.
 
