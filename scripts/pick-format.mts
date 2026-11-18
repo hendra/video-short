@@ -60,10 +60,23 @@ const CERPENEK: Format[] = [
   { id: "asal-usul-benda", weight: 3, name: "Asal-Usul Benda", instruction: "one regional food, game, cloth or instrument; where the story says it came from; how people still use it today; invite the child to try or look for it." },
 ];
 
+// Sastra Mesin: how one everyday object works. Every format opens with a 2–3 s hook about the object, shows
+// the real mechanism in the 3D cutaway, and ends with a CTA. None reuse Kali Aja's news-explainer frameworks.
+const SASTRA_MESIN: Format[] = [
+  { id: "bongkar-pasang", weight: 3, name: "Bongkar Pasang", instruction: "open with the closed object and a question about it; peel it open layer by layer (casing → main parts → the core part); show how the core part moves; put it back together in one sentence; end with a CTA." },
+  { id: "satu-komponen", weight: 3, name: "Satu Komponen", instruction: "open by naming one small, surprising part as the whole secret; show where it sits; show what it does step by step; show what would happen without it; end with a CTA." },
+  { id: "ikuti-alirannya", weight: 2, name: "Ikuti Alirannya", instruction: "open at the button, tap or plug the viewer touches; follow the electricity, water, air or heat through each part in order; arrive at the result the viewer sees; end with a CTA." },
+  { id: "mitos-benda", weight: 2, name: "Mitos Benda", instruction: "open with a common belief about the object; show the real mechanism; explain in one plain sentence why the belief is wrong or half-right; end with a CTA." },
+  { id: "salah-pakai", weight: 1, name: "Salah Pakai", instruction: "open with a habit many people have with the object; show the mechanism that habit affects; show what really happens inside; give the right way in one sentence; end with a CTA." },
+  { id: "dulu-vs-sekarang", weight: 1, name: "Dulu vs Sekarang", instruction: "open with the same job done by an older version of the object; show the old mechanism; show the current mechanism; name the one change that matters; end with a CTA." },
+  { id: "kenapa-bunyi", weight: 1, name: "Kenapa Bunyi", instruction: "open with a sound, click, smell or light users notice; reveal which part makes it; show the mechanism behind it; say what that signal tells the user; end with a CTA." },
+];
+
 export const FORMATS_BY_ACCOUNT: Record<AccountId, Format[]> = {
   "kali-aja": KALI_AJA,
   "ai-labs": AI_LABS,
   cerpenek: CERPENEK,
+  "sastra-mesin": SASTRA_MESIN,
 };
 
 export const formatsFor = (accountId: AccountId | string = DEFAULT_ACCOUNT): Format[] => {
