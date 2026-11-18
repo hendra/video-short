@@ -17,8 +17,8 @@ export type Account = {
   label: string;
   /** Brand overlay shown on every frame (prefix + highlighted accent). */
   brand: { prefix: string; accent: string };
-  /** Buffer org + the two channels (YouTube, TikTok) inside it. */
-  buffer: { orgId: string; youtubeChannelId: string; tiktokChannelId: string };
+  /** Buffer org + channels (YouTube, TikTok, optional Instagram) inside it. */
+  buffer: { orgId: string; youtubeChannelId: string; tiktokChannelId: string; instagramChannelId?: string };
   /** YouTube video category id. */
   youtubeCategoryId: string;
   /** YouTube "made for kids" declaration sent with every upload (true disables comments + notifications there). */
@@ -102,6 +102,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       orgId: "6afdf08dd10011a8be72ed75",
       youtubeChannelId: "6afdf52fece6dfde5f101631",
       tiktokChannelId: "6afdf54bece6dfde5f101af0",
+      instagramChannelId: "6afe07c2ece6dfde5f116be8",
     },
     youtubeCategoryId: "27",
     madeForKids: false,
@@ -126,8 +127,11 @@ export const accountById = (id?: string | null): Account => {
 
 /** Config fields that still hold a TODO_ placeholder, e.g. ["buffer.orgId", "tts.voice"]. */
 export const missingConfigFields = (account: Account): string[] => [
-  ...(["orgId", "youtubeChannelId", "tiktokChannelId"] as const)
-    .filter((field) => account.buffer[field].startsWith("TODO_"))
+  ...(["orgId", "youtubeChannelId", "tiktokChannelId", "instagramChannelId"] as const)
+    .filter((field) => {
+      const val = account.buffer[field];
+      return typeof val === "string" && val.startsWith("TODO_");
+    })
     .map((field) => `buffer.${field}`),
   ...(account.tts.voice.startsWith("TODO_") ? ["tts.voice"] : []),
 ];

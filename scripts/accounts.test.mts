@@ -75,11 +75,22 @@ describe("account registry", () => {
     assert.deepEqual(s.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/sastra-mesin.md", "ops/topics/sastra-mesin.md"]);
     assert.match(s.agent.prompt, /override ops\/ci-prompt\.md/);
     assert.match(s.agent.prompt, /docs\/AUTOPILOT\.md does NOT apply/);
-    assert.deepEqual(s.buffer, { orgId: "6afdf08dd10011a8be72ed75", youtubeChannelId: "6afdf52fece6dfde5f101631", tiktokChannelId: "6afdf54bece6dfde5f101af0" });
+    assert.deepEqual(s.buffer, {
+      orgId: "6afdf08dd10011a8be72ed75",
+      youtubeChannelId: "6afdf52fece6dfde5f101631",
+      tiktokChannelId: "6afdf54bece6dfde5f101af0",
+      instagramChannelId: "6afe07c2ece6dfde5f116be8",
+    });
     assert.equal(isConfigured(s), true);
     assert.deepEqual(missingConfigFields(s), []);
     const others = [ACCOUNTS["kali-aja"], ACCOUNTS["ai-labs"], ACCOUNTS.cerpenek].flatMap((o) => Object.values(o.buffer));
     for (const id of Object.values(s.buffer)) assert.equal(others.includes(id), false, `buffer id ${id} belongs to another account`);
+  });
+
+  test("a placeholder instagramChannelId counts as unconfigured", () => {
+    const a = { ...ACCOUNTS["sastra-mesin"], buffer: { ...ACCOUNTS["sastra-mesin"].buffer, instagramChannelId: "TODO_IG" } };
+    assert.deepEqual(missingConfigFields(a), ["buffer.instagramChannelId"]);
+    assert.equal(isConfigured(a), false);
   });
 
   test("a placeholder voice counts as unconfigured and is named", () => {
@@ -97,8 +108,11 @@ describe("account registry", () => {
   test("each account's buffer ids are either all real or all placeholder", () => {
     for (const id of ACCOUNT_IDS) {
       const a = ACCOUNTS[id];
-      const placeholders = [a.buffer.orgId, a.buffer.youtubeChannelId, a.buffer.tiktokChannelId].filter(isPlaceholder);
-      const real = [a.buffer.orgId, a.buffer.youtubeChannelId, a.buffer.tiktokChannelId].filter((v) => !isPlaceholder(v));
+      const ids = [a.buffer.orgId, a.buffer.youtubeChannelId, a.buffer.tiktokChannelId, a.buffer.instagramChannelId].filter(
+        (v): v is string => typeof v === "string",
+      );
+      const placeholders = ids.filter(isPlaceholder);
+      const real = ids.filter((v) => !isPlaceholder(v));
       assert.ok(placeholders.length === 0 || real.length === 0, `account ${id} mixes placeholder and real buffer ids`);
       if (real.length > 0) {
         for (const v of real) assert.match(v, /^[0-9a-f]{24}$/, `account ${id} has a malformed buffer id`);

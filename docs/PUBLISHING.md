@@ -35,7 +35,7 @@ Kedua akun sudah **aktif dan tayang**: AI Labs tayang perdana pada **2026-11-15*
 
 **Akun `cerpenek` (aktif di cron sejak 2026-11-16).** Brand prefix `Cerpe` + accent `nek`, `categoryId` `27`, `madeForKids: true`, voice `id-id-storyteller-1`. Buffer organization `6af9a85ef0ed12641d69eab4`, YouTube `6af9a8caece6dfde5fd19e00`, TikTok `6af9a8e0ece6dfde5fd19e93`. Urutan aktivasi: (1) GitHub Environment `cerpenek` berisi `BUFFER_ACCESS_TOKEN`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `GEMINI_API_KEY` (Slack boleh fallback ke repo secret); (2) tiga ID Buffer di `src/accounts.ts` (sudah); (3) setel audiens channel YouTube "untuk anak" di YouTube Studio; (4) `gh workflow run video-run --ref main -f account=cerpenek -f dry_run=true`; (5) tambahkan `cerpenek` ke `ACCOUNTS` di `ops/cloudflare-cron/wrangler.toml` dan deploy ulang worker (sudah). Backlog `ops/topics/cerpenek.md` diisi ulang kira-kira sebulan sekali lewat PR yang ditinjau pemilik channel.
 
-**Akun `sastra-mesin` (masuk cron).** Brand prefix `Sastra ` + accent `Mesin`, `categoryId` `27`, `madeForKids: false`, voice `id-id-tutor-1`, tema 3D `blueprint`. Buffer organization `6afdf08dd10011a8be72ed75`, YouTube `6afdf52fece6dfde5f101631`, TikTok `6afdf54bece6dfde5f101af0`. Urutan aktivasi: (1) tiga ID Buffer di `src/accounts.ts` (sudah); (2) GitHub Environment `sastra-mesin` (sudah); (3) tiga track instrumental `public/sastra-mesin/music/{rakit,aliran,rahasia}.mp3` (sudah); (4) `sastra-mesin` masuk ke `ACCOUNTS` di `ops/cloudflare-cron/wrangler.toml` (deploy ulang worker dengan `npx wrangler deploy --config ops/cloudflare-cron/wrangler.toml`).
+**Akun `sastra-mesin` (masuk cron).** Brand prefix `Sastra ` + accent `Mesin`, `categoryId` `27`, `madeForKids: false`, voice `id-id-tutor-1`, tema 3D `blueprint`. Buffer organization `6afdf08dd10011a8be72ed75`, YouTube `6afdf52fece6dfde5f101631`, TikTok `6afdf54bece6dfde5f101af0`, Instagram Reels `6afe07c2ece6dfde5f116be8` (memakai `tiktokCaption`). Urutan aktivasi: (1) ID Buffer di `src/accounts.ts` (sudah); (2) GitHub Environment `sastra-mesin` (sudah); (3) tiga track instrumental `public/sastra-mesin/music/{rakit,aliran,rahasia}.mp3` (sudah); (4) `sastra-mesin` masuk ke `ACCOUNTS` di `ops/cloudflare-cron/wrangler.toml` (deploy ulang worker dengan `npx wrangler deploy --config ops/cloudflare-cron/wrangler.toml`).
 
 **"Made for kids" per akun.** `madeForKids` di `src/accounts.ts` menentukan nilai yang dikirim ke YouTube di setiap post (`youtubeMetadata` di `scripts/publish-lib.mts`); `kali-aja` dan `ai-labs` = `false`. Akun yang ditujukan untuk anak memakai `true` — akibatnya komentar dan notifikasi mati di video itu — dan audiens channel juga disetel "untuk anak" di YouTube Studio. TikTok tidak punya setelan setara.
 
@@ -95,6 +95,11 @@ TikTok — same mutation with:
 - `channelId`: `6aedb7fee29c69a171804662`
 - `metadata`: `{ "tiktok": { "isAiGenerated": true, "title": "<hook singkat>" } }`
 - `text`: caption hook + CTA + sumber + "Suara: AI (Google AI Studio)" + hashtags
+
+Instagram Reels (accounts with optional `instagramChannelId`, e.g. `sastra-mesin`) — same mutation with:
+- `channelId`: `6afe07c2ece6dfde5f116be8`
+- `metadata`: `{ "instagram": { "type": "reel", "shouldShareToFeed": true, "isAiGenerated": true } }`
+- `text`: `tiktokCaption` (≤ 2,200 chars)
 
 Publish-now vs draft: `mode: "shareNow"` + `schedulingType: "automatic"` publishes immediately. To hold for review: drop `mode` (or `saveToDraft` — see enums `ShareMode`: `shareNow | shareNext | addToQueue | customScheduled`) and set `"saveToDraft": true`.
 - Error union (`PostActionPayload`): `PostActionSuccess | NotFoundError | UnauthorizedError | UnexpectedError | RestProxyError | LimitReachedError | InvalidInputError` — every error branch carries **one** `message` field. Non-200 → stop and report; do not retry blindly.

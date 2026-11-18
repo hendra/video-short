@@ -8,7 +8,7 @@
  */
 import { loadDotenv } from "./lib.mts";
 import { isAccountId, ACCOUNT_IDS } from "../src/accounts.ts";
-import { buildReportText } from "./report-lib.mts";
+import { buildReportText, formatLinksCsv } from "./report-lib.mts";
 loadDotenv();
 
 const args = process.argv.slice(2);
@@ -23,9 +23,13 @@ if (!links || !account) {
     const os = await import("node:os");
     const path = await import("node:path");
     const resultPath = path.join(os.tmpdir(), "publish-result.json");
-    const result = JSON.parse(fs.readFileSync(resultPath, "utf8")) as { slug?: string; account?: string; links?: { youtube?: string | null; tiktok?: string | null } };
+    const result = JSON.parse(fs.readFileSync(resultPath, "utf8")) as {
+      slug?: string;
+      account?: string;
+      links?: { youtube?: string | null; tiktok?: string | null; instagram?: string | null };
+    };
     if (result.slug === slug) {
-      if (!links) links = [result.links?.youtube, result.links?.tiktok].filter(Boolean).join(",");
+      if (!links) links = formatLinksCsv(result.links);
       if (!account && result.account) account = result.account;
     }
   } catch { /* leave links empty */ }
