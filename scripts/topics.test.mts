@@ -156,3 +156,48 @@ describe("Cerpenek brief — review fixes", () => {
   });
   test("documents the articulated figure parts the brief animates", () => assert.match(text(), /`armR`, `legL`/));
 });
+
+// ---------- Sastra Mesin
+const smBrief = path.join(ROOT, "ops", "accounts", "sastra-mesin.md");
+const smTopics = path.join(ROOT, "ops", "topics", "sastra-mesin.md");
+const SM_CATEGORIES = ["Rumah Tangga", "Dapur", "Pribadi", "Elektronik", "Utilitas", "Transportasi"] as const;
+const SM_ENTRY = /^- [a-z0-9]+(?:-[a-z0-9]+)*: .+ — https:\/\/\S+ \((Rumah Tangga|Dapur|Pribadi|Elektronik|Utilitas|Transportasi)\)$/;
+
+describe("Sastra Mesin brief", () => {
+  test("exists", () => assert.ok(fs.existsSync(smBrief), `missing ${smBrief}`));
+
+  test("has every required section", () => {
+    const text = fs.readFileSync(smBrief, "utf8");
+    for (const heading of ["## Brand", "## Suara", "## Format", "## Topik", "## Riset", "## Naskah", "## Scene 3D", "## Batas isi", "## Musik latar", "## publish.json", "## Refill backlog"]) {
+      assert.ok(text.includes(heading), `brief missing section ${heading}`);
+    }
+  });
+
+  test("pins brand, theme, account id, tts command, format command and music moods", () => {
+    const text = fs.readFileSync(smBrief, "utf8");
+    assert.ok(text.includes('brand: { prefix: "Sastra ", accent: "Mesin" },'));
+    assert.ok(text.includes('theme: "blueprint"'));
+    assert.ok(text.includes('"account": "sastra-mesin"'));
+    assert.ok(text.includes("npm run tts -- <slug> --account sastra-mesin"));
+    assert.ok(text.includes("pick-format.mts --account sastra-mesin"));
+    for (const mood of ["rakit", "aliran", "rahasia"]) assert.ok(text.includes(`"${mood}"`), `missing mood ${mood}`);
+  });
+});
+
+describe("Sastra Mesin topic backlog", () => {
+  test("exists", () => assert.ok(fs.existsSync(smTopics), `missing ${smTopics}`));
+
+  test("has at least 30 well-formed entries covering all six categories, with unique slugs", () => {
+    const text = fs.readFileSync(smTopics, "utf8");
+    const lines = text.split(/\r?\n/);
+    const entries = lines.filter((l) => l.startsWith("- "));
+    assert.ok(entries.length >= 30, `backlog has ${entries.length} entries, need >= 30`);
+    const bad = entries.filter((l) => !SM_ENTRY.test(l));
+    assert.deepEqual(bad, [], `malformed entries: ${bad.join(" | ")}`);
+    const slugs = entries.map((l) => l.slice(2).split(":")[0]);
+    assert.equal(new Set(slugs).size, slugs.length, "duplicate slugs");
+    for (const cat of SM_CATEGORIES) {
+      assert.ok(entries.some((l) => l.endsWith(`(${cat})`)), `missing category ${cat}`);
+    }
+  });
+});

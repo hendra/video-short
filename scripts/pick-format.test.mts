@@ -71,3 +71,17 @@ describe("Cerpenek weights follow the backlog mix", () => {
     for (const f of formatsFor("cerpenek")) assert.ok(weight("sahabat-hewan") <= f.weight, `${f.id} is lighter than sahabat-hewan`);
   });
 });
+
+describe("Sastra Mesin pool", () => {
+  test("has its own formats, none shared with Kali Aja", () => {
+    const ids = formatsFor("sastra-mesin").map((f) => f.id);
+    assert.deepEqual(ids, ["bongkar-pasang", "satu-komponen", "ikuti-alirannya", "mitos-benda", "salah-pakai", "dulu-vs-sekarang", "kenapa-bunyi"]);
+    const kali = new Set(formatsFor("kali-aja").map((f) => f.id));
+    assert.ok(ids.every((id) => !kali.has(id)));
+  });
+  test("weights favour the take-apart and key-part formats", () =>
+    assert.deepEqual(formatsFor("sastra-mesin").map((f) => f.weight), [3, 3, 2, 2, 1, 1, 1]));
+  test("every format ends on a CTA", () => {
+    for (const f of formatsFor("sastra-mesin")) assert.match(f.instruction, /CTA/, f.id);
+  });
+});

@@ -9,7 +9,7 @@
  * Kept free of node imports so it can be imported from scripts and from src alike.
  */
 
-export type AccountId = "kali-aja" | "ai-labs" | "cerpenek";
+export type AccountId = "kali-aja" | "ai-labs" | "cerpenek" | "sastra-mesin";
 
 export type Account = {
   id: AccountId;
@@ -29,7 +29,7 @@ export type Account = {
   agent: { model: string; prompt: string; files: string[] };
 };
 
-export const ACCOUNT_IDS: readonly AccountId[] = ["kali-aja", "ai-labs", "cerpenek"];
+export const ACCOUNT_IDS: readonly AccountId[] = ["kali-aja", "ai-labs", "cerpenek", "sastra-mesin"];
 
 export const DEFAULT_ACCOUNT: AccountId = "kali-aja";
 
@@ -91,6 +91,27 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       prompt:
         "You are in CI. Follow AGENTS.md and ops/ci-prompt.md exactly. Follow ops/accounts/cerpenek.md (channel brief) and ops/topics/cerpenek.md (topic backlog) — they are part of your instructions, they override ops/ci-prompt.md where they differ, and docs/AUTOPILOT.md does NOT apply to this channel. Stop before any publish/upload/render step.",
       files: ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/cerpenek.md", "ops/topics/cerpenek.md"],
+    },
+  },
+  // Sastra Mesin: how everyday objects work, 3D cutaways in the "blueprint" overlay theme. Buffer ids are
+  // placeholders until the channels exist — `--require-configured` stops every run until then.
+  "sastra-mesin": {
+    id: "sastra-mesin",
+    label: "Sastra Mesin",
+    brand: { prefix: "Sastra ", accent: "Mesin" },
+    buffer: {
+      orgId: "TODO_SASTRA_MESIN_ORG",
+      youtubeChannelId: "TODO_SASTRA_MESIN_YOUTUBE",
+      tiktokChannelId: "TODO_SASTRA_MESIN_TIKTOK",
+    },
+    youtubeCategoryId: "27",
+    madeForKids: false,
+    tts: { voice: "id-id-tutor-1", style: "ramah, jelas, penasaran; seperti teman pintar yang menjelaskan sesuatu yang seru; tempo sedang" },
+    agent: {
+      model: "opencode/inkling-2-small-free",
+      prompt:
+        "You are in CI. Follow AGENTS.md and ops/ci-prompt.md exactly. Follow ops/accounts/sastra-mesin.md (channel brief) and ops/topics/sastra-mesin.md (topic backlog) — they are part of your instructions, they override ops/ci-prompt.md where they differ, and docs/AUTOPILOT.md does NOT apply to this channel. Stop before any publish/upload/render step.",
+      files: ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/sastra-mesin.md", "ops/topics/sastra-mesin.md"],
     },
   },
 };

@@ -8,8 +8,8 @@ import { ACCOUNT_IDS, ACCOUNTS, DEFAULT_ACCOUNT, accountById, isAccountId, isCon
 const isPlaceholder = (v: string) => v.startsWith("TODO_");
 
 describe("account registry", () => {
-  test("holds exactly the three known accounts and defaults to Kali Aja", () => {
-    assert.deepEqual([...ACCOUNT_IDS], ["kali-aja", "ai-labs", "cerpenek"]);
+  test("holds exactly the four known accounts and defaults to Kali Aja", () => {
+    assert.deepEqual([...ACCOUNT_IDS], ["kali-aja", "ai-labs", "cerpenek", "sastra-mesin"]);
     assert.equal(DEFAULT_ACCOUNT, "kali-aja");
   });
 
@@ -63,6 +63,20 @@ describe("account registry", () => {
       voice: "id-id-storyteller-1",
       style: "hangat, ceria, bersemangat; intonasi naik-turun seperti bercerita",
     });
+  });
+
+  test("Sastra Mesin has its own identity and is not yet configured", () => {
+    const s = ACCOUNTS["sastra-mesin"];
+    assert.equal(s.label, "Sastra Mesin");
+    assert.deepEqual(s.brand, { prefix: "Sastra ", accent: "Mesin" });
+    assert.equal(s.youtubeCategoryId, "27");
+    assert.equal(s.madeForKids, false);
+    assert.equal(s.tts.voice, "id-id-tutor-1");
+    assert.deepEqual(s.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/sastra-mesin.md", "ops/topics/sastra-mesin.md"]);
+    assert.match(s.agent.prompt, /override ops\/ci-prompt\.md/);
+    assert.match(s.agent.prompt, /docs\/AUTOPILOT\.md does NOT apply/);
+    assert.equal(isConfigured(s), false);
+    assert.deepEqual(missingConfigFields(s), ["buffer.orgId", "buffer.youtubeChannelId", "buffer.tiktokChannelId"]);
   });
 
   test("a placeholder voice counts as unconfigured and is named", () => {

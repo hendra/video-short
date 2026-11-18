@@ -118,6 +118,19 @@ export const aiLabsVideoProblems = (opts: {
   return problems;
 };
 
+/** Rules specific to sastra-mesin videos: 3D cutaway (world.ts, not motion) with the "blueprint" overlay theme. */
+export const sastraMesinVideoProblems = (opts: { indexSource: string; hasWorldFile: boolean }): string[] => {
+  const problems: string[] = [];
+  const indexCode = opts.indexSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  if (!/theme\s*:\s*["']blueprint["']/.test(indexCode)) {
+    problems.push('sastra-mesin wajib pakai theme: "blueprint" di index.ts');
+  }
+  if (/mode\s*:\s*["']motion["']/.test(indexCode) || !opts.hasWorldFile) {
+    problems.push('sastra-mesin wajib 3D (world.ts), bukan mode: "motion"');
+  }
+  return problems;
+};
+
 /** Rules for config.json.music per account: must pick one of that channel's moods. */
 export const accountMusicProblems = (configJson: { music?: unknown } | null, accountId: AccountId): string[] => {
   if (!configJson) return ['config.json wajib ada dan berisi field "music"'];

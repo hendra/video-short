@@ -26,7 +26,7 @@ const STOP = new Set([
   "the","and","with","for","from","this","that","into","your","you","are","was","were","has","have","how","why","what",
   "shorts","youtube","tiktok","komentar","tulis","tanya","mau","bongkar","lagi","sumber","animasi","ilustrasi","suara","google","ai","studio","kali","aja","tau","labs",
   // Cerpenek boilerplate: genre words that every story title or description carries.
-  "cerpenek","nenek","cucuku","legenda","cerita","rakyat","kisah","dongeng","sejarah","asal","usul",
+  "cerpenek","nenek","sastra","mesin","cucuku","legenda","cerita","rakyat","kisah","dongeng","sejarah","asal","usul",
 ]);
 
 export const significantTokens = (input: string): Set<string> => {

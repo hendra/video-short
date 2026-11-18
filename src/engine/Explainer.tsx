@@ -7,7 +7,7 @@ import { NeutralToneMapping, PCFSoftShadowMap, PerspectiveCamera } from "three";
 import { loadFonts } from "./fonts";
 import { applyPose, makeCtx, shotAt } from "./math";
 import { MotionStage } from "./motion/MotionStage";
-import { Overlays } from "./overlays/Overlays";
+import { BLUEPRINT_BG, Overlays, themeOf } from "./overlays/Overlays";
 import { VIDEOS } from "../videos/registry";
 import type { CamPose, Ctx, ShotSpan, VideoDef, VideoDef3D, VideoDefMotion } from "./types";
 
@@ -58,7 +58,7 @@ const MotionExplainer: React.FC<{
   return (
     <AbsoluteFill style={{ backgroundColor: "#0b0f17" }}>
       <MotionStage video={video} ctx={ctx} t={t} />
-      <Overlays video={video} shot={shot} shotStart={span.s} t={t} theme={video.theme ?? "dark-tech"} />
+      <Overlays video={video} shot={shot} shotStart={span.s} t={t} theme={themeOf(video)} />
       {audio}
     </AbsoluteFill>
   );
@@ -78,7 +78,7 @@ const ThreeExplainer: React.FC<{
   if (!shot) throw new Error(`No ShotDef for shot "${span.id}"`);
   const pose = shot.camera(t);
   return (
-    <AbsoluteFill style={{ backgroundColor: "#dfe9ec" }}>
+    <AbsoluteFill style={themeOf(video) === "blueprint" ? BLUEPRINT_BG : { backgroundColor: "#dfe9ec" }}>
       <ThreeCanvas
         width={width}
         height={height}
@@ -89,7 +89,7 @@ const ThreeExplainer: React.FC<{
       >
         <World video={video} ctx={ctx} t={t} shotId={span.id} pose={pose} />
       </ThreeCanvas>
-      <Overlays video={video} shot={shot} shotStart={span.s} t={t} pose={pose} />
+      <Overlays video={video} shot={shot} shotStart={span.s} t={t} pose={pose} theme={themeOf(video)} />
       {audio}
     </AbsoluteFill>
   );
