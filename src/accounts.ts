@@ -93,16 +93,15 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       files: ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/cerpenek.md", "ops/topics/cerpenek.md"],
     },
   },
-  // Sastra Mesin: how everyday objects work, 3D cutaways in the "blueprint" overlay theme. Buffer ids are
-  // placeholders until the channels exist — `--require-configured` stops every run until then.
+  // Sastra Mesin: how everyday objects work, 3D cutaways in the "blueprint" overlay theme. Own Buffer org + channels.
   "sastra-mesin": {
     id: "sastra-mesin",
     label: "Sastra Mesin",
     brand: { prefix: "Sastra ", accent: "Mesin" },
     buffer: {
-      orgId: "TODO_SASTRA_MESIN_ORG",
-      youtubeChannelId: "TODO_SASTRA_MESIN_YOUTUBE",
-      tiktokChannelId: "TODO_SASTRA_MESIN_TIKTOK",
+      orgId: "6afdf08dd10011a8be72ed75",
+      youtubeChannelId: "6afdf52fece6dfde5f101631",
+      tiktokChannelId: "6afdf54bece6dfde5f101af0",
     },
     youtubeCategoryId: "27",
     madeForKids: false,

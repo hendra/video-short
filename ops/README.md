@@ -48,7 +48,7 @@ gh workflow run video-run --ref main -f account=ai-labs # channel AI Labs
 
 Channel ketiga `cerpenek` (dongeng anak) sudah terkonfigurasi (ID Buffer + environment `cerpenek`) dan **sudah masuk cron** sejak 2026-11-16 — catatan aktivasi di `docs/PUBLISHING.md`.
 
-Channel keempat `sastra-mesin` (cara kerja benda sehari-hari, tema 3D `blueprint`) sudah terdaftar di `src/accounts.ts`, tetapi **belum masuk cron** (`ACCOUNTS` di `wrangler.toml`) karena ID Buffer masih `TODO_` dan track musik `public/sastra-mesin/music/*.mp3` belum diisi. Setelah ID Buffer, GitHub Environment `sastra-mesin`, dan tiga MP3 terpasang, uji dulu dengan `gh workflow run video-run --ref main -f account=sastra-mesin -f dry_run=true`, lalu tambahkan `sastra-mesin` ke `ACCOUNTS` di `wrangler.toml` dan deploy ulang worker.
+Channel keempat `sastra-mesin` (cara kerja benda sehari-hari, tema 3D `blueprint`) sudah terkonfigurasi (ID Buffer di `src/accounts.ts`, environment `sastra-mesin`, dan track musik `public/sastra-mesin/music/*.mp3` sudah terpasang), tetapi **belum masuk cron** (`ACCOUNTS` di `wrangler.toml`). Uji dulu dengan `gh workflow run video-run --ref main -f account=sastra-mesin -f dry_run=true`, lalu tambahkan `sastra-mesin` ke `ACCOUNTS` di `wrangler.toml` dan deploy ulang worker.
 
 ⚠️ Dispatch manual **tanpa `dry_run` adalah live run** — video akan benar-benar diposting ke YouTube + TikTok. Untuk rehearsal, pakai `-f dry_run=true` (lihat bawah). Video untuk `account=ai-labs` butuh isi `accounts.ts` (ID Buffer AI Labs — sudah terisi) dan environment `ai-labs` (sudah terpasang).
 
