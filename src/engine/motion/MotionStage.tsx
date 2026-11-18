@@ -5,6 +5,7 @@ import {
   clamp,
   safeStageBottom,
   safeStageTop,
+  STAGE_ZOOM,
   sway,
   transitionLayers,
   transitionStyles,
@@ -99,11 +100,11 @@ export const MotionStage: React.FC<{ video: VideoDefMotion; ctx: Ctx; t: number 
       >
         {prevSpan && prevShot ? (
           <div key={prevSpan.id} style={layerStyle(tr.outgoing)}>
-            {prevShot.render(makeFrame(prevSpan, t))}
+            <div style={{ zoom: STAGE_ZOOM }}>{prevShot.render(makeFrame(prevSpan, t))}</div>
           </div>
         ) : null}
         <div key={activeSpan.id} style={layerStyle(tr.incoming)}>
-          {activeShot.render(makeFrame(activeSpan, t))}
+          <div style={{ zoom: STAGE_ZOOM }}>{activeShot.render(makeFrame(activeSpan, t))}</div>
         </div>
         {tr.incoming.wipeGlowOpacity > 0 ? (
           <div

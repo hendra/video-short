@@ -28,6 +28,8 @@ export type TransitionTransform = {
 export const TRANSITION_DUR = 0.36;
 export const CAPTION_SAFE_BOTTOM = 1230;
 export const NO_CAPTION_SAFE_BOTTOM = 1480;
+/** Blocks are sized in desktop px; this scales them up so text stays readable on a phone (1080 wide → ~360 pt). */
+export const STAGE_ZOOM = 1.75;
 export const safeStageBottom = (captions?: boolean): number => (captions === false ? NO_CAPTION_SAFE_BOTTOM : CAPTION_SAFE_BOTTOM);
 
 export const stagger = (t: number, start: number, index: number, gap = 0.08, dur = 0.35): number =>
