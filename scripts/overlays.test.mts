@@ -15,3 +15,12 @@ describe("themeOf", () => {
     assert.equal(themeOf({ ...base3d, theme: "blueprint" } as VideoDef), "blueprint");
   });
 });
+
+import { blueprintTitleRight } from "../src/engine/overlays/Overlays.tsx";
+
+describe("blueprintTitleRight", () => {
+  test("reserves space for shot.tag when present so wide titles cannot overlap it", () => {
+    assert.ok(blueprintTitleRight("ILUSTRASI") >= 260);
+    assert.equal(blueprintTitleRight(undefined), 160);
+  });
+});

@@ -393,6 +393,8 @@ const Gear: React.FC<{ size: number }> = ({ size }) => (
   </svg>
 );
 
+export const blueprintTitleRight = (tag?: string): number => (tag ? 280 : 160);
+
 /** SASTRA MESIN: technical-drawing frame — brand row, navy title with a cyan keyword, title-block chip, numbered labels, scan-line cut. */
 const BlueprintOverlays: React.FC<{ video: VideoDef; shot: OverlayShot; shotStart: number; t: number; pose?: CamPose }> = ({ video, shot, shotStart, t, pose }) => {
   const tl = video.timeline;
@@ -411,7 +413,7 @@ const BlueprintOverlays: React.FC<{ video: VideoDef; shot: OverlayShot; shotStar
         <span style={{ color: BP.cyan, marginLeft: -2 }}>{video.brand.accent.toUpperCase()}</span>
         <span style={{ marginLeft: "auto", color: BP.steel, font: `600 24px ${FONT.mono}`, letterSpacing: 4 }}>{shot.label}</span>
       </div>
-      <div style={{ position: "absolute", left: 72, right: 160, top: 178 + BP_HEADER_SHIFT, opacity: k, transform: `translateY(${(1 - k) * 24}px)` }}>
+      <div style={{ position: "absolute", left: 72, right: blueprintTitleRight(shot.tag), top: 178 + BP_HEADER_SHIFT, opacity: k, transform: `translateY(${(1 - k) * 24}px)` }}>
         <div style={{ font: `800 66px/1.05 ${FONT.display}`, letterSpacing: -1.5, color: BP.navy }}>
           <Title text={shot.title} highlightColor={BP.cyan} />
         </div>
