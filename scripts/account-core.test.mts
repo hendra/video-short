@@ -9,6 +9,7 @@ import {
   cerpenekMusicProblems,
   envLines,
   resolveAccountArg,
+  sastraMesinVideoProblems,
   voiceProblem,
 } from "./account-core.mts";
 
@@ -261,8 +262,25 @@ describe("accountMusicProblems", () => {
     for (const music of ["teknik", "misteri", "fenomena"]) {
       assert.deepEqual(accountMusicProblems({ music }, "kali-aja"), []);
     }
+    for (const music of ["rakit", "aliran", "rahasia"]) {
+      assert.deepEqual(accountMusicProblems({ music }, "sastra-mesin"), []);
+    }
     assert.ok(accountMusicProblems({ music: "ceria" }, "ai-labs").some((p) => p.includes("build, debug, showcase")));
     assert.ok(accountMusicProblems({ music: "" }, "kali-aja").some((p) => p.includes("teknik, misteri, fenomena")));
     assert.ok(accountMusicProblems({ music: 123 }, "cerpenek").some((p) => p.includes("ceria, hangat, petualang, nusantara, ajaib")));
+  });
+});
+
+describe("sastraMesinVideoProblems", () => {
+  const ok = `export const video = { theme: "blueprint", fov: 40 };`;
+  test("accepts a 3D blueprint video (either quote style)", () => {
+    assert.deepEqual(sastraMesinVideoProblems({ indexSource: ok, hasWorldFile: true }), []);
+    assert.deepEqual(sastraMesinVideoProblems({ indexSource: ok.replace(/"/g, "'"), hasWorldFile: true }), []);
+  });
+  test("rejects a missing theme, a commented-out theme, motion mode, and no world.ts", () => {
+    assert.equal(sastraMesinVideoProblems({ indexSource: `const v = {};`, hasWorldFile: true }).length, 1);
+    assert.equal(sastraMesinVideoProblems({ indexSource: `// theme: "blueprint"`, hasWorldFile: true }).length, 1);
+    assert.ok(sastraMesinVideoProblems({ indexSource: `${ok} mode: "motion"`, hasWorldFile: true }).length >= 1);
+    assert.equal(sastraMesinVideoProblems({ indexSource: ok, hasWorldFile: false }).length, 1);
   });
 });

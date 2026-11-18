@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ACCOUNTS, accountById, isAccountId } from "../src/accounts.ts";
-import { accountMusicProblems, accountProblems, aiLabsVideoProblems, brandProblems } from "./account-core.mts";
+import { accountMusicProblems, accountProblems, aiLabsVideoProblems, brandProblems, sastraMesinVideoProblems } from "./account-core.mts";
 import { videoDir } from "./lib.mts";
 
 const args = process.argv.slice(2);
@@ -54,6 +54,10 @@ if (!fs.existsSync(indexPath)) {
 } else {
   indexSource = fs.readFileSync(indexPath, "utf8");
   problems.push(...brandProblems(indexSource, account, Object.values(ACCOUNTS)));
+}
+
+if (account.id === "sastra-mesin") {
+  problems.push(...sastraMesinVideoProblems({ indexSource, hasWorldFile: fs.existsSync(path.join(dir, "world.ts")) }));
 }
 
 if (account.id === "ai-labs") {
