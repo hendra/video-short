@@ -24,17 +24,17 @@ export type Span = { s: number; e: number; segs: [number, number][] };
 /** Tokens with no letters/digits (a lone "—") are never spoken: they take no time. */
 const weight = (w: string) => (/[\p{L}\p{N}]/u.test(w) ? syl(w) + 0.3 : 0);
 const endsPhrase = (w: string) => /[,.;:?!…—–]$/.test(w);
-/** Reward (in cost units) for every pause that is pinned to a punctuation mark. */
+/** Reward (in cost units) for every pause pinned to punctuation; penalty per second of silence left inside a block. */
 const CUT_REWARD = 0.15;
+const GAP_COST = 1.0;
 
 /**
- * A speaker pauses at punctuation, so the silences inside a line are anchors: pair the line's phrases
- * (split at punctuation) with its speech segments so each pause lands on a punctuation mark. Returns blocks
- * of [first word, word end, first segment, segment end]; words only drift inside one block, never across a pause.
- * Monotone DP: a block's cost is how far its speech time is from what its syllables predict.
+ * A speaker usually pauses at punctuation, but also pauses mid-phrase. Any word boundary (never splitting
+ * right before a zero-weight token like "—") can take a pause; punctuation earns CUT_REWARD and any pause
+ * left inside a block pays GAP_COST * silence_duration. Returns blocks of [w0, w1, s0, s1].
  */
 export const pairPhrases = (ws: string[], segs: [number, number][]): [number, number, number, number][] => {
-  const ends = ws.flatMap((w, i) => (endsPhrase(w) || i === ws.length - 1 ? [i + 1] : []));
+  const ends = ws.flatMap((_, i) => (i === ws.length - 1 || weight(ws[i + 1]) > 0 ? [i + 1] : []));
   const P = ends.length, M = segs.length;
   const wsum = [0], dsum = [0];
   ws.forEach((w) => wsum.push(wsum[wsum.length - 1] + weight(w)));
@@ -48,8 +48,11 @@ export const pairPhrases = (ws: string[], segs: [number, number][]): [number, nu
       for (let j0 = 0; j0 < j; j0++)
         for (let i0 = 0; i0 < i; i0++) {
           if (best[j0][i0] === Infinity) continue;
+          const speech = dsum[i] - dsum[i0];
+          const innerSil = (segs[i - 1][1] - segs[i0][0]) - speech;
           const exp = Math.max(1e-3, (wsum[ends[j - 1]] - wsum[j0 ? ends[j0 - 1] : 0]) * rate);
-          const c = best[j0][i0] + (dsum[i] - dsum[i0] - exp) ** 2 / exp - (j0 ? CUT_REWARD : 0);
+          const reward = j0 && endsPhrase(ws[ends[j0 - 1] - 1]) ? CUT_REWARD : 0;
+          const c = best[j0][i0] + (speech - exp) ** 2 / exp + GAP_COST * innerSil - reward;
           if (c < best[j][i]) { best[j][i] = c; back[j][i] = [j0, i0]; }
         }
   const blocks: [number, number, number, number][] = [];
@@ -84,8 +87,8 @@ export const wordsFromSpans = (lines: string[], spans: Span[]): TimedWord[] => {
   return words;
 };
 
-/** Analyze an audio file and time every word in `lines` to it. Throws if too few speech segments are found. */
-export const analyzeAlignment = (audioPath: string, lines: string[]): { words: TimedWord[]; spans: Span[] } => {
+/** Detect non-silent speech segments [start, end] (seconds) and total duration from an audio file. */
+export const speechSegments = (audioPath: string): { dur: number; segs: [number, number][] } => {
   const log = ffmpeg(["-hide_banner", "-i", audioPath, "-af", "silencedetect=n=-38dB:d=0.12", "-f", "null", "-"]);
   const dur = Number(/Duration: (\d+):(\d+):([\d.]+)/.exec(log)?.slice(1).reduce((a, v, i) => a + Number(v) * [3600, 60, 1][i], 0));
   const st = [...log.matchAll(/silence_start: ([\d.]+)/g)].map((m) => Number(m[1]));
@@ -97,6 +100,12 @@ export const analyzeAlignment = (audioPath: string, lines: string[]): { words: T
     cur = en[i] ?? dur;
   });
   if (dur - cur > 0.08) segs.push([cur, dur]);
+  return { dur, segs };
+};
+
+/** Analyze an audio file and time every word in `lines` to it. Throws if too few speech segments are found. */
+export const analyzeAlignment = (audioPath: string, lines: string[]): { words: TimedWord[]; spans: Span[] } => {
+  const { segs } = speechSegments(audioPath);
   const S = segs.length, N = lines.length;
   if (S < N) throw new Error(`Only ${S} speech segments for ${N} lines — leave short pauses between lines.`);
   const k = lines.map(syl);
