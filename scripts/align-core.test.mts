@@ -31,6 +31,17 @@ test("fewer pauses than punctuation marks: phrases merge, timing stays monotonic
   });
 });
 
-test("an unpunctuated line with an inner pause keeps one block", () => {
-  assert.deepEqual(pairPhrases("satu dua tiga empat".split(" "), [[0, 1], [1.2, 2]]), [[0, 4, 0, 2]]);
+test("an unpunctuated line with an inner pause splits at the pause instead of straddling it", () => {
+  const words = wordsFromSpans(["satu dua tiga empat"], [span([[0, 1.0], [1.45, 2.45]])]);
+  assert.ok(words[1].end <= 1.0 + 1e-6);
+  assert.ok(words[2].start >= 1.45 - 1e-6);
+});
+
+test("mid-phrase pause wins over wrong comma when speech lengths show which half paused", () => {
+  const ws = "Perjanjian karbon pertama, diteken di Antalya".split(" ");
+  const segs: [number, number][] = [[0, 0.48], [0.98, 2.95]];
+  const blocks = pairPhrases(ws, segs);
+  assert.equal(blocks.length, 2);
+  assert.deepEqual(blocks[0], [0, 1, 0, 1]);
+  assert.deepEqual(blocks[1], [1, 6, 1, 2]);
 });

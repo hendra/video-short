@@ -198,9 +198,9 @@ jobs:
       - name: Generate music bed (missing only)
         run: npx tsx scripts/music.mts --missing
 
-      - name: Gates (lint + tests + bundle)
+      - name: Gates (lint + tests + sync + bundle)
         id: gates
-        run: npm run lint && npm test && npx remotion bundle --out-dir /tmp/rbundle
+        run: npm run lint && npm test && npm run check-sync -- "$SLUG" && npx remotion bundle --out-dir /tmp/rbundle
 
       # One still per shot, ~0.5s into each shot (past transitions, capped at midpoint; fps=30 from src/Root.tsx).
       # Slug passed via env, not interpolated into the JS expression.
