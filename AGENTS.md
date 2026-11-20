@@ -42,7 +42,7 @@ Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test,
 
 - **Everything visible must be a pure function of `t` (seconds).** No `Math.random()`, `Date.now()`, or cross-frame state — Remotion renders frames in parallel, out of order. Use `rng(seed)` from `engine/math.ts`.
 - Particles with changing speed: integrate the rate from 0 to `t`, never `t * speed`.
-- Caption: one chunk at a time, never two; ≤ 5 tokens per chunk, except spelled-out number runs are joined and may exceed 5 words (phrases with long numbers split on token boundaries to stay within 2 lines); use an `inline-block` card with `line-height: 1.32` in `Overlays.tsx`; don't move captions above y≈1270 or shrink SAFE areas (YouTube UI covers edges).
+- Caption: one chunk at a time, never two; ≤ 3 tokens per chunk, except spelled-out number runs are joined and may exceed 3 words (phrases with long numbers split on token boundaries to stay within 2 lines); use an `inline-block` card with `line-height: 1.32` in `Overlays.tsx`; don't move captions above y≈1270 or shrink SAFE areas (YouTube UI covers edges).
 - Callout anchors should sit inside the zone between header bottom and y≈1240, or the overlay auto-pinning/hide logic will drop or edge-pin them. Max 3 callouts per shot; `orange` = focus, `red` = danger. No stacked/overlapping text.
 - Diorama schematic maps get `tag: "ILUSTRASI"`.
 - After building a video or changing scenes: render stills of the busiest frame of each shot and eyeball them before a full render (full swangle renders take ~35–40 min).
@@ -55,6 +55,8 @@ Requires Node ≥ 20.19. Verification is `npm run lint` + `npm test` (node:test,
 ## Gotchas
 
 - Remotion composition props must be JSON — compositions only carry `videoId`; the video object is looked up in `VIDEOS` inside `Explainer.tsx`.
-- `build-timeline` fails if fewer than 80% of script words match the alignment (then naskah.txt ≠ spoken text); the rest are interpolated. It does not check total duration — verify 60–90 s yourself in `timeline.json`.
+- `build-timeline` fails if fewer than 80% of script words match the alignment (then naskah.txt ≠ spoken text); the rest are interpolated. It does not check total duration — verify 45–55 s yourself in `timeline.json` (Cerpenek: 60–90 s per its brief).
+- `npm run tts` refuses scripts over 130 words (Cerpenek exempt) before calling Gemini, and trims the VO before alignment: no leading silence, pauses ≤ 0.2 s, 0.05 s tail (seamless loop). Scripts end with a loop line that flows into line 01, not a CTA (Cerpenek keeps its own CTA).
+- 3D cuts ease the camera from the previous shot's pose over 0.3 s (`CUT_BLEND` in `engine/math.ts`) instead of hard-cutting; motion mode has its own 0.36 s transitions.
 - TTS failure on all providers (or a provider analysis failure): an existing `vo.mp3`/`alignment.json` pair is left untouched — fresh audio lands in `os.tmpdir()/vo-<id>-failed.mp3`. Don't hand-edit `.env` mid-run; fix the key/quota and re-run.
 - Local Node needs no special proxy; cloud workspaces need `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` for the TTS provider API calls (see AUTOPILOT §1).

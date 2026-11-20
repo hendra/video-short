@@ -62,14 +62,12 @@ if (account.id === "sastra-mesin") {
 
 if (account.id === "ai-labs") {
   const shotsPath = [path.join(dir, "shots.tsx"), path.join(dir, "shots.ts")].find((p) => fs.existsSync(p));
-  const naskahPath = path.join(dir, "naskah.txt");
   problems.push(
     ...aiLabsVideoProblems({
       indexSource,
       shotsSource: shotsPath ? fs.readFileSync(shotsPath, "utf8") : null,
       hasWorldFile: fs.existsSync(path.join(dir, "world.ts")),
       publishJson,
-      naskahText: fs.existsSync(naskahPath) ? fs.readFileSync(naskahPath, "utf8") : null,
     }),
   );
 }
