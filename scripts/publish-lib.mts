@@ -92,6 +92,15 @@ export const slotFor = (now: Date): { slot: Slot; date: string } => {
   return { slot: "pagi", date: new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10) };
 };
 
+/** Slot for a publish run: --slot/--date as a pair (fixed at run start by CI), else the slot for `now`. Returns an error string when invalid. */
+export const resolveSlot = (slot: string | undefined, date: string | undefined, now: Date): { slot: Slot; date: string } | string => {
+  if (slot === undefined && date === undefined) return slotFor(now);
+  if (slot === undefined || date === undefined) return "--slot and --date must be given together";
+  if (!isSlot(slot)) return `--slot "${slot}" tidak dikenal (valid: ${SLOTS.join(", ")})`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return `--date "${date}" bukan YYYY-MM-DD`;
+  return { slot, date };
+};
+
 export type PostTiming = { mode: "customScheduled"; dueAt: string } | { mode: "shareNow" };
 /** Schedule at the air time, or share now if it already passed (a slow run must not fail the publish). */
 export const postTiming = (due: string, now: Date): PostTiming =>

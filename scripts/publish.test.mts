@@ -11,6 +11,7 @@ import {
   isSlot,
   mapBufferPostNode,
   postTiming,
+  resolveSlot,
   slotFor,
   validatePublishJson,
   youtubeMetadata,
@@ -178,5 +179,17 @@ describe("duplicate lookup sees queued posts", () => {
   });
   test("a scheduled post is dated by its dueAt", () => {
     assert.equal(mapBufferPostNode({ id: "9", text: "x", createdAt: "2026-11-21T00:00:00Z", dueAt: "2026-11-22T00:00:00Z" })?.date, "2026-11-22");
+  });
+});
+
+describe("resolveSlot (publish --slot/--date)", () => {
+  const now = new Date("2026-11-21T03:30:00Z");
+  test("no args uses the slot for now", () => assert.deepEqual(resolveSlot(undefined, undefined, now), { slot: "siang", date: "2026-11-21" }));
+  test("explicit slot and date are kept", () => assert.deepEqual(resolveSlot("pagi", "2026-11-21", now), { slot: "pagi", date: "2026-11-21" }));
+  test("rejects unknown slot, bad date, or only one of the pair", () => {
+    assert.equal(typeof resolveSlot("sore", "2026-11-21", now), "string");
+    assert.equal(typeof resolveSlot("pagi", "21-11-2026", now), "string");
+    assert.equal(typeof resolveSlot("pagi", undefined, now), "string");
+    assert.equal(typeof resolveSlot(undefined, "2026-11-21", now), "string");
   });
 });
