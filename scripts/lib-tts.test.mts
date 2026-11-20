@@ -238,13 +238,13 @@ describe("trimSilence", () => {
   const silences = (file: string) =>
     [...ffmpeg(["-hide_banner", "-i", file, "-af", "silencedetect=n=-38dB:d=0.03", "-f", "null", "-"]).matchAll(/silence_start: ([\d.]+)[\s\S]*?silence_duration: ([\d.]+)/g)].map((m) => ({ start: +m[1], dur: +m[2] }));
   const duration = (file: string) => +(/Duration: (\d+):(\d+):([\d.]+)/.exec(ffmpeg(["-hide_banner", "-i", file]))?.slice(1).reduce((a, x) => a * 60 + +x, 0) ?? NaN);
-  const run = (pcm: Buffer, check: (out: string, inp: string) => void) => {
+  const run = (pcm: Buffer, check: (out: string, inp: string, map: (t: number) => number) => void) => {
     const src = path.join(os.tmpdir(), `trim-src-${process.pid}.mp3`);
     const out = path.join(os.tmpdir(), `trim-out-${process.pid}.mp3`);
     try {
       stageToMp3(wavOf(pcm), "wav", src);
-      trimSilence(src, out);
-      check(out, src);
+      const map = trimSilence(src, out);
+      check(out, src, map);
     } finally {
       fs.rmSync(src, { force: true });
       fs.rmSync(out, { force: true });
@@ -259,6 +259,15 @@ describe("trimSilence", () => {
       assert.ok(!ss.some((s) => s.start < 0.05 && s.dur > 0.1), `leading silence: ${JSON.stringify(ss)}`);
       const d = duration(out);
       assert.ok(d > 2.1 && d < 2.4, `duration ${d}`);
+    });
+  });
+
+  test("returns a time map from the raw take to the trimmed audio", () => {
+    run(Buffer.concat([quiet(1), pcmTone(1, 440), quiet(1), pcmTone(1, 440), quiet(1)]), (out, _inp, map) => {
+      const toneStarts = silences(out).filter((s) => s.start > 0.5).map((s) => s.start + s.dur);
+      assert.ok(Math.abs(map(3.0) - toneStarts[0]) < 0.05, `map(3)=${map(3.0)} vs second tone at ${toneStarts[0]}`);
+      assert.ok(map(1.5) < map(3.0) && map(0) === 0, "monotonic from 0");
+      assert.ok(Math.abs(map(5) - duration(out)) < 0.06, `end ${map(5)} vs ${duration(out)}`);
     });
   });
 

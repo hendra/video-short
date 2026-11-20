@@ -147,17 +147,48 @@ export const stageToMp3 = (audio: Buffer, ext: "mp3" | "wav", destPath: string):
   }
 };
 
-// -38 dB matches align-core's silencedetect. stop_duration 0.18 + the 0.02 s detection window ≈ 0.2 s pauses;
-// the reversed pass removes the head of the reversed audio = the tail, keeping 0.05 s for a seamless loop.
-const TRIM_FILTER =
-  "silenceremove=start_periods=1:start_threshold=-38dB:stop_periods=-1:stop_duration=0.18:stop_threshold=-38dB," +
-  "areverse,silenceremove=start_periods=1:start_threshold=-38dB:start_silence=0.05,areverse";
+const MAX_PAUSE = 0.2;
+const LOOP_TAIL = 0.05;
 
-/** Remove leading silence, shorten pauses to ≤ 0.2 s and the tail to 0.05 s (MP3 in, MP3 out). */
-export const trimSilence = (srcPath: string, destPath: string): void => {
+/** Silences (−38 dB, like align-core) longer than MAX_PAUSE → the [from, to] spans to cut out. */
+const cutsFor = (srcPath: string): { dur: number; cuts: [number, number][] } => {
+  const log = ffmpeg(["-hide_banner", "-i", srcPath, "-af", `silencedetect=n=-38dB:d=${MAX_PAUSE}`, "-f", "null", "-"]);
+  const dur = Number(/Duration: (\d+):(\d+):([\d.]+)/.exec(log)?.slice(1).reduce((a, v, i) => a + Number(v) * [3600, 60, 1][i], 0));
+  if (!Number.isFinite(dur)) throw new Error(`ffmpeg could not read ${srcPath}: ${log.slice(-300)}`);
+  const st = [...log.matchAll(/silence_start: ([\d.]+)/g)].map((m) => Number(m[1]));
+  const en = [...log.matchAll(/silence_end: ([\d.]+)/g)].map((m) => Number(m[1]));
+  const cuts = st.flatMap((a, i): [number, number][] => {
+    const b = Math.min(en[i] ?? dur, dur);
+    if (a <= 0.01) return [[0, b]]; // leading silence: drop it
+    if (b >= dur - 0.01) return [[a + LOOP_TAIL, dur]]; // tail: keep 0.05 s for the loop seam
+    return [[a + MAX_PAUSE / 2, b - MAX_PAUSE / 2]]; // inner pause: keep 0.1 s on each side
+  });
+  return { dur, cuts };
+};
+
+/**
+ * Remove leading silence, shorten pauses to ≤ 0.2 s and the tail to 0.05 s (MP3 in, MP3 out).
+ * Returns the map from a time in the raw take to the trimmed audio, so timing found on the raw take
+ * (where line breaks are still the longest pauses) can be moved onto the trimmed file.
+ */
+export const trimSilence = (srcPath: string, destPath: string): ((t: number) => number) => {
+  const { dur, cuts } = cutsFor(srcPath);
   fs.rmSync(destPath, { force: true });
-  const err = ffmpeg(["-hide_banner", "-y", "-i", srcPath, "-af", TRIM_FILTER, "-codec:a", "libmp3lame", "-b:a", "128k", destPath]);
+  // Kept spans between cuts, joined sample-accurately with atrim + concat.
+  const keep: [number, number][] = [];
+  let at = 0;
+  for (const [a, b] of cuts) {
+    if (a > at) keep.push([at, a]);
+    at = b;
+  }
+  if (dur > at) keep.push([at, dur]);
+  const graph = keep.map(([a, b], i) => `[0:a]atrim=start=${a.toFixed(5)}:end=${b.toFixed(5)},asetpts=PTS-STARTPTS[k${i}]`).join(";") +
+    `;${keep.map((_, i) => `[k${i}]`).join("")}concat=n=${keep.length}:v=0:a=1[out]`;
+  const err = keep.length
+    ? ffmpeg(["-hide_banner", "-y", "-i", srcPath, "-filter_complex", graph, "-map", "[out]", "-codec:a", "libmp3lame", "-b:a", "128k", destPath])
+    : "no audio left after trimming";
   if (!fs.existsSync(destPath) || fs.statSync(destPath).size === 0) throw new Error(`ffmpeg silence trim failed: ${err.slice(-300)}`);
+  return (t) => t - cuts.reduce((sum, [a, b]) => sum + Math.max(0, Math.min(t, b) - a), 0);
 };
 
 export type RunResult =
@@ -209,26 +240,14 @@ export const synthesizeAndPublish = async ({ videoId, lines, provider, tts, synt
       console.error(`${p} failed while staging audio: ${(e as Error).message}`);
       continue;
     }
-    // ElevenLabs ships its own timestamps; trimming would shift them.
-    if (!(p === "elevenlabs" && result.words)) {
-      const trimmed = `${staging}.trim.mp3`;
-      try {
-        trimSilence(staging, trimmed);
-        fs.renameSync(trimmed, staging);
-      } catch (e) {
-        fs.rmSync(trimmed, { force: true });
-        attempts.push(`${p}: ${(e as Error).message}`);
-        console.error(`${p} failed while trimming silence: ${(e as Error).message}`);
-        continue;
-      }
-    }
     let words: TimedWord[];
     let source: "tts" | "estimated";
     if (p === "elevenlabs" && result.words) {
-      words = result.words;
+      words = result.words; // own timestamps; not trimmed so they stay valid
       source = "tts";
     } else {
       try {
+        // Align on the raw take: line breaks are still the longest pauses there, which the aligner relies on.
         words = analyzeAlignment(staging, lines).words;
       } catch (e) {
         const failed = path.join(os.tmpdir(), `vo-${videoId}-failed.mp3`);
@@ -236,6 +255,17 @@ export const synthesizeAndPublish = async ({ videoId, lines, provider, tts, synt
         return { ok: false, attempts, analysisFailure: { failedPath: failed, reason: (e as Error).message } };
       }
       source = "estimated";
+      const trimmed = `${staging}.trim.mp3`;
+      try {
+        const map = trimSilence(staging, trimmed);
+        fs.renameSync(trimmed, staging);
+        words = words.map((w) => ({ ...w, start: map(w.start), end: map(w.end) }));
+      } catch (e) {
+        fs.rmSync(trimmed, { force: true });
+        attempts.push(`${p}: ${(e as Error).message}`);
+        console.error(`${p} failed while trimming silence: ${(e as Error).message}`);
+        continue;
+      }
     }
     fs.mkdirSync(publicDir(videoId), { recursive: true });
     // Publish: prebuild both artifacts, then swap both into place back-to-back (each rename is

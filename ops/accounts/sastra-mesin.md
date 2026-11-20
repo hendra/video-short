@@ -53,7 +53,7 @@ Jangan pakai brand channel lain dan jangan hilangkan `theme: "blueprint"`. Gate 
   2. Jelaskan langsung maknanya dengan kata sederhana,
   3. Beri analogi benda sehari-hari yang akrab.
 - Angka ditulis dengan kata ("seratus derajat", "dua puluh empat milimeter").
-- Buka dengan **hook 2–3 detik** (pertanyaan atau pengamatan yang membuat penasaran tentang benda itu). Akhiri dengan **ending loop**, **tanpa CTA**: kalimat terakhir menggantung dan menyambung secara tata bahasa ke kalimat pertama, sehingga saat video berputar ulang terdengar utuh.
+- Buka dengan **hook 2–3 detik** (pertanyaan atau pengamatan yang membuat penasaran tentang benda itu). Akhiri dengan **ending loop**, **tanpa CTA**: kalimat terakhir menggantung dan menyambung secara tata bahasa ke kalimat pertama, sehingga saat video berputar ulang terdengar utuh. `config.json` `tail` ≤ 0,3 dtk (gate CI).
 
 ## Scene 3D
 

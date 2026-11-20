@@ -71,7 +71,7 @@ Cek `timeline.json`: semua kata ter-match, durasi 45–55 dtk. Jika TTS gagal (k
 
 ## 6. Adegan 3D — pola scene
 
-File: `config.json` (shot → baris pertama, `tail`, dan `"music"` wajib salah satu dari `"teknik"` untuk mekanisme teknik/infrastruktur, `"misteri"` untuk teka-teki *"kok bisa?"*/myth-buster, atau `"fenomena"` untuk fenomena alam/sains skala besar), `state.ts` (semua animasi = fungsi murni dari `t`, terikat `L(n)`), `world.ts` (diorama dibuat sekali, `update(t)` per frame), `shots.ts` (label, judul `*hijau*`, kamera keyframe, callout, chip), `index.ts` (`music: { src: "<slug>/music.wav", volume: 0.14 }`), lalu daftarkan di `src/videos/registry.ts`.
+File: `config.json` (shot → baris pertama, `tail` **≤ 0,3** dtk agar video langsung loop — gate CI menolak lebih dari itu, dan `"music"` wajib salah satu dari `"teknik"` untuk mekanisme teknik/infrastruktur, `"misteri"` untuk teka-teki *"kok bisa?"*/myth-buster, atau `"fenomena"` untuk fenomena alam/sains skala besar), `state.ts` (semua animasi = fungsi murni dari `t`, terikat `L(n)`), `world.ts` (diorama dibuat sekali, `update(t)` per frame), `shots.ts` (label, judul `*hijau*`, kamera keyframe, callout, chip), `index.ts` (`music: { src: "<slug>/music.wav", volume: 0.14 }`), lalu daftarkan di `src/videos/registry.ts`.
 
 Supaya setiap objek tampak nyata (bukan kotak polos), bangun adegan dari `Kit` (`src/engine/kit.ts`):
 - **Cahaya:** panggil `kit.lights()` sekali di `createWorld` (matahari hangat + bayangan lembut + langit/pantulan tanah). Jangan menambah `AmbientLight`/`DirectionalLight` sendiri. `reach` = setengah lebar area yang perlu bayangan (default 16).

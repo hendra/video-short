@@ -38,7 +38,7 @@ Jangan pakai brand channel lain. Gate CI menolak video yang brand-nya beda.
 
 - `src/videos/<slug>/naskah.txt`: 10–14 baris, format `NN  teks` (dua digit, dua spasi), **maksimal 130 kata** (≈ 45–55 detik; `npm run tts` menolak naskah lebih panjang).
 - Kalimat lisan: "nggak", "kayak", "gitu deh". Angka ditulis dengan kata ("empat belas gambar").
-- Alur naskah: hook → isi → payoff → **ending loop** (kalimat terakhir menyambung ke kalimat pertama). **Tanpa CTA** — tidak ada "subscribe", "komentar", atau "cek deskripsi". Tidak ada "Tapi tunggu… kok bisa…?".
+- Alur naskah: hook → isi → payoff → **ending loop** (kalimat terakhir menyambung ke kalimat pertama). **Tanpa CTA** — tidak ada "subscribe", "komentar", atau "cek deskripsi". Tidak ada "Tapi tunggu… kok bisa…?". `config.json` `tail` ≤ 0,3 dtk (gate CI).
 - Boleh pakai istilah teknis (MCP, hook, context window) tapi jelaskan sekali dengan analogi sederhana.
 
 ## Visual: Motion Graphics (Dark Tech Studio)

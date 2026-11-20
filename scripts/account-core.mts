@@ -16,6 +16,15 @@ export const scriptWordProblem = (account: Account, lines: string[]): string | n
   return n > MAX_SCRIPT_WORDS ? `naskah ${n} kata, maksimal ${MAX_SCRIPT_WORDS} — pendekkan sebelum TTS` : null;
 };
 
+export const MAX_LOOP_TAIL = 0.3;
+
+/** config.json `tail` = seconds of picture after the last word; a long tail breaks the loop back to line 01. */
+export const loopTailProblem = (account: Account, tail: unknown): string | null => {
+  if (account.id === "cerpenek") return null;
+  if (typeof tail !== "number" || !(tail >= 0)) return `config.json tail wajib angka ≥ 0 (maks ${MAX_LOOP_TAIL})`;
+  return tail > MAX_LOOP_TAIL ? `config.json tail ${tail} dtk, maksimal ${MAX_LOOP_TAIL} — video harus langsung loop ke baris 01` : null;
+};
+
 /** The brand line a generated video source must contain, exactly. */
 export const brandLine = (account: Account): string =>
   `brand: { prefix: ${JSON.stringify(account.brand.prefix)}, accent: ${JSON.stringify(account.brand.accent)} }`;

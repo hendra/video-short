@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { beat, between, blendPose, focusOffset, pulse, stepIndex } from "../src/engine/math.ts";
+import { CUT_BLEND, beat, between, blendPose, cutProgress, focusOffset, pulse, stepIndex } from "../src/engine/math.ts";
 import type { CamPose, Line } from "../src/engine/types.ts";
 
 describe("blendPose", () => {
@@ -12,6 +12,15 @@ describe("blendPose", () => {
     assert.deepEqual(blendPose(from, to, 2), to);
   });
   test("is halfway at u=0.5", () => assert.deepEqual(blendPose(from, to, 0.5), { position: [5, 2, 1], target: [1, 0, -5] }));
+});
+
+describe("cutProgress", () => {
+  test("reaches 1 after CUT_BLEND on a normal shot", () => {
+    assert.equal(cutProgress(10 + CUT_BLEND, { id: "s2", s: 10, e: 15 }), 1);
+  });
+  test("a shot shorter than CUT_BLEND still reaches its own pose by its end", () => {
+    assert.equal(cutProgress(10.2, { id: "s2", s: 10, e: 10.2 }), 1);
+  });
 });
 
 const line = (n: number, s: number, e: number): Line => ({ n, s, e, text: `baris ${n}` });

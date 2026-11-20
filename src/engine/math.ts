@@ -1,5 +1,5 @@
 import { PerspectiveCamera, Vector3 } from "three";
-import type { CamPose, Ctx, Line, Timeline, Vec3 } from "./types";
+import type { CamPose, Ctx, Line, ShotSpan, Timeline, Vec3 } from "./types";
 
 export const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 export const lerp = (a: number, b: number, x: number) => a + (b - a) * x;
@@ -89,6 +89,9 @@ export const orbit =
 
 /** Seconds a 3D cut eases from the previous shot's camera into the new one (cheap stand-in for motion blur). */
 export const CUT_BLEND = 0.3;
+
+/** 0→1 blend progress into a shot; the window shrinks for shots shorter than CUT_BLEND so each ends at its own pose. */
+export const cutProgress = (t: number, span: ShotSpan) => clamp((t - span.s) / Math.max(1e-4, Math.min(CUT_BLEND, span.e - span.s)));
 
 export const blendPose = (from: CamPose, to: CamPose, u: number): CamPose => {
   const k = smooth(u);

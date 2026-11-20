@@ -8,6 +8,7 @@ import {
   brandProblems,
   cerpenekMusicProblems,
   envLines,
+  loopTailProblem,
   resolveAccountArg,
   sastraMesinVideoProblems,
   scriptWordProblem,
@@ -17,6 +18,13 @@ import {
 const ALL_ACCOUNTS = Object.values(ACCOUNTS);
 const kaliAja = ACCOUNTS["kali-aja"];
 const aiLabs = ACCOUNTS["ai-labs"];
+
+describe("loopTailProblem", () => {
+  test("accepts a tail up to 0.3 s", () => assert.equal(loopTailProblem(kaliAja, 0.3), null));
+  test("rejects a longer tail, which breaks the seamless loop", () => assert.match(String(loopTailProblem(aiLabs, 1.5)), /tail/));
+  test("rejects a missing or non-numeric tail", () => assert.match(String(loopTailProblem(kaliAja, undefined)), /tail/));
+  test("cerpenek keeps its own outro", () => assert.equal(loopTailProblem(ACCOUNTS.cerpenek, 3), null));
+});
 
 describe("scriptWordProblem", () => {
   const lines = (n: number) => [Array(n - Math.floor(n / 2)).fill("kata").join(" "), Array(Math.floor(n / 2)).fill("kata").join("  ")];
