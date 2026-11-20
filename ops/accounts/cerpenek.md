@@ -113,6 +113,17 @@ Aturan scene:
 - Paling banyak **3 tokoh** (orang atau hewan besar) per shot, supaya anak tahu siapa yang sedang diceritakan.
 - Tokoh yang sama memakai **warna dan `headwear` yang sama** di semua shot.
 - **Beri tokoh pose, jangan biarkan berdiri kaku.** Lengan yang sedang diceritakan selalu diberi gerak (`armR.rotation.z`), kepala sedikit menoleh ke arah lawan bicara, dan tokoh anak boleh diberi langkah kaki kecil.
+- **Koreografi per baris (wajib):** jangan tulis pose manual per shot. Pakai preset `poseFigure` dan ganti mode sesuai baris yang sedang diucapkan:
+  ```ts
+  import { poseFigure } from "../../engine/kit";
+  import { beat, pulse, stepIndex } from "../../engine/math";
+  const step = stepIndex(t, [L(3), L(5), L(7)]);
+  poseFigure(anak, t, step === 0 ? "walk" : step === 1 ? "talk" : "wave", 1); // "idle" | "talk" | "walk" | "wave" | "sad" | "point"
+  anak.armR.rotation.z += beat(t, L(5)) * 0.5;   // gerakan besar tepat saat baris 5 diucapkan
+  lentera.material.emissiveIntensity = pulse(t, L(5)) * 0.9; // benda yang diceritakan menyala selama barisnya
+  ```
+  `poseFigure` sudah mengurus napas, anggukan, dan kedipan mata (bagian `blink`), jadi tokoh tidak pernah membeku. Gate CI menolak shot yang objeknya tidak bergerak.
+- **Isi latar dan hidupkan air:** `kit.cloud(x, y, z, s)` untuk awan yang bergeser (`sway`), `kit.ripple(x, z, maxR)` untuk riak air — panggil `ripple.setPhase(t * 0.4)`; `kit.prop(kind, x, y, z, s)` untuk benda cerita yang dikenali ("lantern" | "crate" | "pot" | "torch" | "scroll" | "rock" | "flower") alih-alih kotak polos.
 - **Latar belakang harus terisi.** Selain alas diorama, taruh satu atau dua `kit.mountain` jauh di belakang (`z` sekitar -6 sampai -8), dan tutup sisa ruang dengan pohon atau bukit. Jangan tinggalkan dinding atau langit kosong setinggi setengah layar.
 - **Isi lantai di sekitar tokoh:** 3–6 batu kecil, beberapa rumpun rumput, pagar pendek, jalan setapak. Alas kosong membuat adegan terasa belum jadi.
 - **Tanpa `callouts` dan tanpa `chip`** di `shots.ts`. Layar hanya berisi adegan, judul, dan teks cerita. Cerita disampaikan lewat gerak tokoh, bukan label.

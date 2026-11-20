@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { DARK_TECH, TECH_ICON_NAMES, TechIcon, type TechIconName } from "../src/engine/motion/icons.tsx";
 import {
   CAPTION_SAFE_BOTTOM,
@@ -17,6 +18,7 @@ import {
   type TransitionKind,
 } from "../src/engine/motion/math.ts";
 import { shouldShowCaptions } from "../src/engine/overlays/Overlays.tsx";
+import { BeatCallout, ComparisonSplit, IllustrationStage, MetricPanel, TerminalCard } from "../src/engine/motion/blocks.tsx";
 import type { ShotSpan } from "../src/engine/types.ts";
 
 describe("motion timing helpers", () => {
@@ -265,5 +267,98 @@ describe("DARK_TECH and TechIcon", () => {
       const el = TechIcon({ name, size: 28, color: DARK_TECH.ink, accent: DARK_TECH.mint });
       assert.equal(React.isValidElement(el), true, `TechIcon("${name}") should return a valid React element`);
     }
+  });
+});
+
+describe("BeatCallout and line spotlighting", () => {
+  test("BeatCallout appears at its cue, shows the step number, and dims after until", () => {
+    const el = BeatCallout({ t: 2, at: 2, step: 1, text: "Parse" });
+    assert.equal(React.isValidElement(el), true);
+    const html = renderToStaticMarkup(el as React.ReactElement);
+    assert.match(html, /Parse/);
+    assert.match(html, />1</);
+    assert.match(html, /opacity:0/, "at the cue frame it is still popping in");
+
+    const visible = renderToStaticMarkup(BeatCallout({ t: 2.6, at: 2, step: 1, text: "Parse" }) as React.ReactElement);
+    assert.match(visible, /opacity:1/, "one spring later it is fully visible");
+
+    const before = renderToStaticMarkup(BeatCallout({ t: 1, at: 2, step: 1, text: "Parse" }) as React.ReactElement);
+    assert.match(before, /opacity:0/);
+
+    const after = renderToStaticMarkup(BeatCallout({ t: 9, at: 2, until: 5, step: 2, text: "Validate" }) as React.ReactElement);
+    assert.match(after, /opacity:0/);
+  });
+
+  test("TerminalCard dims lines that are not the one being narrated", () => {
+    const lines = [
+      { text: "npm run dev", kind: "cmd" as const, at: 0, activeAt: 0 },
+      { text: "ready", kind: "ok" as const, at: 1, activeAt: 4 },
+    ];
+    const atFirst = renderToStaticMarkup(TerminalCard({ t: 1.5, lines }) as React.ReactElement);
+    assert.match(atFirst, /opacity:0\.55/, "the later line must be dimmed while the first is narrated");
+    const atSecond = renderToStaticMarkup(TerminalCard({ t: 5, lines }) as React.ReactElement);
+    assert.match(atSecond, /opacity:1/, "the narrated line must be at full opacity");
+  });
+
+  test("MetricPanel bars accept activeAt and dim the inactive rows", () => {
+    const bars = [
+      { label: "gpt", value: 30, at: 0, activeAt: 0 },
+      { label: "claude", value: 70, at: 0.4, activeAt: 3 },
+    ];
+    const html = renderToStaticMarkup(MetricPanel({ t: 1, bars }) as React.ReactElement);
+    assert.match(html, /opacity:0\.55/);
+    assert.match(html, /claude/);
+  });
+});
+
+describe("ComparisonSplit line spotlighting", () => {
+  test("pointsAt dims exactly one point at a time, only once a cue has passed", () => {
+    const before = { label: "LAMA", title: "Cara lama", points: ["Poin A", "Poin B"], pointsAt: [2, 6], at: 0 };
+    const after = { label: "BARU", title: "Cara baru", points: ["Poin C"], at: 0 };
+    const dims = (t: number) =>
+      (renderToStaticMarkup(ComparisonSplit({ t, before, after }) as React.ReactElement).match(/opacity:0\.55/g) ?? []).length;
+    assert.equal(dims(1), 0, "no cue yet: nothing is dimmed");
+    assert.equal(dims(3), 1, "first cue passed: the other point dims");
+    assert.equal(dims(7), 1, "second cue passed: still exactly one spotlighted point");
+  });
+
+  test("a side without pointsAt is never dimmed", () => {
+    const before = { label: "LAMA", title: "Cara lama", points: ["Poin A", "Poin B"], at: 0 };
+    const after = { label: "BARU", title: "Cara baru", points: ["Poin C"], at: 0 };
+    const html = renderToStaticMarkup(ComparisonSplit({ t: 9, before, after }) as React.ReactElement);
+    assert.doesNotMatch(html, /opacity:0\.55/);
+  });
+});
+
+describe("IllustrationStage presets", () => {
+  test("each new variant renders an SVG and changes between timestamps", () => {
+    for (const variant of ["agent-loop", "context-window", "code-diff"] as const) {
+      const a = renderToStaticMarkup(React.createElement(IllustrationStage, { t: 1, at: 1, variant, activeStep: 0 }));
+      const b = renderToStaticMarkup(React.createElement(IllustrationStage, { t: 3, at: 1, variant, activeStep: 2 }));
+      assert.match(a, /<svg/, `${variant} must draw an SVG`);
+      assert.notEqual(a.replace(/id="[^"]*"/g, ""), b.replace(/id="[^"]*"/g, ""), `${variant} did not change between timestamps`);
+    }
+  });
+
+  test("activeStep highlights a different node as the narration advances", () => {
+    const a = renderToStaticMarkup(React.createElement(IllustrationStage, { t: 4, at: 1, variant: "agent-loop", activeStep: 0 }));
+    const b = renderToStaticMarkup(React.createElement(IllustrationStage, { t: 4, at: 1, variant: "agent-loop", activeStep: 3 }));
+    assert.notEqual(a, b);
+  });
+});
+
+describe("BeatCallout", () => {
+  test("appears at its cue, carries the step number, and hides after until", () => {
+    const el = BeatCallout({ t: 2, at: 2, step: 1, text: "Parse" });
+    assert.equal(React.isValidElement(el), true);
+    const html = renderToStaticMarkup(el as React.ReactElement);
+    assert.match(html, /Parse/);
+    assert.match(html, />1</);
+    assert.match(html, /opacity:0/, "the spring starts at 0 on the cue frame");
+
+    const shown = renderToStaticMarkup(BeatCallout({ t: 2.5, at: 2, step: 1, text: "Parse" }) as React.ReactElement);
+    assert.match(shown, /opacity:1/);
+    const gone = renderToStaticMarkup(BeatCallout({ t: 9, at: 2, until: 5, step: 2, text: "Validate" }) as React.ReactElement);
+    assert.match(gone, /opacity:0/);
   });
 });

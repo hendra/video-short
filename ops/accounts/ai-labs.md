@@ -69,6 +69,25 @@ Jangan pakai brand channel lain. Gate CI menolak video yang brand-nya beda.
   - `TechIcon`: `{ name: TechIconName, size?, color?, accent? }`. Nilai `TECH_ICON_NAMES` yang tersedia: `"sparkle"`, `"terminal"`, `"code"`, `"brain"`, `"bot"`, `"folder"`, `"file"`, `"git"`, `"plug"`, `"shield"`, `"lock"`, `"image"`, `"video"`, `"clock"`, `"bolt"`, `"check"`, `"x"`, `"warning"`, `"search"`, `"copy"`, `"sliders"`, `"layers"`, `"database"`, `"globe"`.
 - **Kepadatan vertikal & zona aman:** karena caption di layar dimatikan (`captions: false`), `MotionStage` membatasi stage di atas `y = 1480` (`NO_CAPTION_SAFE_BOTTOM`, dengan `overflow: "hidden"`). Isi shot di-zoom 1,75× (`STAGE_ZOOM`) agar terbaca di HP, jadi satu blok per shot dengan batas padat di atas sudah mengisi layar. Jangan tumpuk terlalu banyak blok dalam satu shot agar tidak terpotong di bagian bawah, dan sisakan sedikit ruang di kanan bawah untuk tombol YouTube Shorts/TikTok.
 - **Aturan gerak murni:** semua animasi harus fungsi murni dari `t` yang diikat ke `ctx.L(n).s` / `ctx.L(n).e` (`spring`, `ramp`, `sway`, `stagger`, `typewriter`, `countValue`). Dilarang `Math.random()`, state lintas-frame, atau CSS `@keyframes`.
+- **Koreografi per baris (wajib):** setiap shot minimal 2–3 beat internal yang waktunya diambil dari `ctx.L(n).s`, bukan semua muncul di `ctx.shot(id).s`. Pakai `at` untuk kemunculan dan `activeAt` untuk sorotan:
+  ```tsx
+  import { BentoGrid, type BentoItem } from "../../engine/motion";
+  const cards: BentoItem[] = [
+    { icon: "terminal", title: "Jalankan", detail: "satu perintah", at: ctx.L(3).s, activeAt: ctx.L(3).s },
+    { icon: "check", title: "Cek hasil", detail: "baca output", at: ctx.L(4).s, activeAt: ctx.L(4).s },
+  ];
+  <BentoGrid t={t} items={cards} />
+  ```
+  Tulis `const cards: BentoItem[] = [...]` — tanpa anotasi itu `icon` melebar jadi `string` dan `tsc` menolak. `TerminalCard` (`lines[].activeAt`), `MetricPanel` (`bars[].activeAt`), `BentoGrid` (`items[].activeAt`), `NodeFlow` (`nodes[].activeAt`), `PromptCard` (`sections[].activeAt`), dan `ComparisonSplit` (`before.pointsAt` / `after.pointsAt`) memakai `activeAt` untuk menyorot baris yang sedang diucapkan dan meredupkan sisanya. Gate CI menolak shot yang tampilannya tidak berubah sepanjang shot.
+- **`BeatCallout`** — pil nomor langkah yang muncul tepat saat barisnya diucapkan: `<BeatCallout t={t} at={ctx.L(4).s} until={ctx.L(5).s} step={1} text="Parse" />`.
+- **Ilustrasi bawaan `IllustrationStage`:** `"agent-loop"` (putaran Think → Tool Call → Observe → Verify dengan token berjalan), `"context-window"` (blok token mengisi jendela lalu dipadatkan), `"code-diff"` (baris merah diganti baris mint lalu lencana centang).
+  **`activeStep` adalah nomor langkah 0-based, bukan nomor baris naskah.** Isi dengan `stepIndex` atas baris-baris langkahnya:
+  ```tsx
+  import { IllustrationStage, stepIndex } from "../../engine/motion";
+  const step = stepIndex(t, [ctx.L(4), ctx.L(5), ctx.L(6), ctx.L(7)]); // -1 sebelum langkah pertama, lalu 0..3
+  <IllustrationStage t={t} at={ctx.L(4).s} variant="agent-loop" activeStep={step} />
+  ```
+  `"agent-loop"` menyorot node `0..3`, `"context-window"` menyorot blok token ke-`step`, `"code-diff"` menampilkan lencana centang saat `step >= 2`. Nilai di luar rentang (mis. nomor baris 12) membuat semua node meredup dan tidak ada yang disorot.
 - **Tidak boleh** screenshot UI asli (CI tidak bisa login ke akun mana pun) — gambar ulang bentuknya memakai blok motion atau SVG di `IllustrationStage`.
 - Diagram/ilustrasi skematis diberi `tag: "ILUSTRASI"`.
 - **Caption:** teks karaoke di layar **dimatikan** untuk `ai-labs` (`captions: false` di `index.ts`); `timeline.json` tetap dibuat seperti biasa lewat `npm run timeline -- <slug>`.

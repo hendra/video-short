@@ -79,6 +79,33 @@ Supaya setiap objek tampak nyata (bukan kotak polos), bangun adegan dari `Kit` (
 - Jangan pakai environment map, bump map, atau post-processing: di render CPU (CI) biayanya 3× lipat.
 
 Standar kualitas (pelajaran dari video sebelumnya):
+- **Koreografi per baris (wajib).** Setiap shot mengikat animasinya ke baris yang sedang diucapkan, bukan satu `ramp` panjang sepanjang shot. Pakai helper di `engine/math.ts`:
+  ```ts
+  import { beat, between, pulse, stepIndex } from "../../engine/math";
+  const on = beat(t, L(4));               // 0 sebelum baris 4, naik halus ke 1 saat baris itu mulai
+  const hi = pulse(t, L(4));              // 1 hanya selama baris 4 diucapkan
+  const openU = between(t, L(4), L(6));   // 1 dari awal baris 4 sampai akhir baris 6
+  const step = stepIndex(t, [L(4), L(5), L(6)]); // 0,1,2 — langkah mana yang sedang dibahas
+
+  valve.rotation.z = on * 1.2;            // bagian mulai bergerak saat barisnya diucapkan
+  pipeGlow.emissiveIntensity = hi * 0.8;  // bagian yang dibahas menyala selama barisnya
+  kit.cutaway([casing], openU, [0, 0, 2.4]); // cangkang terbuka selama dua baris itu
+  const activePart = parts[Math.max(0, step)]; // langkah maju satu per satu
+  activePart.position.y = hi * 0.12;
+  ```
+  Setiap shot **wajib** punya minimal satu bagian yang bergerak nyata sepanjang shot (gerigi berputar, `flowDots` mengalir, cangkang `kit.cutaway` bergeser, atau material `kit.glowMat` berdenyut). Kamera saja tidak cukup — gate CI menolaknya.
+- **Bagian mekanis siap pakai:** `kit.tube(points, r, mat)` (pipa/kabel/wire melengkung; `at(u)` untuk menempelkan objek di jalurnya), `kit.flowDots(points, count, color, { speed })` (partikel mengalir di jalur; panggil `dots.update(flowPhase(t, L(n)))` supaya aliran makin cepat saat dijelaskan — **jangan** `dots.update(t * rate)`, itu membuat partikel melompat mundur), `kit.gear(x, y, z, { teeth, axis })` (putar `rotor.rotation[axis]`), `kit.fan(...)` (baling-baling/turbin, `rotor`), `kit.coil(...)` (pegas/kumparan pemanas), `kit.arrow(from, to, mat)` (vektor gaya/panas; `setProgress(u)`), `kit.ring(...)` (flens/seal).
+- **Cutaway & sorotan:** `kit.cutaway([...parts], openU, [dx, dy, dz])` menggeser cangkang luar dan menyembunyikannya saat `openU >= 0.99`; `kit.glowMat(color, emissive)` adalah material **tanpa cache** untuk bagian yang menyala — set `mat.emissiveIntensity = pulse(t, L(n)) * 0.8`. Jangan mengubah material dari `kit.mat()` karena material itu dipakai bersama.
+- **Kamera bergerak per bit:** `keyframes` minimal dua posisi, lalu beri dorongan halus saat baris penting:
+  ```ts
+  import { focusOffset, keyframes } from "../../engine/math";
+  import type { Vec3 } from "../../engine/types";
+  const base = keyframes(ctx, "s3", [[[0, 5, 10], [0, 1, 0]], [[0, 5, 8], [0, 1, 0]]] as [Vec3, Vec3][]);
+  const camera = (t: number) => focusOffset(base(t), t, [{ at: L(6).s, offset: [0, 0.4, -1.4] as Vec3 }]);
+  // `camera` dipakai sebagai field shot:
+  const shots = { s3: { label: "ALIRAN 03", title: "Air *naik*", camera } };
+  export default shots;
+  ```
 - **Potongan tanah (cut face) di z = 0**, tanah dalam (BOT ≈ −11) supaya separuh bawah frame tidak kosong; strata warna + titik air.
 - Frame **potret**: FOV 44, objek utama mengisi ≥ 50% lebar; diorama yang memanjang diputar agar memanjang ke arah kamera.
 - 1 shot ≈ 1–2 baris naskah (8–12 shot). Setiap shot punya gerak nyata (bukan still).

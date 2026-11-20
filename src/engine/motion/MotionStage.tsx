@@ -51,6 +51,8 @@ export const MotionStage: React.FC<{ video: VideoDefMotion; ctx: Ctx; t: number 
   const blob1Y = 360 + sway(t, 2) * 100;
   const blob2X = 320 - sway(t, 2) * 150;
   const blob2Y = 920 + sway(t, 1) * 120;
+  // A slow, deterministic drift keeps even a quiet reading beat from looking like a still frame.
+  const stageDrift = `translate3d(${(sway(t, 3) * 6).toFixed(2)}px, ${(sway(t, 5) * 5).toFixed(2)}px, 0) scale(${(1 + 0.012 * ((1 + sway(t, 7)) / 2)).toFixed(4)})`;
 
   return (
     <AbsoluteFill style={{ background: "radial-gradient(ellipse 120% 75% at 50% 35%, #132238 0%, #0b0f17 75%)" }}>
@@ -104,7 +106,9 @@ export const MotionStage: React.FC<{ video: VideoDefMotion; ctx: Ctx; t: number 
           </div>
         ) : null}
         <div key={activeSpan.id} style={layerStyle(tr.incoming)}>
-          <div style={{ zoom: STAGE_ZOOM }}>{activeShot.render(makeFrame(activeSpan, t))}</div>
+          <div style={{ zoom: STAGE_ZOOM }}>
+            <div style={{ transform: stageDrift }}>{activeShot.render(makeFrame(activeSpan, t))}</div>
+          </div>
         </div>
         {tr.incoming.wipeGlowOpacity > 0 ? (
           <div

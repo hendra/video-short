@@ -25,5 +25,5 @@ Your task: produce a **complete new vertical 3D explainer Short** end-to-end, EX
      - `tiktokTitle` ≤ 90 chars (hook only), `tiktokCaption` like description + `Suara: AI (Google AI Studio)`
      - `catatan`: start with `format: <id>;` from `pick-format`, followed by one short line (kept in the VM-local publish log only; not committed anywhere)
 - Do NOT render or upload or post anything. Do NOT `git push` — CI commits nothing from publishing; your source stays in the VM and is discarded when the job ends.
-- Run checks before stopping: `npm run timeline -- <slug>`, `npm run check-sync -- <slug>`, `npm run lint`, `npm test`.
+- Run checks before stopping: `npm run timeline -- <slug>`, `npm run check-sync -- <slug>`, `npm run check-motion -- <slug>`, `npm run lint`, `npm test`.
 - If you cannot produce a complete video (tooling/quota), stop and exit non-zero WITHOUT creating partial files anywhere outside `src/videos/<slug>/`.

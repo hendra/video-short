@@ -1,5 +1,8 @@
 import type { ShotSpan } from "../types";
 
+// Line-beat helpers are engine-agnostic, so 2D shots get them from the same import as the blocks.
+export { beat, between, flowPhase, focusOffset, pulse, stepIndex, type FocusCue } from "../math";
+
 export const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 export const lerp = (a: number, b: number, x: number) => a + (b - a) * x;
 export const smooth = (x: number) => {
