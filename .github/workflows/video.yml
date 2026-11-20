@@ -48,6 +48,8 @@ jobs:
       slug: ${{ steps.slug.outputs.slug || steps.manualslug.outputs.slug }}
       frames: ${{ steps.frames.outputs.frames }}
       account: ${{ steps.acct.outputs.account }}
+      slot: ${{ steps.slot.outputs.slot }}
+      slot_date: ${{ steps.slot.outputs.slot_date }}
       failed_step: ${{ steps.failed.outputs.step }}
     steps:
       - uses: actions/checkout@v5
@@ -107,6 +109,12 @@ jobs:
 
       - name: Dependencies
         run: npm ci
+
+      # Fix the publish slot (pagi/siang/malam + WIB date) at run start, so a slow run
+      # never drifts into the next slot's air times (YouTube is capped at 2/day by Buffer free).
+      - name: Publish slot
+        id: slot
+        run: npx tsx scripts/slot.mts | tee -a "$GITHUB_OUTPUT"
 
       # Resolve the account: sets ACCOUNT, ACCOUNT_LABEL, BRAND_LINE, YOUTUBE_CATEGORY_ID,
       # AGENT_MODEL, AGENT_FILES, AGENT_PROMPT, CATALOG_PATH. Fails fast — before the agent and
@@ -324,6 +332,8 @@ jobs:
       SLUG: ${{ needs.build.outputs.slug }}
       FRAMES: ${{ needs.build.outputs.frames }}
       ACCOUNT: ${{ needs.build.outputs.account }}
+      SLOT: ${{ needs.build.outputs.slot }}
+      SLOT_DATE: ${{ needs.build.outputs.slot_date }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -388,10 +398,14 @@ jobs:
           path: out/${{ env.SLUG }}-final.mp4
           retention-days: 3
 
+      - name: Slot (dry run)
+        if: ${{ inputs.dry_run }}
+        run: echo "would schedule slot=$SLOT date=$SLOT_DATE"
+
       # Video source is not committed; publishing fetches Buffer history directly.
       # The environment (needs.build.outputs.account) already resolved which secrets win per name —
       # Cloudinary/Buffer below are the account's values (or, if it unset them, the repo fallback).
-      - name: Publish (Cloudinary → Buffer YT + TikTok)
+      - name: Publish (Cloudinary → Buffer, scheduled)
         id: publish
         if: ${{ !inputs.dry_run }}
         env:
@@ -399,7 +413,7 @@ jobs:
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
           BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
-        run: npm run publish -- "$SLUG" --account "$ACCOUNT"
+        run: npm run publish -- "$SLUG" --account "$ACCOUNT" --slot "$SLOT" --date "$SLOT_DATE"
 
       - name: Success report (Slack #social)
         if: ${{ success() && !inputs.dry_run }}

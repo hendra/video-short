@@ -1,6 +1,6 @@
 # ops — CI: Cloudflare cron → GitHub Actions (hosted) → pipeline video
 
-Chain: **Cloudflare Worker** (cron 6×/hari 07:30/09:30/11:30/12:30/16:30/19:30 WIB → tayang ±08/10/12/13/17/20 WIB) → `repository_dispatch` **sekali per akun** (`kali-aja`, `ai-labs`) → **GitHub-hosted `ubuntu-latest`** → workflow `.github/workflows/video.yml` → fetch katalog Buffer (per akun) ke `/tmp/published-videos-<akun>.json` → agent (opencode, free model) + duplicate gate → gates (lint/test/bundle/still-per-shot) → render (`--gl=swangle`, 4 runner paralel) → gabung + audio + loudnorm → publish (Cloudinary → Buffer YouTube + TikTok) → Slack #social. Video source tidak di-commit; katalog tidak di-commit dan hanya di-fetch ke `/tmp` saat CI.
+Chain: **Cloudflare Worker** (cron 3×/hari 05:30/10:30/17:30 WIB → tayang terjadwal per platform, lihat `docs/PUBLISHING.md` § Jadwal tayang) → `repository_dispatch` **sekali per akun** (`kali-aja`, `ai-labs`) → **GitHub-hosted `ubuntu-latest`** → workflow `.github/workflows/video.yml` → fetch katalog Buffer (per akun) ke `/tmp/published-videos-<akun>.json` → agent (opencode, free model) + duplicate gate → gates (lint/test/bundle/still-per-shot) → render (`--gl=swangle`, 4 runner paralel) → gabung + audio + loudnorm → publish (Cloudinary → Buffer YouTube + TikTok + IG, terjadwal) → Slack #social. Video source tidak di-commit; katalog tidak di-commit dan hanya di-fetch ke `/tmp` saat CI.
 
 Repo **public** (wajib untuk free hosted minutes; unlimited). Tidak ada runner self-hosted — PC lokal bebas.
 
