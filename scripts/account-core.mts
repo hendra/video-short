@@ -7,6 +7,15 @@
 import { ACCOUNT_IDS, accountById, isAccountId, type Account, type AccountId } from "../src/accounts.ts";
 import { MOODS_BY_ACCOUNT } from "./music.mts";
 
+export const MAX_SCRIPT_WORDS = 130;
+
+/** Shorts stay ~45–55 s: reject long scripts before TTS spends quota. Cerpenek stories keep their own length. */
+export const scriptWordProblem = (account: Account, lines: string[]): string | null => {
+  if (account.id === "cerpenek") return null;
+  const n = lines.join(" ").split(/\s+/).filter(Boolean).length;
+  return n > MAX_SCRIPT_WORDS ? `naskah ${n} kata, maksimal ${MAX_SCRIPT_WORDS} — pendekkan sebelum TTS` : null;
+};
+
 /** The brand line a generated video source must contain, exactly. */
 export const brandLine = (account: Account): string =>
   `brand: { prefix: ${JSON.stringify(account.brand.prefix)}, accent: ${JSON.stringify(account.brand.accent)} }`;

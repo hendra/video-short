@@ -10,12 +10,27 @@ import {
   envLines,
   resolveAccountArg,
   sastraMesinVideoProblems,
+  scriptWordProblem,
   voiceProblem,
 } from "./account-core.mts";
 
 const ALL_ACCOUNTS = Object.values(ACCOUNTS);
 const kaliAja = ACCOUNTS["kali-aja"];
 const aiLabs = ACCOUNTS["ai-labs"];
+
+describe("scriptWordProblem", () => {
+  const lines = (n: number) => [Array(n - Math.floor(n / 2)).fill("kata").join(" "), Array(Math.floor(n / 2)).fill("kata").join("  ")];
+  test("accepts exactly 130 words", () => {
+    assert.equal(scriptWordProblem(kaliAja, lines(130)), null);
+  });
+  test("rejects 131 words with the count and the limit", () => {
+    const p = scriptWordProblem(kaliAja, lines(131));
+    assert.ok(p?.includes("131") && p.includes("130"), String(p));
+  });
+  test("cerpenek is exempt", () => {
+    assert.equal(scriptWordProblem(ACCOUNTS.cerpenek, lines(200)), null);
+  });
+});
 
 describe("brandProblems", () => {
   test("accepts the account's own brand literal", () => {
