@@ -5,7 +5,7 @@ import React, { useLayoutEffect, useMemo } from "react";
 import { AbsoluteFill, getRemotionEnvironment, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { NeutralToneMapping, PCFSoftShadowMap, PerspectiveCamera } from "three";
 import { loadFonts } from "./fonts";
-import { applyPose, makeCtx, shotAt } from "./math";
+import { CUT_BLEND, applyPose, blendPose, makeCtx, shotAt } from "./math";
 import { MotionStage } from "./motion/MotionStage";
 import { BLUEPRINT_BG, Overlays, themeOf } from "./overlays/Overlays";
 import { VIDEOS } from "../videos/registry";
@@ -76,7 +76,10 @@ const ThreeExplainer: React.FC<{
   const shots = useMemo(() => video.shots(ctx), [video, ctx]);
   const shot = shots[span.id];
   if (!shot) throw new Error(`No ShotDef for shot "${span.id}"`);
-  const pose = shot.camera(t);
+  const spans = video.timeline.shots;
+  const prev = shots[spans[spans.findIndex((s) => s.id === span.id) - 1]?.id];
+  // Prev pose is sampled at the fixed cut time, so the blend stays a pure function of t.
+  const pose = prev && t - span.s < CUT_BLEND ? blendPose(prev.camera(span.s), shot.camera(t), (t - span.s) / CUT_BLEND) : shot.camera(t);
   return (
     <AbsoluteFill style={themeOf(video) === "blueprint" ? BLUEPRINT_BG : { backgroundColor: "#dfe9ec" }}>
       <ThreeCanvas

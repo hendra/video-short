@@ -26,6 +26,9 @@ const snippet = async (res: Response): Promise<string> => {
 export const xmlEscape = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&apos;").replace(/"/g, "&quot;");
 
+// Gemini TTS takes no SSML; this style hint is the only lever for a faster hook (best effort, not guaranteed).
+export const HOOK_HINT = "kalimat pertama sedikit lebih cepat dan bertenaga; tekankan angka dan kata kunci";
+
 /** Gemini TTS via Google AI Studio, in the voice and style of the account the video belongs to. */
 export const synthesizeGemini = async (text: string, tts: Account["tts"]): Promise<SynthResult> => {
   const model = GEMINI_TTS_MODEL;
@@ -33,7 +36,7 @@ export const synthesizeGemini = async (text: string, tts: Account["tts"]): Promi
     method: "POST",
     headers: { "x-goog-api-key": process.env.GEMINI_API_KEY!, "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text, speechMetadata: { style: tts.style } }] }],
+      contents: [{ role: "user", parts: [{ text, speechMetadata: { style: `${tts.style}; ${HOOK_HINT}` } }] }],
       generationConfig: {
         responseModalities: ["AUDIO"],
         speechConfig: { languageCode: "id-ID", voiceConfig: { voice: tts.voice } },

@@ -87,6 +87,14 @@ export const orbit =
     };
   };
 
+/** Seconds a 3D cut eases from the previous shot's camera into the new one (cheap stand-in for motion blur). */
+export const CUT_BLEND = 0.3;
+
+export const blendPose = (from: CamPose, to: CamPose, u: number): CamPose => {
+  const k = smooth(u);
+  return { position: lerp3(from.position, to.position, k), target: lerp3(from.target, to.target, k) };
+};
+
 export const applyPose = (cam: PerspectiveCamera, pose: CamPose, fov: number, aspect: number) => {
   cam.fov = fov;
   cam.aspect = aspect;

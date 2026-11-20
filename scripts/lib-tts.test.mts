@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  HOOK_HINT,
   hasProviderEnv,
   stageToMp3,
   synthesizeAzure,
@@ -69,7 +70,7 @@ describe("synthesizeGemini", () => {
     await synthesizeGemini("halo", { voice: "voice-x", style: "style-y" });
     const body = JSON.parse(calls[0].init?.body ?? "{}");
     assert.equal(body.generationConfig.speechConfig.voiceConfig.voice, "voice-x");
-    assert.equal(body.contents[0].parts[0].speechMetadata.style, "style-y");
+    assert.equal(body.contents[0].parts[0].speechMetadata.style, `style-y; ${HOOK_HINT}`);
   });
 
   test("happy path: PCM wrapped in WAV, correct request shape, voice/language pinned", async () => {
@@ -87,7 +88,7 @@ describe("synthesizeGemini", () => {
     const body = JSON.parse(calls[0].init?.body ?? "{}");
     assert.equal(body.generationConfig.speechConfig.languageCode, "id-ID");
     assert.equal(body.generationConfig.speechConfig.voiceConfig.voice, "id-id-podcaster-1");
-    assert.equal(body.contents[0].parts[0].speechMetadata.style, "natural, warm, conversational");
+    assert.equal(body.contents[0].parts[0].speechMetadata.style, `natural, warm, conversational; ${HOOK_HINT}`);
     assert.ok(body.contents[0].parts[0].text.includes("halo dunia"));
   });
 
