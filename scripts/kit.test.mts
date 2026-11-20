@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { Group, Mesh, Object3D } from "three";
-import { Kit } from "../src/engine/kit.ts";
+import { Kit, poseFigure } from "../src/engine/kit.ts";
 
 // Duck-typed: tsx can load two copies of `three` (src/ vs scripts/ resolution), so `instanceof Mesh` is unreliable here.
 const isMesh = (o: Object3D): boolean => (o as { isMesh?: boolean }).isMesh === true;
@@ -103,5 +103,61 @@ describe("Kit flow, cutaway and glow", () => {
     a.emissiveIntensity = 0.9;
     assert.notEqual(b.emissiveIntensity, 0.9);
     assert.notEqual(kit.mat("#888"), a);
+  });
+});
+
+describe("Kit diorama life", () => {
+  test("figure exposes torso and blink groups and keeps the original parts", () => {
+    const kit = new Kit(new Group());
+    const f = kit.figure(0, 0, 0, { age: "anak" });
+    assert.ok(isGroup(f.torso) && isGroup(f.blink));
+    assert.ok(f.blink.children.length >= 4);
+    for (const k of ["root", "head", "armL", "armR", "legL", "legR"] as const) assert.ok(f[k], `missing ${k}`);
+  });
+
+  test("poseFigure writes finite poses and differs per mode", () => {
+    const kit = new Kit(new Group());
+    const f = kit.figure(0, 0, 0);
+    const snap = () => [f.armR.rotation.z, f.head.rotation.y, f.legL.rotation.x];
+    poseFigure(f, 2, "talk", 1);
+    const talk = snap();
+    poseFigure(f, 2, "walk", 1);
+    const walk = snap();
+    for (const v of [...talk, ...walk]) assert.ok(Number.isFinite(v));
+    assert.notDeepEqual(talk, walk);
+  });
+
+  test("poseFigure stays a pure function of t", () => {
+    const kit = new Kit(new Group());
+    const f = kit.figure(0, 0, 0);
+    for (const mode of ["idle", "talk", "walk", "wave", "sad", "point"] as const) {
+      poseFigure(f, 3, mode, 7);
+      const a = [f.armR.rotation.z, f.head.rotation.x, f.torso.rotation.x, f.blink.scale.y];
+      poseFigure(f, 3, mode, 7);
+      const b = [f.armR.rotation.z, f.head.rotation.x, f.torso.rotation.x, f.blink.scale.y];
+      assert.deepEqual(a, b, `${mode} is not deterministic`);
+    }
+  });
+
+  test("cloud, ripple and every prop build visible geometry", () => {
+    const root = new Group();
+    const kit = new Kit(root);
+    kit.cloud(0, 6, -4, 1.4);
+    const rp = kit.ripple(0, 0, 1.2);
+    for (const kind of ["lantern", "crate", "pot", "torch", "scroll", "rock", "flower"] as const) kit.prop(kind, 0, 0, 0);
+    rp.setPhase(0.5);
+    assert.ok(countMeshes(root) >= 20, `only ${countMeshes(root)} meshes`);
+  });
+
+  test("ripple setPhase is deterministic and visible", () => {
+    const kit = new Kit(new Group());
+    const rp = kit.ripple(0, 0, 1.2);
+    rp.setPhase(0.5);
+    const a = rp.root.children.map((c) => c.scale.x);
+    rp.setPhase(0.5);
+    const b = rp.root.children.map((c) => c.scale.x);
+    assert.deepEqual(a, b);
+    rp.setPhase(0.9);
+    assert.notDeepEqual(a, rp.root.children.map((c) => c.scale.x));
   });
 });

@@ -37,7 +37,7 @@ import {
   Vector3,
 } from "three";
 import { bevelBoxGeometry, grainTexture, worldUV } from "./surface";
-import { clamp, lerp, rng } from "./math";
+import { clamp, lerp, rng, sway } from "./math";
 import type { Vec3 } from "./types";
 
 /** Physically plausible looks. `grain` adds the shared surface texture (subtle albedo + roughness variation). */
@@ -72,8 +72,25 @@ export type FigureOpts = {
   trim?: string;
 };
 
-/** Options for `Kit.animal` — one generic four-legged animal. */
-export type AnimalOpts = {
+/** Recognisable wooden-toy story prop. */
+export type PropKind = "lantern" | "crate" | "pot" | "torch" | "scroll" | "rock" | "flower";
+
+/** Per-line acting presets for `poseFigure`. */
+export type PoseMode = "idle" | "talk" | "walk" | "wave" | "sad" | "point";
+
+/** The animatable parts `Kit.figure` returns. */
+export type FigureParts = {
+  root: Group;
+  torso: Group;
+  head: Group;
+  blink: Group;
+  armL: Group;
+  armR: Group;
+  legL: Group;
+  legR: Group;
+};
+
+/** Options for `Kit.animal` — one generic four-legged animal. */export type AnimalOpts = {
   s?: number;
   color?: string;
   ears?: "bulat" | "runcing" | "panjang";
@@ -273,17 +290,18 @@ export class Kit {
    * Cartoon face on a head of radius `r` centred at `c` (looking down +z): white eye + pupil + specular dot,
    * brows, a smile arc and optional blush. `blush` suits the toy-doll channels (Cerpenek).
    */
-  private face(parent: Object3D, c: Vec3, r: number, o: { blush?: boolean; brows?: boolean } = {}) {
+  private face(parent: Object3D, c: Vec3, r: number, o: { blush?: boolean; brows?: boolean; eyesTo?: Object3D } = {}) {
     const sclera = this.mat("#fdfbf7", "gloss");
     const pupil = this.mat("#241d19", "gloss");
     const dot = this.mat("#ffffff", "gloss");
+    const eyes = o.eyesTo ?? parent;
     for (const sx of [-1, 1]) {
       const ex = c[0] + sx * r * 0.36;
       const ey = c[1] + r * 0.02;
       const ez = c[2] + r * 0.82;
-      this.part(new SphereGeometry(r * 0.21, 14, 11), sclera, parent, [ex, ey, ez], [1, 1.18, 0.55]);
-      this.part(new SphereGeometry(r * 0.125, 12, 10), pupil, parent, [ex + sx * r * 0.015, ey - r * 0.02, ez + r * 0.1], [1, 1.1, 0.6]);
-      this.part(new SphereGeometry(r * 0.05, 8, 7), dot, parent, [ex + sx * r * 0.055, ey + r * 0.08, ez + r * 0.16]);
+      this.part(new SphereGeometry(r * 0.21, 14, 11), sclera, eyes, [ex, ey, ez], [1, 1.18, 0.55]);
+      this.part(new SphereGeometry(r * 0.125, 12, 10), pupil, eyes, [ex + sx * r * 0.015, ey - r * 0.02, ez + r * 0.1], [1, 1.1, 0.6]);
+      this.part(new SphereGeometry(r * 0.05, 8, 7), dot, eyes, [ex + sx * r * 0.055, ey + r * 0.08, ez + r * 0.16]);
       if (o.brows) {
         const b = this.part(new BoxGeometry(r * 0.28, r * 0.05, r * 0.04), this.mat("#3a2a22"), parent, [ex, ey + r * 0.34, ez + r * 0.1]);
         b.rotation.z = -sx * 0.1;
@@ -312,20 +330,21 @@ export class Kit {
     root.scale.setScalar(age === "anak" ? 0.78 : age === "lansia" ? 0.95 : 1);
 
     // torso: a rounded barrel with a waist, not a straight cylinder
-    this.part(new CylinderGeometry(0.165, 0.2, 0.34, 28), top, root, [0, 0.56, 0]);
-    this.part(new SphereGeometry(0.185, 28, 20), top, root, [0, 0.5, 0], [1, 0.75, 0.92]);
-    this.part(new TorusGeometry(0.145, 0.032, 12, 28), "#f7f1e4", root, [0, 0.71, 0], undefined, [Math.PI / 2, 0, 0]);
-    this.part(new SphereGeometry(0.17, 26, 18), bottom, root, [0, 0.36, 0], [1, 0.6, 0.9]);
+    const torso = this.pivot(root, [0, 0.36, 0]);
+    this.part(new CylinderGeometry(0.165, 0.2, 0.34, 28), top, torso, [0, 0.2, 0]);
+    this.part(new SphereGeometry(0.185, 28, 20), top, torso, [0, 0.14, 0], [1, 0.75, 0.92]);
+    this.part(new TorusGeometry(0.145, 0.032, 12, 28), "#f7f1e4", torso, [0, 0.35, 0], undefined, [Math.PI / 2, 0, 0]);
+    this.part(new SphereGeometry(0.17, 26, 18), bottom, torso, [0, 0, 0], [1, 0.6, 0.9]);
     if (costume === "selempang") {
       // sash across the chest: a thin rotated band with a gold edge
-      const sash = this.part(new BoxGeometry(0.1, 0.42, 0.02), trim, root, [0.02, 0.58, 0.175]);
+      const sash = this.part(new BoxGeometry(0.1, 0.42, 0.02), trim, torso, [0.02, 0.22, 0.175]);
       sash.rotation.z = 0.62;
-      this.part(new BoxGeometry(0.05, 0.2, 0.015), "#f4e7c8", root, [0.16, 0.38, 0.185]).rotation.z = 0.62;
+      this.part(new BoxGeometry(0.05, 0.2, 0.015), "#f4e7c8", torso, [0.16, 0.02, 0.185]).rotation.z = 0.62;
     } else if (costume === "rompi") {
       // open vest: two panels leaving the shirt visible between them, gold edge on the opening
       for (const sx of [-1, 1]) {
-        this.part(new BoxGeometry(0.085, 0.3, 0.03), bottom, root, [sx * 0.085, 0.56, 0.155]).rotation.z = -sx * 0.08;
-        this.part(new BoxGeometry(0.012, 0.3, 0.032), trim, root, [sx * 0.045, 0.56, 0.157]).rotation.z = -sx * 0.08;
+        this.part(new BoxGeometry(0.085, 0.3, 0.03), bottom, torso, [sx * 0.085, 0.2, 0.155]).rotation.z = -sx * 0.08;
+        this.part(new BoxGeometry(0.012, 0.3, 0.032), trim, torso, [sx * 0.045, 0.2, 0.157]).rotation.z = -sx * 0.08;
       }
     }
 
@@ -352,7 +371,9 @@ export class Kit {
     const head = this.pivot(root, [0, 0.86, 0]);
     const hc: Vec3 = [0, 0, 0];
     this.part(new SphereGeometry(0.215, 24, 18), skin, head, hc);
-    this.face(head, hc, 0.215, { blush: age === "anak", brows: true });
+    // eyes live on their own pivot so a blink is `blink.scale.y = 0.1` instead of a rebuild
+    const blink = this.pivot(head, hc);
+    this.face(head, hc, 0.215, { blush: age === "anak", brows: true, eyesTo: blink });
 
     if (headwear === "kerudung") {
       this.part(new SphereGeometry(0.226, 26, 16, 0, Math.PI * 2, 0, Math.PI * 0.46), top, head, [0, 0.045, -0.035], undefined, [-0.85, 0, 0]);
@@ -383,7 +404,95 @@ export class Kit {
     }
 
     this.root.add(root);
-    return { root, head, armL, armR, legL, legR };
+    return { root, torso, head, blink, armL, armR, legL, legR };
+  }
+
+  /** Soft low-poly cloud that drifts across the sky; `sway` it in update(t). */
+  cloud(x: number, y: number, z: number, s = 1) {
+    const g = new Group();
+    g.position.set(x, y, z);
+    g.scale.setScalar(s);
+    const r = rng(Math.round(x * 71 + z * 29));
+    for (const [dx, dy, dz, cr] of [[0, 0, 0, 0.6], [0.5, 0.08, 0.1, 0.44], [-0.48, 0.04, -0.08, 0.4], [0.1, 0.24, -0.05, 0.36]] as const) {
+      const clump = this.add(new Mesh(new IcosahedronGeometry(cr, 1), this.mat(r() > 0.5 ? "#f2f4f6" : "#e2e8ee", { flatShading: true })), g, false);
+      clump.position.set(dx, dy, dz);
+      clump.rotation.set(r() * 3, r() * 3, r() * 3);
+    }
+    this.root.add(g);
+    return g;
+  }
+
+  /** Concentric water rings. `setPhase(u)` expands and fades them; drive it from t so it never repeats. */
+  ripple(x: number, z: number, maxR = 1.4, color = "#eaf6fb") {
+    const root = new Group();
+    root.position.set(x, 0.02, z);
+    const rings: { mesh: Mesh; mat: MeshBasicMaterial }[] = [];
+    for (let i = 0; i < 3; i++) {
+      const mat = new MeshBasicMaterial({ color, transparent: true, opacity: 0.5, depthWrite: false });
+      const mesh = new Mesh(new TorusGeometry(maxR * 0.5, 0.02, 6, 28), mat);
+      mesh.rotation.x = -Math.PI / 2;
+      root.add(mesh);
+      rings.push({ mesh, mat });
+    }
+    this.root.add(root);
+    return {
+      root,
+      setPhase: (u: number) => {
+        rings.forEach(({ mesh, mat }, i) => {
+          const p = (u + i / 3) % 1;
+          mesh.scale.setScalar(0.3 + p * 1.4);
+          mat.opacity = 0.55 * (1 - p);
+        });
+      },
+    };
+  }
+
+  /** Recognisable wooden-toy story prop instead of a bare box. */
+  prop(kind: PropKind, x: number, y: number, z: number, s = 1) {
+    const g = new Group();
+    g.position.set(x, y, z);
+    g.scale.setScalar(s);
+    switch (kind) {
+      case "lantern": {
+        this.box(-0.09, 0.09, 0, 0.3, -0.09, 0.09, "#6b4a2c", g);
+        const glow = this.ball(0, 0.16, 0, 0.075, this.glowMat("#ffd98a", "#ffb03a"), g);
+        glow.castShadow = false;
+        this.box(-0.11, 0.11, 0.3, 0.34, -0.11, 0.11, "#4a3220", g);
+        break;
+      }
+      case "crate":
+        this.box(-0.2, 0.2, 0, 0.4, -0.2, 0.2, "#b98a5a", g);
+        for (const yy of [0.08, 0.32]) this.box(-0.21, 0.21, yy, yy + 0.05, -0.21, 0.21, "#8a6540", g);
+        break;
+      case "pot":
+        this.cyl(0, 0, 0, 0.16, 0.24, "#c4713f", g, 0.2);
+        this.ball(0, 0.3, 0, 0.14, "#5d9a52", g);
+        break;
+      case "torch":
+        this.cyl(0, 0, 0, 0.035, 0.5, "#6b4a2c", g);
+        this.part(new ConeGeometry(0.1, 0.26, 12), "#f08a24", g, [0, 0.62, 0]);
+        this.part(new ConeGeometry(0.055, 0.16, 12), "#ffd066", g, [0, 0.66, 0]);
+        break;
+      case "scroll":
+        this.cyl(-0.14, 0.03, 0, 0.045, 0.28, "#e8dcc0", g);
+        this.cyl(0.14, 0.03, 0, 0.045, 0.28, "#e8dcc0", g);
+        this.box(-0.14, 0.14, 0.03, 0.05, -0.13, 0.13, "#fbf3de", g);
+        break;
+      case "rock":
+        this.part(new IcosahedronGeometry(0.18, 0), "#8d8f8a", g, [0, 0.1, 0]);
+        this.part(new IcosahedronGeometry(0.11, 0), "#a3a59f", g, [0.2, 0.06, 0.08]);
+        break;
+      case "flower":
+        this.cyl(0, 0, 0, 0.015, 0.3, "#4f8a4a", g);
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI * 2;
+          this.ball(Math.cos(a) * 0.055, 0.32, Math.sin(a) * 0.055, 0.035, "#e8a2c0", g);
+        }
+        this.ball(0, 0.33, 0, 0.03, "#ffd066", g);
+        break;
+    }
+    this.root.add(g);
+    return g;
   }
 
   /** Round diorama base: a disc of sand or grass on a thick soil rim. Top surface is y = 0. */
@@ -873,4 +982,71 @@ export const setInstance = (mesh: InstancedMesh, i: number, x: number, y: number
   else _q.identity();
   _m.compose(_p, _q, _s);
   mesh.setMatrixAt(i, _m);
+};
+
+/**
+ * Per-line acting for a wooden-toy figure. Switch `mode` with the script line being spoken
+ * (`beat`/`stepIndex`) so a character never stands frozen: breathing and blinks in "idle", gesturing
+ * in "talk", alternating legs in "walk". Pure function of `t`.
+ */
+export const poseFigure = (fig: FigureParts, t: number, mode: PoseMode, seed = 0) => {
+  // reset every frame: the parts are shared state, so each pose must fully describe itself
+  fig.head.rotation.set(0, 0, 0);
+  fig.torso.rotation.set(0, 0, 0);
+  fig.armL.rotation.set(0, -0.22, 0);
+  fig.armR.rotation.set(0, 0.22, 0);
+  fig.legL.rotation.set(0, 0, 0);
+  fig.legR.rotation.set(0, 0, 0);
+  fig.blink.scale.set(1, 1, 1);
+
+  switch (mode) {
+    case "walk": {
+      const step = Math.sin(t * 6 + seed);
+      fig.legL.rotation.x = step * 0.42;
+      fig.legR.rotation.x = -step * 0.42;
+      fig.armL.rotation.z = -0.22 - step * 0.22;
+      fig.armR.rotation.z = 0.22 + step * 0.22;
+      fig.torso.rotation.x = -0.05;
+      break;
+    }
+    case "talk": {
+      fig.armR.rotation.z = 0.55 + sway(t, seed) * 0.16;
+      fig.armR.rotation.x = -0.35 + sway(t, seed + 3) * 0.2;
+      fig.head.rotation.y = sway(t, seed + 1) * 0.16;
+      fig.head.rotation.x = 0.06 + Math.sin(t * 3.2) * 0.05;
+      fig.torso.rotation.x = sway(t, seed + 5) * 0.02;
+      break;
+    }
+    case "wave": {
+      fig.armR.rotation.z = 1.15 + sway(t, seed) * 0.22;
+      fig.head.rotation.z = 0.06;
+      fig.torso.rotation.x = sway(t, seed + 2) * 0.02;
+      break;
+    }
+    case "sad": {
+      fig.head.rotation.x = 0.34;
+      fig.torso.rotation.x = 0.1;
+      fig.armL.rotation.z = -0.06;
+      fig.armR.rotation.z = 0.06;
+      break;
+    }
+    case "point": {
+      fig.armR.rotation.x = -1.35;
+      fig.armR.rotation.z = 0.16;
+      fig.head.rotation.y = -0.12;
+      break;
+    }
+    case "idle":
+    default: {
+      fig.torso.rotation.x = sway(t, seed) * 0.03;
+      fig.head.rotation.y = sway(t, seed + 4) * 0.08;
+      fig.armL.rotation.z = -0.22 - sway(t, seed + 6) * 0.03;
+      fig.armR.rotation.z = 0.22 + sway(t, seed + 7) * 0.03;
+      break;
+    }
+  }
+
+  // everyone blinks now and then, whatever they are doing
+  const blinkPhase = sway(t, seed + 9);
+  fig.blink.scale.y = blinkPhase > 0.94 ? 0.12 : 1;
 };
