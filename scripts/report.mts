@@ -4,11 +4,11 @@
  *   npm run report -- <slug> [--account <id>] --step <failing-step> --error "<msg>"
  * Requires .env keys: SLACK_BOT_TOKEN, SLACK_SOCIAL_CHANNEL_ID
  * --account sets the channel label in the message; without it, read /tmp/publish-result.json
- * (written by scripts/publish.mts), else the report stays channel-neutral.
+ * (written by scripts/publish.mts; also carries the per-platform schedule), else the report stays channel-neutral.
  */
 import { loadDotenv } from "./lib.mts";
 import { isAccountId, ACCOUNT_IDS } from "../src/accounts.ts";
-import { buildReportText, formatLinksCsv } from "./report-lib.mts";
+import { buildReportText, formatLinksCsv, type ReportOptions } from "./report-lib.mts";
 loadDotenv();
 
 const args = process.argv.slice(2);
@@ -16,6 +16,7 @@ const slug = args[0] || "ci";
 const iLinks = args.indexOf("--links"), iStep = args.indexOf("--step"), iErr = args.indexOf("--error"), iAcct = args.indexOf("--account");
 let links = iLinks >= 0 ? args[iLinks + 1] : "";
 let account = iAcct >= 0 ? args[iAcct + 1] : iAcct === -1 && args.find((a) => a.startsWith("--account="))?.slice("--account=".length);
+let schedule: ReportOptions["schedule"], linkMap: ReportOptions["linkMap"];
 // If --links missing, recover the just-published links from the same-run temporary result
 if (!links || !account) {
   try {
@@ -27,9 +28,10 @@ if (!links || !account) {
       slug?: string;
       account?: string;
       links?: { youtube?: string | null; tiktok?: string | null; instagram?: string | null };
+      schedule?: ReportOptions["schedule"];
     };
     if (result.slug === slug) {
-      if (!links) links = formatLinksCsv(result.links);
+      if (!links) { links = formatLinksCsv(result.links); schedule = result.schedule; linkMap = result.links; }
       if (!account && result.account) account = result.account;
     }
   } catch { /* leave links empty */ }
@@ -41,7 +43,7 @@ if (account !== undefined && !isAccountId(account)) {
 const step = iStep >= 0 ? args[iStep + 1] : "";
 const error = iErr >= 0 ? args[iErr + 1] : "";
 
-const text = buildReportText({ slug, links, step, error, account });
+const text = buildReportText({ slug, links, step, error, account, schedule, linkMap });
 
 const token = process.env.SLACK_BOT_TOKEN, channel = process.env.SLACK_SOCIAL_CHANNEL_ID;
 if (!token || !channel) { console.error("Missing SLACK_BOT_TOKEN or SLACK_SOCIAL_CHANNEL_ID in .env"); process.exit(1); }
