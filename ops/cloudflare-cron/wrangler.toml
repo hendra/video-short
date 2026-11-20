@@ -8,4 +8,5 @@ compatibility_date = "2026-11-11"
 ACCOUNTS = "kali-aja,ai-labs,cerpenek,sastra-mesin"
 
 [triggers]
-crons = ["30 0,2,4,5,9,12 * * *"]
+# 05:30, 10:30, 17:30 WIB — satu run per slot (pagi/siang/malam); publish menjadwalkan jam tayang per platform.
+crons = ["30 22,3,10 * * *"]

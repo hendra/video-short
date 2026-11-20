@@ -1,4 +1,4 @@
-# Publishing: Cloudinary → Buffer (YouTube + TikTok)
+# Publishing: Cloudinary → Buffer (YouTube + TikTok + Instagram, terjadwal)
 
 Tested end-to-end 2026-11-11. Read this before any upload; `git log --oneline docs/PUBLISHING.md` shows changes since.
 
@@ -41,6 +41,24 @@ Kedua akun sudah **aktif dan tayang**: AI Labs tayang perdana pada **2026-11-15*
 
 Publikasi tetap per akun: `npm run publish -- <slug>` membaca `account` dari `src/videos/<slug>/publish.json`; `--account <id>` (opsional) hanyalah cross-check dan menolak kalau tidak cocok. Hal yang sama berlaku untuk `scripts/fetch-published-videos.mts --account` dan `scripts/check-duplicates.mts --db`.
 
+## Jadwal tayang (sejak 2026-11-21)
+
+Buffer free menolak post YouTube ke-3 per hari per channel (`LimitReachedError: … maximum number of posts YouTube allows in a day (2)`). Karena itu: 3 run/hari per akun, satu video per slot, ditayangkan per platform di jam tetap (WIB). Sumber kebenaran: `SLOT_TIMES` di `scripts/publish-lib.mts`.
+
+| Slot (run mulai) | YouTube | TikTok | Instagram* |
+|---|---|---|---|
+| pagi (05:30) | — | 07:00 | 08:00 |
+| siang (10:30) | 12:00 | 13:00 | 12:00 |
+| malam (17:30) | 19:00 | 19:00 | 20:00 |
+
+\* hanya akun dengan `instagramChannelId`.
+
+- Slot ditetapkan di awal run (`scripts/slot.mts`, job `build`) dan diteruskan ke `npm run publish -- <slug> --slot <s> --date <YYYY-MM-DD>`; tanpa flag, publish memakai slot berikutnya dari jam sekarang.
+- Jam tayang yang sudah lewat saat publish → platform itu `shareNow` (tidak gagal).
+- Publish selesai begitu Buffer menerima semua post (`scheduled`); hanya post `shareNow` yang dipoll. Slack melaporkan jam tayang, link menyusul di Buffer.
+- Run manual tambahan di slot yang sama membuat post kedua (YouTube bisa kena limit lagi) — sengaja tidak diblokir.
+- Aset Cloudinary tidak dihapus: Buffer mengambilnya saat jam tayang.
+
 ## Step 1 — Host the MP4 (Cloudinary signed upload)
 
 Shorts go to `shorts/YYYY-MM-DD/<slug>`, resource type **video**.
@@ -74,7 +92,8 @@ curl -sS -m 60 -X POST https://api.buffer.com/graphql \
   "query": "mutation($input: CreatePostInput!) {\n  createPost(input: $input) {\n    __typename\n    ... on PostActionSuccess { post { id status channelService sharedNow externalLink } }\n    ... on NotFoundError { message }\n    ... on UnauthorizedError { message }\n    ... on UnexpectedError { message }\n    ... on InvalidInputError { message }\n    ... on LimitReachedError { message }\n    ... on RestProxyError { message }\n  }\n}",
   "variables": { "input": {
     "channelId": "6aedb753e29c69a171803f6e",
-    "mode": "shareNow",
+    "mode": "customScheduled",
+    "dueAt": "<ISO UTC jam tayang, mis. 2026-11-21T05:00:00.000Z = 12:00 WIB>",
     "schedulingType": "automatic",
     "needsApproval": false,
     "text": "<deskripsi>",
@@ -101,7 +120,7 @@ Instagram Reels (accounts with optional `instagramChannelId`, e.g. `sastra-mesin
 - `metadata`: `{ "instagram": { "type": "reel", "shouldShareToFeed": true, "isAiGenerated": true } }`
 - `text`: `tiktokCaption` (≤ 2,200 chars)
 
-Publish-now vs draft: `mode: "shareNow"` + `schedulingType: "automatic"` publishes immediately. To hold for review: drop `mode` (or `saveToDraft` — see enums `ShareMode`: `shareNow | shareNext | addToQueue | customScheduled`) and set `"saveToDraft": true`.
+Terjadwal vs sekarang: `mode: "customScheduled"` + `dueAt` (ISO UTC) menjadwalkan — ini yang dipakai `npm run publish`; `mode: "shareNow"` menayangkan langsung (dipakai bila jam tayang sudah lewat). To hold for review: drop `mode` (or `saveToDraft` — see enums `ShareMode`: `shareNow | shareNext | addToQueue | customScheduled`) and set `"saveToDraft": true`.
 - Error union (`PostActionPayload`): `PostActionSuccess | NotFoundError | UnauthorizedError | UnexpectedError | RestProxyError | LimitReachedError | InvalidInputError` — every error branch carries **one** `message` field. Non-200 → stop and report; do not retry blindly.
 - Success path returns `post { id status channelService sharedNow externalLink }`. `status: "sent"` for YouTube usually comes back immediately with the link; TikTok sits at `"sending"` for minutes.
 
@@ -111,7 +130,7 @@ Publish-now vs draft: `mode: "shareNow"` + `schedulingType: "automatic"` publish
 { "query": "{ post(input: { id: \"<post-id>\" }) { id status externalLink sharedNow channelService } }" }
 ```
 
-IMPORTANT: `Query.post` takes an **input object** (`PostInput { id: PostId! }`), NOT a bare `id:` argument — `post(id: "...")` fails with "Unknown argument \"id\"". Poll until `status == "sent"` (externalLink filled) or `"error"`. For TikTok this typically takes 1–5 minutes.
+IMPORTANT: `Query.post` takes an **input object** (`PostInput { id: PostId! }`), NOT a bare `id:` argument — `post(id: "...")` fails with "Unknown argument \"id\"". Poll until `status == "sent"` (externalLink filled) or `"error"`. For TikTok this typically takes 1–5 minutes. Post terjadwal berstatus `scheduled` sampai jam tayang; `npm run publish` tidak menunggunya.
 
 ## Step 3.5 — Notify Slack (optional but usual)
 
@@ -127,9 +146,9 @@ Success: `{ "ok": true, "channel": "C0CDV7Y555K", "ts": "..." }` (a harmless `mi
 
 ## Step 4 — Done — committed catalog
 
-Video source is not committed: source lives only in the CI VM and is discarded when the job ends. CI fetches Buffer history into `/tmp/published-videos-<account>.json` for duplicate/republication checks; nothing from it is committed or preserved. The publish command fetches Buffer again before uploading and refuses a candidate that matches a live post.
+Video source is not committed: source lives only in the CI VM and is discarded when the job ends. CI fetches Buffer history (post `sent` **dan** `scheduled`) into `/tmp/published-videos-<account>.json` for duplicate/republication checks; nothing from it is committed or preserved. The publish command fetches Buffer again before uploading and refuses a candidate that matches a live or scheduled post.
 
-**Retry setelah publish setengah gagal:** kalau `createPost` YouTube sudah sukses tapi TikTok gagal/timeout, pipeline berhenti dengan error. Menjalankan ulang akan **menolak** video yang sama karena kandidatnya cocok dengan post YouTube yang sudah live. Pulihkan dengan salah satu: (a) di Buffer, hapus post YouTube-nya lalu jalankan lagi (kedua platform akan ter-post ulang), atau (b) tayangkan TikTok itu manual lewat Buffer. Tidak ada jalur otomatis yang melanjutkan hanya sisi TikTok — jika Anda butuh itu, buat issue/request terlebih dulu.
+**Retry setelah publish setengah gagal:** kalau sebagian `createPost` sudah sukses (post live **atau masih terjadwal**) tapi platform lain gagal/timeout, pipeline berhenti dengan error. Menjalankan ulang akan **menolak** video yang sama karena kandidatnya cocok dengan post yang sudah live/terjadwal di Buffer. Pulihkan dengan salah satu: (a) di Buffer, hapus semua post video itu (termasuk yang masih terjadwal) lalu jalankan lagi, atau (b) buat post platform yang gagal manual lewat Buffer. Tidak ada jalur otomatis yang melanjutkan hanya sisi TikTok — jika Anda butuh itu, buat issue/request terlebih dulu.
 
 ## Content requirements (not negotiable for this channel)
 

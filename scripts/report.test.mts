@@ -59,3 +59,24 @@ describe("buildReportText (Slack payload, shipped helper)", () => {
     assert.equal(formatLinksCsv({ youtube: "https://yt/1", tiktok: null, instagram: null }), "https://yt/1");
   });
 });
+
+describe("buildReportText scheduled posts", () => {
+  test("shows WIB air time per platform and the slug", () => {
+    const t = buildReportText({ slug: "x", account: "kali-aja", schedule: { youtube: "2026-11-21T05:00:00.000Z", tiktok: "2026-11-21T06:00:00.000Z" } });
+    assert.match(t, /:calendar:/);
+    assert.match(t, /\[Kali Aja Tau\] Video dijadwalkan/);
+    assert.match(t, /YouTube 12:00 WIB/);
+    assert.match(t, /TikTok 13:00 WIB/);
+    assert.match(t, /`x`/);
+    assert.doesNotMatch(t, /Instagram/);
+  });
+  test("share-now posts say sekarang and carry their link", () => {
+    const t = buildReportText({ slug: "x", schedule: { tiktok: "now", instagram: "2026-11-21T01:00:00.000Z" }, linkMap: { tiktok: "https://tt/1" } });
+    assert.match(t, /TikTok sekarang — https:\/\/tt\/1/);
+    assert.match(t, /Instagram 08:00 WIB/);
+    assert.doesNotMatch(t, /YouTube/);
+  });
+  test("error still wins over schedule", () => {
+    assert.match(buildReportText({ slug: "x", error: "boom", schedule: { tiktok: "now" } }), /run gagal/);
+  });
+});

@@ -60,10 +60,63 @@ export const extractBufferError = (body: any): string => {
   return `${d.__typename ?? "unknown"}: ${d.message ?? JSON.stringify(d)}`;
 };
 
+// ---------- Daily slots: one video per slot, aired per platform at fixed WIB times (Buffer free caps YouTube at 2/day).
+export type Slot = "pagi" | "siang" | "malam";
+export type Platform = "youtube" | "tiktok" | "instagram";
+export const SLOT_TIMES: Record<Slot, Partial<Record<Platform, string>>> = {
+  pagi: { tiktok: "07:00", instagram: "08:00" },
+  siang: { youtube: "12:00", tiktok: "13:00", instagram: "12:00" },
+  malam: { youtube: "19:00", tiktok: "19:00", instagram: "20:00" },
+};
+const SLOTS = Object.keys(SLOT_TIMES) as Slot[];
+const WIB_MS = 7 * 3_600_000; // UTC+7, no DST
+
+export const isSlot = (s: string): s is Slot => (SLOTS as string[]).includes(s);
+
+/** UTC ISO for a WIB "HH:MM" on WIB date YYYY-MM-DD. */
+const wibToIso = (date: string, hhmm: string): string => new Date(Date.parse(`${date}T${hhmm}:00Z`) - WIB_MS).toISOString();
+
+/** ISO UTC air time for a platform in a slot, or null when the slot skips that platform. */
+export const dueAt = (slot: Slot, date: string, platform: Platform): string | null => {
+  const t = SLOT_TIMES[slot][platform];
+  return t ? wibToIso(date, t) : null;
+};
+
+/** First slot whose earliest air time is still ahead of `now`; after the last one, next WIB day's pagi. */
+export const slotFor = (now: Date): { slot: Slot; date: string } => {
+  const today = new Date(now.getTime() + WIB_MS).toISOString().slice(0, 10);
+  for (const slot of SLOTS) {
+    const earliest = Object.values(SLOT_TIMES[slot]).sort()[0]!;
+    if (Date.parse(wibToIso(today, earliest)) > now.getTime()) return { slot, date: today };
+  }
+  return { slot: "pagi", date: new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10) };
+};
+
+/** Slot for a publish run: --slot/--date as a pair (fixed at run start by CI), else the slot for `now`. Returns an error string when invalid. */
+export const resolveSlot = (slot: string | undefined, date: string | undefined, now: Date): { slot: Slot; date: string } | string => {
+  if (slot === undefined && date === undefined) return slotFor(now);
+  if (slot === undefined || date === undefined) return "--slot and --date must be given together";
+  if (!isSlot(slot)) return `--slot "${slot}" tidak dikenal (valid: ${SLOTS.join(", ")})`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return `--date "${date}" bukan YYYY-MM-DD`;
+  return { slot, date };
+};
+
+export type PostTiming = { mode: "customScheduled"; dueAt: string } | { mode: "shareNow" };
+const SCHEDULE_MARGIN_MS = 2 * 60_000; // posts are created one by one; never hand Buffer a dueAt that may be past on arrival
+/** Schedule at the air time, or share now if it passed / is too close (a slow run must not fail the publish). */
+export const postTiming = (due: string, now: Date): PostTiming =>
+  Date.parse(due) - now.getTime() >= SCHEDULE_MARGIN_MS ? { mode: "customScheduled", dueAt: due } : { mode: "shareNow" };
+
+/** After createPost: a scheduled post must come back "scheduled" (draft/needs-approval would never air); sent or share-now posts are polled. */
+export const settleAction = (timing: PostTiming, status: string): "accept" | "poll" | "fail" => {
+  if (timing.mode === "shareNow" || status === "sent") return "poll";
+  return status === "scheduled" ? "accept" : "fail";
+};
+
 /** Buffer CreatePostInput for an Instagram Reel shared to the main feed as well. */
-export const instagramInput = (channelId: string, videoUrl: string, caption: string) => ({
+export const instagramInput = (channelId: string, videoUrl: string, caption: string, timing: PostTiming) => ({
   channelId,
-  mode: "shareNow",
+  ...timing,
   schedulingType: "automatic",
   needsApproval: false,
   text: caption,
@@ -78,11 +131,15 @@ export const bufferChannelIds = (buffer: Account["buffer"]): string[] => [
   ...(buffer.instagramChannelId ? [buffer.instagramChannelId] : []),
 ];
 
+/** Buffer posts filter for the duplicate lookup: sent plus still-queued posts, so a scheduled video is not made twice. */
+export const bufferPostsFilter = (buffer: Account["buffer"]) => ({ channelIds: bufferChannelIds(buffer), status: ["sent", "scheduled"] });
+
 export type BufferNode = {
   id?: string;
   channelService?: string;
   createdAt?: string;
   sentAt?: string | null;
+  dueAt?: string | null;
   text?: string;
   externalLink?: string | null;
   metadata?: { title?: string | null };
@@ -95,7 +152,7 @@ export const mapBufferPostNode = (node: BufferNode): RecentPost | null => {
   return {
     id: `buffer:${node.id}`,
     platform,
-    date: (node.sentAt ?? node.createdAt ?? new Date().toISOString()).slice(0, 10),
+    date: (node.sentAt ?? node.dueAt ?? node.createdAt ?? new Date().toISOString()).slice(0, 10),
     title: node.metadata?.title ?? null,
     text: node.text,
     link: node.externalLink ?? null,

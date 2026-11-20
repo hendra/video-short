@@ -1,5 +1,5 @@
 /**
- * Fetch Buffer's sent-post history into an ephemeral JSON file for duplicate/republish checks.
+ * Fetch Buffer's sent + scheduled post history into an ephemeral JSON file for duplicate/republish checks.
  *   npx tsx scripts/fetch-published-videos.mts [--account <id>] [--out /tmp/published-videos-<id>.json]
  * The access token stays in this process; the output contains only public post text/metadata.
  * Nothing from this data is committed by CI.
@@ -10,7 +10,7 @@ import { pathToFileURL } from "node:url";
 import { ACCOUNTS, DEFAULT_ACCOUNT, isAccountId, type AccountId } from "../src/accounts.ts";
 import { loadDotenv, publishedVideosPath } from "./lib.mts";
 import type { RecentPost } from "./duplicate-core.mts";
-import { bufferChannelIds, mapBufferPostNode, type BufferNode } from "./publish-lib.mts";
+import { bufferPostsFilter, mapBufferPostNode, type BufferNode } from "./publish-lib.mts";
 
 export const fetchPublishedVideos = async (token = process.env.BUFFER_ACCESS_TOKEN, accountId: AccountId = DEFAULT_ACCOUNT): Promise<RecentPost[]> => {
   if (!token) throw new Error("Missing BUFFER_ACCESS_TOKEN in .env (posts:read only; see docs/PUBLISHING.md)");
@@ -21,7 +21,7 @@ export const fetchPublishedVideos = async (token = process.env.BUFFER_ACCESS_TOK
     posts(input: $input, first: $first, after: $after) {
       edges {
         node {
-          id channelService createdAt sentAt text externalLink
+          id channelService createdAt sentAt dueAt text externalLink
           metadata {
             ... on YoutubePostMetadata { title }
             ... on TiktokPostMetadata { title }
@@ -44,7 +44,7 @@ export const fetchPublishedVideos = async (token = process.env.BUFFER_ACCESS_TOK
         variables: {
           input: {
             organizationId: orgId,
-            filter: { channelIds: bufferChannelIds(buffer), status: ["sent"] },
+            filter: bufferPostsFilter(buffer),
             sort: [{ field: "createdAt", direction: "desc" }],
           },
           first: 100,
@@ -92,7 +92,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const posts = await fetchPublishedVideos(process.env.BUFFER_ACCESS_TOKEN, accountId as AccountId);
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, JSON.stringify(posts, null, 1));
-    console.log(`published-videos: wrote ${posts.length} sent posts to ${outPath}`);
+    console.log(`published-videos: wrote ${posts.length} sent/scheduled posts to ${outPath}`);
   } catch (e) {
     console.error((e as Error).message);
     process.exit(1);

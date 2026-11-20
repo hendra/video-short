@@ -1,6 +1,7 @@
 /**
- * Cron weker untuk pipeline video (Kali Aja Tau + AI Labs + Cerpenek).
- * Setiap 00:30, 02:30, 04:30, 05:30, 09:30, 12:30 UTC (= 07:30, 09:30, 11:30, 12:30, 16:30, 19:30 WIB)
+ * Cron weker untuk pipeline video (semua akun di ACCOUNTS).
+ * Setiap 22:30, 03:30, 10:30 UTC (= 05:30, 10:30, 17:30 WIB — slot pagi/siang/malam; jam tayang per platform
+ * dijadwalkan di Buffer oleh scripts/publish.mts, lihat SLOT_TIMES di scripts/publish-lib.mts)
  * memicu `repository_dispatch` di repo GitHub **sekali per akun** — workflow video.yml tahu akun mana
  * yang harus dijalankan dari `client_payload.account`.
  * Weker saja — semua kerja berat terjadi di runner GitHub-hosted (ubuntu-latest).

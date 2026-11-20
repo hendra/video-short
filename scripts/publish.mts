@@ -1,6 +1,11 @@
 /**
- * Publish a finished video to YouTube + TikTok via Cloudinary (signed upload) and Buffer (GraphQL).
- *   npm run publish -- <slug> [--account <id>]
+ * Publish a finished video to YouTube + TikTok (+ Instagram) via Cloudinary (signed upload) and Buffer (GraphQL).
+ *   npm run publish -- <slug> [--account <id>] [--slot <pagi|siang|malam> --date <YYYY-MM-DD>]
+ *
+ * Posts are scheduled (Buffer customScheduled) at the slot's WIB air time per platform (SLOT_TIMES in
+ * publish-lib.mts); the pagi slot has no YouTube post (Buffer free allows 2 YouTube posts/day). CI fixes
+ * the slot at run start and passes --slot/--date; without them the slot for "now" is used. An air time
+ * that already passed is shared now instead.
  *
  * Requirements:
  *   - out/<slug>-final.mp4 must exist (run render + loudnorm first)
@@ -12,7 +17,7 @@
  * config still holds TODO_ placeholders is refused the same way.
  * Buffer is checked again before upload and the candidate is refused if it matches a recently posted video.
  * No source, VO, video data, or catalog file is committed by this script.
- * After a fully settled publish (Cloudinary + both Buffer posts), deletes the
+ * Once Buffer accepted every post (scheduled, or sent for share-now posts), deletes the
  * local intermediates: out/<slug>*.mp4, public/<slug>/music.wav, public/<slug>/vo.mp3.
  * Don't re-add vo.mp3 to git — it's removed from the tree after every publish.
  */
@@ -22,7 +27,7 @@ import path from "node:path";
 import { ROOT, loadDotenv } from "./lib.mts";
 import { fetchPublishedVideos } from "./fetch-published-videos.mts";
 import { findDuplicate, type CandidatePost } from "./duplicate-core.mts";
-import { cloudinarySign, validatePublishJson, extractBufferError, instagramInput, youtubeSafe, youtubeMetadata } from "./publish-lib.mts";
+import { cloudinarySign, validatePublishJson, extractBufferError, instagramInput, youtubeSafe, youtubeMetadata, resolveSlot, dueAt, postTiming, settleAction, type Platform, type PostTiming } from "./publish-lib.mts";
 import { ACCOUNT_IDS, accountById, isAccountId, isConfigured, missingConfigFields } from "../src/accounts.ts";
 
 loadDotenv();
@@ -30,15 +35,21 @@ loadDotenv();
 const args = process.argv.slice(2);
 let slug = "";
 let runAccount: string | undefined;
+let slotArg: string | undefined, dateArg: string | undefined;
 for (let i = 0; i < args.length; i += 1) {
   const a = args[i];
   if (a === "--account") { runAccount = args[i + 1]; i += 1; }
   else if (a.startsWith("--account=")) runAccount = a.slice("--account=".length);
+  else if (a === "--slot") { slotArg = args[i + 1]; i += 1; }
+  else if (a === "--date") { dateArg = args[i + 1]; i += 1; }
   else if (!a.startsWith("--")) slug = a;
 }
-if (!slug) { console.error("Usage: npm run publish -- <slug> [--account <id>]"); process.exit(1); }
+if (!slug) { console.error("Usage: npm run publish -- <slug> [--account <id>] [--slot <pagi|siang|malam> --date <YYYY-MM-DD>]"); process.exit(1); }
 
 const fail = (msg: string): never => { console.error(msg); process.exit(1); };
+const slotRes = resolveSlot(slotArg, dateArg, new Date());
+if (typeof slotRes === "string") fail(slotRes);
+const { slot, date: slotDate } = slotRes as Exclude<typeof slotRes, string>;
 const today = () => new Date().toISOString().slice(0, 10);
 
 const mp4Path = path.join(ROOT, "out", `${slug}-final.mp4`);
@@ -100,13 +111,13 @@ if (up.bytes !== fileBuf.length) fail(`Cloudinary bytes mismatch: expected ${fil
 if (up.resource_type && up.resource_type !== "video") fail(`Cloudinary resource_type is "${up.resource_type}" (expected "video") — refusing to publish.`);
 console.log(`  -> ${up.secure_url}`);
 
-// ---------- 2. Buffer GraphQL createPost
+// ---------- 2. Buffer GraphQL createPost, scheduled at the slot's air time per platform
 const YT = account.buffer.youtubeChannelId, TT = account.buffer.tiktokChannelId, IG = account.buffer.instagramChannelId;
 const bufferPost = async (input: Record<string, unknown>) => {
   const query = `mutation($input: CreatePostInput!) {
   createPost(input: $input) {
     __typename
-    ... on PostActionSuccess { post { id status channelService externalLink sharedNow } }
+    ... on PostActionSuccess { post { id status channelService externalLink sharedNow dueAt } }
     ... on NotFoundError { message }
     ... on UnauthorizedError { message }
     ... on UnexpectedError { message }
@@ -130,26 +141,35 @@ const bufferPost = async (input: Record<string, unknown>) => {
   return data.post as { id: string; status: string; channelService: string; externalLink?: string | null };
 };
 
-const ytInput = {
-  channelId: YT, mode: "shareNow", schedulingType: "automatic", needsApproval: false,
+const now = new Date();
+const timingFor = (p: Platform): PostTiming | null => {
+  const due = dueAt(slot, slotDate, p);
+  return due ? postTiming(due, now) : null;
+};
+const ytTiming = timingFor("youtube"), ttTiming = timingFor("tiktok")!, igTiming = IG ? timingFor("instagram") : null;
+const describeTiming = (t: PostTiming | null) => (t === null ? "skip" : t.mode === "shareNow" ? "now" : t.dueAt);
+console.log(`slot=${slot} date=${slotDate} youtube=${describeTiming(ytTiming)} tiktok=${describeTiming(ttTiming)}${IG ? ` instagram=${describeTiming(igTiming)}` : ""}`);
+
+const ytInput = ytTiming && {
+  channelId: YT, ...ytTiming, schedulingType: "automatic", needsApproval: false,
   text: youtubeSafe(PUB.description),
   assets: [{ video: { url: up.secure_url! } }],
   metadata: { youtube: youtubeMetadata(account, PUB.title) },
 };
 const ttInput = {
-  channelId: TT, mode: "shareNow", schedulingType: "automatic", needsApproval: false,
+  channelId: TT, ...ttTiming, schedulingType: "automatic", needsApproval: false,
   text: PUB.tiktokCaption,
   assets: [{ video: { url: up.secure_url! } }],
   metadata: { tiktok: { isAiGenerated: true, title: PUB.tiktokTitle } },
 };
-const yt = await bufferPost(ytInput);
-console.log(`youtube: ${yt.id} status=${yt.status} ${yt.externalLink ?? ""}`);
+const yt = ytInput ? await bufferPost(ytInput) : null;
+if (yt) console.log(`youtube: ${yt.id} status=${yt.status} ${yt.externalLink ?? ""}`);
 const tt = await bufferPost(ttInput);
 console.log(`tiktok:  ${tt.id} status=${tt.status} ${tt.externalLink ?? ""}`);
-const ig = IG ? await bufferPost(instagramInput(IG, up.secure_url!, PUB.tiktokCaption)) : null;
+const ig = IG && igTiming ? await bufferPost(instagramInput(IG, up.secure_url!, PUB.tiktokCaption, igTiming)) : null;
 if (ig) console.log(`instagram: ${ig.id} status=${ig.status} ${ig.externalLink ?? ""}`);
 
-// ---------- 3. Poll until all settle (max 5 min)
+// ---------- 3. Share-now posts: poll until they settle (max 5 min). Scheduled posts: accepted = done.
 const deadline = Date.now() + 5 * 60_000;
 const poll = async (id: string) => {
   let lastStatus = "unknown";
@@ -171,22 +191,36 @@ const poll = async (id: string) => {
   }
   return { link: null, status: lastStatus };
 };
-const [ytP, ttP, igP] = await Promise.all([poll(yt.id), poll(tt.id), ig ? poll(ig.id) : Promise.resolve(null)]);
-const ytLink = ytP.link, ttLink = ttP.link, igLink = igP?.link ?? null;
-if (!ytLink || !ttLink || (igP && !igLink)) {
-  const igMsg = igP ? `, ig=${igP.status}/${igLink ?? "pending"}` : "";
-  fail(`post settled with error or timeout (yt=${ytP.status}/${ytLink ?? "pending"}, tt=${ttP.status}/${ttLink ?? "pending"}${igMsg}) — do NOT retry blindly; check Buffer UI.`);
+type Settled = { link: string | null; status: string; ok: boolean };
+const settle = async (post: { id: string; status: string; externalLink?: string | null } | null, timing: PostTiming | null): Promise<Settled | null> => {
+  if (!post || !timing) return null;
+  const action = settleAction(timing, post.status);
+  if (action !== "poll") return { link: null, status: post.status, ok: action === "accept" };
+  const p = await poll(post.id);
+  return { ...p, ok: Boolean(p.link) };
+};
+const [ytP, ttP, igP] = await Promise.all([settle(yt, ytTiming), settle(tt, ttTiming), settle(ig, igTiming)]);
+const ytLink = ytP?.link ?? null, ttLink = ttP!.link, igLink = igP?.link ?? null;
+if ([ytP, ttP, igP].some((p) => p && !p.ok)) {
+  const fmt = (n: string, p: Settled | null) => (p ? `${n}=${p.status}/${p.link ?? "pending"}` : `${n}=skip`);
+  fail(`post settled with error or timeout (${fmt("yt", ytP)}, ${fmt("tt", ttP)}${IG ? `, ${fmt("ig", igP)}` : ""}) — do NOT retry blindly; check Buffer UI.`);
 }
+const scheduleOf = (t: PostTiming | null) => (t === null ? undefined : t.mode === "shareNow" ? "now" : t.dueAt);
 
 // ---------- 4. Temporary same-run result — used by the Slack report, never committed
 const resultPath = path.join(os.tmpdir(), "publish-result.json");
 fs.writeFileSync(
   resultPath,
-  JSON.stringify({ slug, account: account.id, date: today(), title: PUB.title, links: { youtube: ytLink, tiktok: ttLink, ...(igLink ? { instagram: igLink } : {}) } }, null, 1),
+  JSON.stringify({
+    slug, account: account.id, date: today(), title: PUB.title, slot, slotDate,
+    schedule: { youtube: scheduleOf(ytTiming), tiktok: scheduleOf(ttTiming), instagram: scheduleOf(igTiming) },
+    links: { youtube: ytLink, tiktok: ttLink, ...(igLink ? { instagram: igLink } : {}) },
+  }, null, 1),
 );
 console.log(`publish result: wrote ${resultPath}`);
 
-// Cleanup after the publish is durable (Cloudinary + both Buffer posts settled).
+// Cleanup after the publish is durable (Cloudinary + every Buffer post accepted). The Cloudinary
+// asset itself is never deleted: Buffer fetches it at the scheduled air time.
 // Local intermediates are disposable; no catalog or video metadata is committed by CI.
 // Never fail the publish over this.
 try {

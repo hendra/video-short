@@ -3,10 +3,17 @@ import crypto from "node:crypto";
 import { describe, test } from "node:test";
 import {
   bufferChannelIds,
+  bufferPostsFilter,
   cloudinarySign,
   extractBufferError,
   instagramInput,
+  dueAt,
+  isSlot,
   mapBufferPostNode,
+  postTiming,
+  settleAction,
+  resolveSlot,
+  slotFor,
   validatePublishJson,
   youtubeMetadata,
   youtubeSafe,
@@ -104,7 +111,7 @@ describe("youtubeMetadata", () => {
 
 describe("instagramInput", () => {
   test("builds a Buffer Reel payload sharing to feed with AI flag", () => {
-    const p = instagramInput("6afe07c2ece6dfde5f116be8", "https://cdn/v.mp4", "Caption #shorts");
+    const p = instagramInput("6afe07c2ece6dfde5f116be8", "https://cdn/v.mp4", "Caption #shorts", { mode: "shareNow" });
     assert.deepEqual(p, {
       channelId: "6afe07c2ece6dfde5f116be8",
       mode: "shareNow",
@@ -114,6 +121,36 @@ describe("instagramInput", () => {
       assets: [{ video: { url: "https://cdn/v.mp4" } }],
       metadata: { instagram: { type: "reel", shouldShareToFeed: true, isAiGenerated: true } },
     });
+  });
+  test("carries a customScheduled timing", () => {
+    const p = instagramInput("c", "u", "t", { mode: "customScheduled", dueAt: "2026-11-21T01:00:00.000Z" });
+    assert.equal(p.mode, "customScheduled");
+    assert.equal((p as { dueAt?: string }).dueAt, "2026-11-21T01:00:00.000Z");
+  });
+});
+
+describe("slot scheduling", () => {
+  test("slotFor picks the slot by WIB time, including the cron runs", () => {
+    assert.deepEqual(slotFor(new Date("2026-11-20T22:30:00Z")), { slot: "pagi", date: "2026-11-21" }); // 05:30 WIB
+    assert.deepEqual(slotFor(new Date("2026-11-21T03:30:00Z")), { slot: "siang", date: "2026-11-21" }); // 10:30
+    assert.deepEqual(slotFor(new Date("2026-11-21T10:30:00Z")), { slot: "malam", date: "2026-11-21" }); // 17:30
+  });
+  test("slotFor after the last slot rolls to next WIB day's pagi", () => {
+    assert.deepEqual(slotFor(new Date("2026-11-21T12:30:00Z")), { slot: "pagi", date: "2026-11-22" }); // 19:30
+  });
+  test("dueAt converts WIB air times to UTC; pagi has no YouTube", () => {
+    assert.equal(dueAt("pagi", "2026-11-21", "tiktok"), "2026-11-21T00:00:00.000Z");
+    assert.equal(dueAt("pagi", "2026-11-21", "youtube"), null);
+    assert.equal(dueAt("malam", "2026-11-21", "instagram"), "2026-11-21T13:00:00.000Z");
+    assert.equal(dueAt("siang", "2026-11-21", "youtube"), "2026-11-21T05:00:00.000Z");
+  });
+  test("postTiming falls back to shareNow once the air time passed", () => {
+    assert.deepEqual(postTiming("2026-11-21T00:00:00.000Z", new Date("2026-11-21T00:30:00Z")), { mode: "shareNow" });
+    assert.deepEqual(postTiming("2026-11-21T01:00:00.000Z", new Date("2026-11-21T00:30:00Z")), { mode: "customScheduled", dueAt: "2026-11-21T01:00:00.000Z" });
+  });
+  test("isSlot", () => {
+    assert.equal(isSlot("siang"), true);
+    assert.equal(isSlot("sore"), false);
   });
 });
 
@@ -132,5 +169,44 @@ describe("bufferChannelIds and mapBufferPostNode", () => {
     assert.equal(mapBufferPostNode({ id: "2", text: "x", channelService: "tiktok" })?.platform, "tiktok");
     assert.equal(mapBufferPostNode({ id: "3", text: "x", channelService: "youtube" })?.platform, "youtube");
     assert.equal(mapBufferPostNode({ id: "4" }), null);
+  });
+});
+
+describe("duplicate lookup sees queued posts", () => {
+  test("filter asks Buffer for sent and scheduled posts", () => {
+    const f = bufferPostsFilter(ACCOUNTS["kali-aja"].buffer);
+    assert.deepEqual(f.status, ["sent", "scheduled"]);
+    assert.deepEqual(f.channelIds, bufferChannelIds(ACCOUNTS["kali-aja"].buffer));
+  });
+  test("a scheduled post is dated by its dueAt", () => {
+    assert.equal(mapBufferPostNode({ id: "9", text: "x", createdAt: "2026-11-21T00:00:00Z", dueAt: "2026-11-22T00:00:00Z" })?.date, "2026-11-22");
+  });
+});
+
+describe("resolveSlot (publish --slot/--date)", () => {
+  const now = new Date("2026-11-21T03:30:00Z");
+  test("no args uses the slot for now", () => assert.deepEqual(resolveSlot(undefined, undefined, now), { slot: "siang", date: "2026-11-21" }));
+  test("explicit slot and date are kept", () => assert.deepEqual(resolveSlot("pagi", "2026-11-21", now), { slot: "pagi", date: "2026-11-21" }));
+  test("rejects unknown slot, bad date, or only one of the pair", () => {
+    assert.equal(typeof resolveSlot("sore", "2026-11-21", now), "string");
+    assert.equal(typeof resolveSlot("pagi", "21-11-2026", now), "string");
+    assert.equal(typeof resolveSlot("pagi", undefined, now), "string");
+    assert.equal(typeof resolveSlot(undefined, "2026-11-21", now), "string");
+  });
+});
+
+describe("final review fixes", () => {
+  test("postTiming shares now when the air time is under 2 minutes away", () => {
+    assert.deepEqual(postTiming("2026-11-21T12:00:00.000Z", new Date("2026-11-21T11:59:00Z")), { mode: "shareNow" });
+    assert.deepEqual(postTiming("2026-11-21T12:00:00.000Z", new Date("2026-11-21T11:57:00Z")), { mode: "customScheduled", dueAt: "2026-11-21T12:00:00.000Z" });
+  });
+  test("settleAction: only a truly scheduled post is accepted without polling", () => {
+    const sched = { mode: "customScheduled" as const, dueAt: "2026-11-21T12:00:00.000Z" };
+    assert.equal(settleAction(sched, "scheduled"), "accept");
+    assert.equal(settleAction(sched, "sent"), "poll");
+    assert.equal(settleAction(sched, "draft"), "fail");
+    assert.equal(settleAction(sched, "needs_approval"), "fail");
+    assert.equal(settleAction(sched, "error"), "fail");
+    assert.equal(settleAction({ mode: "shareNow" }, "sending"), "poll");
   });
 });
