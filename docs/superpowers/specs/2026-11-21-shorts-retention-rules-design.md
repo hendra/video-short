@@ -21,7 +21,7 @@
 - C: trim in CI publish — audio would drift from `timeline.json`. Rejected.
 
 ## Design
-- **Trim:** after `stageToMp3`, run FFmpeg `silenceremove=start_periods=1:start_threshold=-38dB:stop_periods=-1:stop_duration=0.2:stop_threshold=-38dB` (−38 dB matches `align-core` silencedetect), then `apad=pad_dur=0.05`, back to MP3. Aligner runs on the trimmed file, so timing/captions/timeline follow automatically.
+- **Trim (as built):** `silencedetect` (−38 dB, matches `align-core`) finds pauses > 0.2 s; they're cut with `atrim`+`concat` (head dropped, inner pauses → 0.2 s, tail → 0.05 s). The aligner runs on the **raw** take (line breaks are still the longest pauses there) and word times are mapped onto the trimmed file with the returned time map. Account gate also caps `config.json` `tail` at 0.3 s (not Cerpenek) so the video itself loops.
 - **Word cap:** count whitespace tokens across `readScript` lines; over 130 and account ≠ cerpenek → exit 1 with the count.
 - **Captions:** `MAXW` 5→3; update `timeline-core.test.mts` expectations; `MAX_NUM_WORDS`/char budget unchanged.
 - **AI Labs:** remove the deskripsi check + its tests; update `ops/accounts/ai-labs.md`.
