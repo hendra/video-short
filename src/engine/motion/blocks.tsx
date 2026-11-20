@@ -36,6 +36,22 @@ const cardShell: React.CSSProperties = {
   boxShadow: "0 18px 44px rgba(2, 6, 23, 0.55)",
 };
 
+/** Index of the latest item whose `activeAt` cue has passed (-1 when none). */
+const latestActive = <T extends { activeAt?: number }>(items: readonly T[], t: number): number => {
+  let idx = -1;
+  for (let i = 0; i < items.length; i++) {
+    const at = items[i].activeAt;
+    if (at !== undefined && t >= at) idx = i;
+  }
+  return idx;
+};
+
+/** Dim while another item is the one being narrated. */
+const spotlightOpacity = (items: readonly { activeAt?: number }[], idx: number, t: number): number => {
+  const active = latestActive(items, t);
+  return active < 0 || active === idx ? 1 : 0.55;
+};
+
 // 1. KineticHeadline
 export const KineticHeadline: React.FC<{
   t: number;
@@ -361,6 +377,8 @@ export type TerminalLine = {
   kind?: "cmd" | "info" | "ok" | "err" | "dim";
   at: number;
   highlight?: boolean;
+  /** When this line is being narrated: it stays lit, the others dim. */
+  activeAt?: number;
 };
 
 export const TerminalCard: React.FC<{
@@ -413,6 +431,7 @@ export const TerminalCard: React.FC<{
           const kind = line.kind ?? "info";
           const isCmd = kind === "cmd";
           const appearP = ramp(t, line.at, line.at + 0.16);
+          const spot = spotlightOpacity(lines, idx, t);
 
           const typed = isCmd ? typewriter(line.text, t, line.at, 32) : line.text;
           const typingNow = isCmd && typed.length < line.text.length;
@@ -443,7 +462,7 @@ export const TerminalCard: React.FC<{
                 borderRadius: line.highlight ? 8 : 0,
                 background: line.highlight ? ACCENT_TINT[hlAccent] : "transparent",
                 borderLeft: line.highlight ? `3px solid ${ACCENT_HEX[hlAccent]}` : "3px solid transparent",
-                opacity: appearP,
+                opacity: appearP * spot,
                 transform: isCmd ? undefined : `translate3d(0, ${(1 - appearP) * 8}px, 0)`,
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
@@ -635,6 +654,8 @@ type ComparisonSide = {
   label: string;
   title: string;
   points: string[];
+  /** One cue per point: the narrated point stays lit, the others dim. */
+  pointsAt?: number[];
   at: number;
 };
 
@@ -702,6 +723,8 @@ export const ComparisonSplit: React.FC<{
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {side.points.map((pt, idx) => {
             const ptP = stagger(t, side.at + 0.12, idx, 0.09, 0.3);
+            const cues = side.pointsAt ?? [];
+            const spot = cues.length === 0 ? 1 : spotlightOpacity(cues.map((activeAt) => ({ activeAt })), idx, t);
             return (
               <div
                 key={`${idx}-${pt}`}
@@ -709,7 +732,7 @@ export const ComparisonSplit: React.FC<{
                   display: "flex",
                   alignItems: "flex-start",
                   gap: 10,
-                  opacity: clamp(ptP),
+                  opacity: clamp(ptP) * spot,
                   transform: `translate3d(0, ${(1 - ptP) * 10}px, 0)`,
                 }}
               >
@@ -747,7 +770,7 @@ export const ComparisonSplit: React.FC<{
 export const MetricPanel: React.FC<{
   t: number;
   headline?: { label: string; from: number; to: number; unit?: string; decimals?: number; at: number; dur?: number };
-  bars?: Array<{ label: string; value: number; max?: number; display?: string; accent?: "mint" | "cyan" | "amber"; at: number }>;
+  bars?: Array<{ label: string; value: number; max?: number; display?: string; accent?: "mint" | "cyan" | "amber"; at: number; activeAt?: number }>;
   meter?: { label: string; used: number; total: number; unit?: string; at: number };
 }> = ({ t, headline, bars, meter }) => {
   const headlineP = headline ? spring((t - headline.at) / 0.35) : 0;
@@ -829,7 +852,7 @@ export const MetricPanel: React.FC<{
                   display: "flex",
                   flexDirection: "column",
                   gap: 6,
-                  opacity: clamp(rowP),
+                  opacity: clamp(rowP) * (bars ? spotlightOpacity(bars, idx, t) : 1),
                   transform: `translate3d(0, ${(1 - rowP) * 10}px, 0)`,
                 }}
               >
@@ -1319,6 +1342,76 @@ export const IllustrationStage: React.FC<{
           {caption}
         </div>
       ) : null}
+    </div>
+  );
+};
+
+// 9. BeatCallout — a numbered step pill that appears on the script line it belongs to.
+export const BeatCallout: React.FC<{
+  t: number;
+  at: number;
+  until?: number;
+  step: number;
+  text: string;
+  accent?: AccentKey;
+  align?: "left" | "center";
+}> = ({ t, at, until, step, text, accent = "cyan", align = "center" }) => {
+  const hex = ACCENT_HEX[accent];
+  const shown = t >= at && (until === undefined || t <= until);
+  const p = shown ? spring((t - at) / 0.3) : 0;
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: align === "center" ? "center" : "flex-start",
+        width: "100%",
+        opacity: p,
+        transform: `translate3d(0, ${(1 - p) * 12}px, 0) scale(${0.92 + 0.08 * p})`,
+      }}
+    >
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 18px 8px 8px",
+          borderRadius: 999,
+          background: ACCENT_TINT[accent],
+          border: `1px solid ${ACCENT_BORDER[accent]}`,
+          boxShadow: `0 0 22px ${ACCENT_TINT[accent]}`,
+        }}
+      >
+        <span
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: 15,
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: hex,
+            color: DARK_TECH.bg,
+            fontFamily: FONT.mono,
+            fontSize: 16,
+            fontWeight: 700,
+          }}
+        >
+          {step}
+        </span>
+        <span
+          style={{
+            fontFamily: FONT.mono,
+            fontSize: 16,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: hex,
+          }}
+        >
+          {text}
+        </span>
+      </div>
     </div>
   );
 };
