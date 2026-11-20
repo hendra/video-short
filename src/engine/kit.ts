@@ -911,9 +911,10 @@ export class Kit {
   }
 
   /**
-   * Particles flowing along a path (water, air, current, heat). `update(t, rate)` places them from the
-   * phase `t * speed * rate`, so a caller ramping `rate` with `beat(t, L(n))` speeds the flow up
-   * smoothly instead of jumping. One InstancedMesh: cheap on the CPU renderer.
+   * Particles flowing along a path (water, air, current, heat). `update(phase)` takes an INTEGRATED phase:
+   * pass `flowPhase(t, L(n))` to speed the flow up on a line. Never pass `t * rate` — multiplying t by a
+   * ramping rate teleports the dots and runs them backwards.
+   * One InstancedMesh, so a hundred dots cost one draw call.
    */
   flowDots(points: Vec3[], count: number, color: string, o: { r?: number; speed?: number; parent?: Object3D } = {}) {
     const { r = 0.045, speed = 0.35, parent } = o;
@@ -928,15 +929,15 @@ export class Kit {
     mesh.castShadow = false;
     this.root.add(mesh);
     if (parent) parent.add(mesh);
-    const update = (t: number, rate = 1) => {
+    const update = (phase: number) => {
       for (let i = 0; i < count; i++) {
-        const u = (i / count + t * speed * rate) % 1;
-        const p = curve.getPointAt((u + 1) % 1);
+        const u = (((i / count + phase * speed) % 1) + 1) % 1;
+        const p = curve.getPointAt(u);
         setInstance(mesh, i, p.x, p.y, p.z);
       }
       mesh.instanceMatrix.needsUpdate = true;
     };
-    update(0, 0);
+    update(0);
     return Object.assign(mesh, { update });
   }
 
@@ -993,8 +994,9 @@ export const poseFigure = (fig: FigureParts, t: number, mode: PoseMode, seed = 0
   // reset every frame: the parts are shared state, so each pose must fully describe itself
   fig.head.rotation.set(0, 0, 0);
   fig.torso.rotation.set(0, 0, 0);
-  fig.armL.rotation.set(0, -0.22, 0);
-  fig.armR.rotation.set(0, 0.22, 0);
+  // Kit.figure builds the arms splayed on Z (g.rotation.z = sx * 0.22): reset on the same axis
+  fig.armL.rotation.set(0, 0, -0.22);
+  fig.armR.rotation.set(0, 0, 0.22);
   fig.legL.rotation.set(0, 0, 0);
   fig.legR.rotation.set(0, 0, 0);
   fig.blink.scale.set(1, 1, 1);

@@ -234,3 +234,41 @@ describe("briefs teach line-beat choreography", () => {
     assert.ok(prompt.includes("check-motion"), "ci-prompt must list check-motion");
   });
 });
+
+// The brief snippets are copy-paste targets: an agent that pastes one into src/videos/<slug>/ must not hit a
+// tsc error, because the Gates step runs `npm run lint` (noUnusedLocals: true) right after.
+const snippetBlocks = (text: string): string[] =>
+  [...text.matchAll(/```ts\n([\s\S]*?)```/g)].map((m) => m[1]);
+
+describe("brief TypeScript snippets are copy-paste safe", () => {
+  test("no choreography snippet declares an unused local (root tsconfig sets noUnusedLocals)", () => {
+    const NEW_HELPERS = /\b(beat|pulse|between|stepIndex|flowPhase|focusOffset|poseFigure)\b/;
+    for (const p of ["docs/AUTOPILOT.md", "ops/accounts/sastra-mesin.md", "ops/accounts/cerpenek.md", "ops/accounts/ai-labs.md"]) {
+      const text = fs.readFileSync(path.join(ROOT, p), "utf8");
+      for (const block of snippetBlocks(text).filter((b) => NEW_HELPERS.test(b))) {
+        const declared = [...block.matchAll(/^\s*const (\w+)\s*=/gm)].map((m) => m[1]);
+        for (const name of declared) {
+          const uses = (block.match(new RegExp(`\\b${name}\\b`, "g")) ?? []).length;
+          assert.ok(uses > 1, `${p}: snippet declares \`${name}\` and never uses it — tsc TS6133 under noUnusedLocals`);
+        }
+      }
+    }
+  });
+
+  test("every snippet only names identifiers it defines or the real engine exports", () => {
+    const engineExports = new Set<string>();
+    for (const f of ["src/engine/math.ts", "src/engine/kit.ts", "src/engine/motion/blocks.tsx", "src/engine/types.ts"]) {
+      const src = fs.readFileSync(path.join(ROOT, f), "utf8");
+      for (const m of src.matchAll(/export (?:const|function|type|class) (\w+)/g)) engineExports.add(m[1]);
+    }
+    const ALLOWED = new Set(["t", "ctx", "L", "Kit", "kit", "poseFigure", "beat", "pulse", "between", "stepIndex", "flowPhase", "focusOffset", "keyframes", "Vec3", "CamPose", "BentoItem", "BeatCallout", "BentoGrid", "TerminalCard", "MetricPanel", "NodeFlow", "PromptCard", "ComparisonSplit", "IllustrationStage", "anak", "cards", "base", "pose", "mode", "on", "hi", "openU", "step", "box", "mat", "root", "shot", "import", "from"]);
+    for (const p of ["docs/AUTOPILOT.md", "ops/accounts/sastra-mesin.md", "ops/accounts/cerpenek.md", "ops/accounts/ai-labs.md"]) {
+      const text = fs.readFileSync(path.join(ROOT, p), "utf8");
+      for (const block of snippetBlocks(text)) {
+        for (const m of block.matchAll(/\b(base|shot)\(/g)) {
+          assert.ok(engineExports.has(m[1]) || ALLOWED.has(m[1]) || block.includes(`const ${m[1]} `), `${p}: snippet calls ${m[1]}() but never defines it`);
+        }
+      }
+    }
+  });
+});

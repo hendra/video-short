@@ -127,6 +127,19 @@ export const stepIndex = (t: number, lines: readonly Line[]): number => {
   return idx;
 };
 
+/**
+ * Integrated time for continuous motion (flow particles, spinning parts) that speeds up on a line and never
+ * reverses. Never pass `t * rate` to a motion phase: multiplying t by a ramping rate teleports the object and
+ * runs it backwards. Here the rate ramps from 1 to (1 + boost), so this function only ever increases.
+ */
+export const flowPhase = (t: number, line?: Line, o: { lead?: number; boost?: number } = {}): number => {
+  const { lead = 0.28, boost = 1.5 } = o;
+  if (!line || t <= line.s) return t;
+  const u = clamp((t - line.s) / Math.max(1e-6, lead));
+  // integral of the smoothstep ramp over the lead window: u^3 - u^4/2 (extra speed is never lost)
+  return t + boost * lead * (u * u * u - (u * u * u * u) / 2);
+};
+
 /** A camera nudge towards the part being explained: offsets blend in over `transition` seconds. */
 export type FocusCue = { at: number; offset: Vec3; targetOffset?: Vec3 };
 

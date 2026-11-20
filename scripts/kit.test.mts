@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { Group, Mesh, Object3D } from "three";
 import { Kit, poseFigure } from "../src/engine/kit.ts";
+import { flowPhase } from "../src/engine/math.ts";
 
 // Duck-typed: tsx can load two copies of `three` (src/ vs scripts/ resolution), so `instanceof Mesh` is unreliable here.
 const isMesh = (o: Object3D): boolean => (o as { isMesh?: boolean }).isMesh === true;
@@ -64,21 +65,36 @@ describe("Kit mechanical builders", () => {
 });
 
 describe("Kit flow, cutaway and glow", () => {
-  test("flowDots advances along the curve and rate scales its speed", () => {
+  test("flowDots advances along the curve and never reverses", () => {
     const kit = new Kit(new Group());
     const dots = kit.flowDots([[0, 0, 0], [1, 0, 0], [2, 0, 0]], 6, "#7fe3c4", { speed: 0.5 });
     const snap = () => Array.from(dots.instanceMatrix.array.slice(0, 16));
     const before = snap();
-    dots.update(1, 1);
-    const normal = snap();
-    assert.notDeepEqual(before, normal);
-    for (const v of normal) assert.ok(Number.isFinite(v));
-    // rate is a pure scale of t: 0 puts every dot at its base phase, 2 runs twice as far. No cross-frame
-    // memory, so a paused flow means the caller stops advancing t (beat() ramps it), never a stored phase.
-    dots.update(1, 0);
-    assert.deepEqual(snap(), before);
-    dots.update(1, 2);
-    assert.notDeepEqual(snap(), normal);
+    dots.update(0.5);
+    assert.notDeepEqual(snap(), before);
+    for (const v of snap()) assert.ok(Number.isFinite(v));
+  });
+
+  test("a line-boosted flow keeps moving forward at every frame, never flicking back", () => {
+    const kit = new Kit(new Group());
+    const dots = kit.flowDots([[0, 0, 0], [1, 0, 0], [2, 0, 0]], 6, "#7fe3c4", { speed: 0.35 });
+    const line = { n: 5, s: 30, e: 33, text: "x" };
+    const firstX = () => dots.instanceMatrix.array[12];
+    let prev = -1;
+    let moves = 0;
+    // walk the whole lead window at 30 fps: the dot must advance monotonically, never jump back
+    for (let f = 0; f <= 30; f++) {
+      const t = 29.8 + f / 30;
+      dots.update(flowPhase(t, line));
+      const x = firstX();
+      if (prev >= 0) {
+        const d = ((x - prev) % 2 + 2) % 2; // wrap-safe forward distance along the 0..2 tube
+        assert.ok(d < 1, `dot jumped ${d.toFixed(2)} of the tube at t=${t.toFixed(3)} — flow reversed or teleported`);
+        if (d > 0) moves++;
+      }
+      prev = x;
+    }
+    assert.ok(moves > 20, `flow barely moved (${moves} advancing frames)`);
   });
 
   test("cutaway slides parts open, hides them fully open, and returns to base when reopened", () => {
@@ -159,5 +175,21 @@ describe("Kit diorama life", () => {
     assert.deepEqual(a, b);
     rp.setPhase(0.9);
     assert.notDeepEqual(a, rp.root.children.map((c) => c.scale.x));
+  });
+});
+
+describe("poseFigure keeps the built arm splay", () => {
+  test("arms keep their outward z-splay in every mode that does not override it", () => {
+    const kit = new Kit(new Group());
+    const f = kit.figure(0, 0, 0);
+    // Kit.figure builds the arms with rotation.z = ±0.22; poseFigure must reset onto the same axis
+    for (const mode of ["talk", "wave", "point", "sad"] as const) {
+      poseFigure(f, 1, mode, 1);
+      assert.ok(Math.abs(f.armL.rotation.y) < 1e-9, `${mode}: left arm yawed to ${f.armL.rotation.y}`);
+      assert.ok(Math.abs(f.armR.rotation.y) < 1e-9, `${mode}: right arm yawed to ${f.armR.rotation.y}`);
+    }
+    poseFigure(f, 1, "sad", 1);
+    assert.ok(f.armL.rotation.z < 0, `sad: left arm lost its outward splay (z=${f.armL.rotation.z})`);
+    assert.ok(f.armR.rotation.z > 0, `sad: right arm lost its outward splay (z=${f.armR.rotation.z})`);
   });
 });
