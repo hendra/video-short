@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { describe, test } from "node:test";
 import {
   bufferChannelIds,
+  bufferPostsFilter,
   cloudinarySign,
   extractBufferError,
   instagramInput,
@@ -166,5 +167,16 @@ describe("bufferChannelIds and mapBufferPostNode", () => {
     assert.equal(mapBufferPostNode({ id: "2", text: "x", channelService: "tiktok" })?.platform, "tiktok");
     assert.equal(mapBufferPostNode({ id: "3", text: "x", channelService: "youtube" })?.platform, "youtube");
     assert.equal(mapBufferPostNode({ id: "4" }), null);
+  });
+});
+
+describe("duplicate lookup sees queued posts", () => {
+  test("filter asks Buffer for sent and scheduled posts", () => {
+    const f = bufferPostsFilter(ACCOUNTS["kali-aja"].buffer);
+    assert.deepEqual(f.status, ["sent", "scheduled"]);
+    assert.deepEqual(f.channelIds, bufferChannelIds(ACCOUNTS["kali-aja"].buffer));
+  });
+  test("a scheduled post is dated by its dueAt", () => {
+    assert.equal(mapBufferPostNode({ id: "9", text: "x", createdAt: "2026-11-21T00:00:00Z", dueAt: "2026-11-22T00:00:00Z" })?.date, "2026-11-22");
   });
 });

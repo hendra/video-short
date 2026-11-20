@@ -115,11 +115,15 @@ export const bufferChannelIds = (buffer: Account["buffer"]): string[] => [
   ...(buffer.instagramChannelId ? [buffer.instagramChannelId] : []),
 ];
 
+/** Buffer posts filter for the duplicate lookup: sent plus still-queued posts, so a scheduled video is not made twice. */
+export const bufferPostsFilter = (buffer: Account["buffer"]) => ({ channelIds: bufferChannelIds(buffer), status: ["sent", "scheduled"] });
+
 export type BufferNode = {
   id?: string;
   channelService?: string;
   createdAt?: string;
   sentAt?: string | null;
+  dueAt?: string | null;
   text?: string;
   externalLink?: string | null;
   metadata?: { title?: string | null };
@@ -132,7 +136,7 @@ export const mapBufferPostNode = (node: BufferNode): RecentPost | null => {
   return {
     id: `buffer:${node.id}`,
     platform,
-    date: (node.sentAt ?? node.createdAt ?? new Date().toISOString()).slice(0, 10),
+    date: (node.sentAt ?? node.dueAt ?? node.createdAt ?? new Date().toISOString()).slice(0, 10),
     title: node.metadata?.title ?? null,
     text: node.text,
     link: node.externalLink ?? null,
