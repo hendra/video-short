@@ -1260,14 +1260,143 @@ const DocToJsonIllustration: React.FC<{ t: number; at: number }> = ({ t, at }) =
   );
 };
 
+/** Agent loop: Think → Tool → Observe → Verify, with a token travelling the loop. */
+const AgentLoopIllustration: React.FC<{ t: number; at: number; activeStep?: number }> = ({ t, at, activeStep }) => {
+  const steps = [
+    { label: "Think", color: DARK_TECH.mint },
+    { label: "Tool Call", color: DARK_TECH.cyan },
+    { label: "Observe", color: DARK_TECH.amber },
+    { label: "Verify", color: DARK_TECH.violet },
+  ];
+  const cx = 420, cy = 180, r = 108;
+  const enter = spring((t - at) / 0.4);
+  const phase = Math.max(0, (t - at) * 0.32) % 1;
+  const angle = -Math.PI / 2 + phase * Math.PI * 2;
+  return (
+    <svg width="100%" viewBox="0 0 840 360" style={{ display: "block" }} aria-hidden="true">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(148,163,184,0.28)" strokeWidth={2} strokeDasharray="8 8" />
+      {/* travelling token */}
+      <circle cx={cx + Math.cos(angle) * r} cy={cy + Math.sin(angle) * r} r={8} fill={DARK_TECH.mint} opacity={clamp(enter)} />
+      <text x={cx} y={cy - 6} textAnchor="middle" fill={DARK_TECH.muted} fontFamily={FONT.mono} fontSize={15} letterSpacing={2}>
+        AGENT LOOP
+      </text>
+      <text x={cx} y={cy + 22} textAnchor="middle" fill={DARK_TECH.ink} fontFamily={FONT.display} fontSize={26} fontWeight={800}>
+        satu putaran
+      </text>
+      {steps.map((s, i) => {
+        const a = -Math.PI / 2 + (i / steps.length) * Math.PI * 2;
+        const x = cx + Math.cos(a) * r;
+        const y = cy + Math.sin(a) * r;
+        const on = activeStep === i;
+        const p = spring((t - at - i * 0.12) / 0.32);
+        return (
+          <g key={s.label} opacity={clamp(p) * (activeStep === undefined || on ? 1 : 0.5)}>
+            <circle cx={x} cy={y} r={on ? 44 : 36} fill="rgba(15, 23, 42, 0.94)" stroke={s.color} strokeWidth={on ? 3.5 : 2} />
+            <text x={x} y={y + 6} textAnchor="middle" fill={s.color} fontFamily={FONT.mono} fontSize={14} fontWeight={700}>
+              {s.label.split(" ")[0]}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+};
+
+/** Context window: token blocks filling up, then compacting. */
+const ContextWindowIllustration: React.FC<{ t: number; at: number; activeStep?: number }> = ({ t, at, activeStep }) => {
+  const N = 12;
+  const fill = ramp(t, at, at + 1.2);
+  const filled = Math.round(N * fill);
+  const compact = activeStep !== undefined && activeStep >= 2;
+  const compactP = compact ? ramp(t, at + 0.4, at + 1.4) : 0;
+  return (
+    <svg width="100%" viewBox="0 0 840 360" style={{ display: "block" }} aria-hidden="true">
+      <text x={60} y={62} fill={DARK_TECH.muted} fontFamily={FONT.mono} fontSize={15} letterSpacing={2}>
+        CONTEXT WINDOW
+      </text>
+      {Array.from({ length: N }, (_, i) => {
+        const x = 60 + i * 60;
+        const lit = i < filled && !(compact && i > 5 && compactP > 0.6);
+        const spot = activeStep !== undefined && i === Math.min(activeStep, N - 1);
+        return (
+          <rect
+            key={i}
+            x={x}
+            y={100}
+            width={48}
+            height={92}
+            rx={8}
+            fill={lit ? "rgba(127, 227, 196, 0.22)" : "rgba(30, 41, 59, 0.7)"}
+            stroke={spot ? DARK_TECH.amber : lit ? DARK_TECH.mint : DARK_TECH.border}
+            strokeWidth={spot ? 3 : 1.5}
+          />
+        );
+      })}
+      <text x={60} y={236} fill={DARK_TECH.cyan} fontFamily={FONT.mono} fontSize={16}>
+        {filled} / {N} token
+      </text>
+      {compactP > 0 ? (
+        <g opacity={compactP}>
+          <path d="M120 288 L420 288" stroke={DARK_TECH.amber} strokeWidth={3} markerEnd="" />
+          <text x={430} y={294} fill={DARK_TECH.amber} fontFamily={FONT.mono} fontSize={16} fontWeight={700}>
+            COMPACT
+          </text>
+        </g>
+      ) : null}
+    </svg>
+  );
+};
+
+/** Code diff: red lines replaced by mint lines, then a verified badge. */
+const CodeDiffIllustration: React.FC<{ t: number; at: number; activeStep?: number }> = ({ t, at, activeStep }) => {
+  const removed = 4;
+  const added = 4;
+  const badgeP = activeStep !== undefined && activeStep >= 2 ? spring((t - at - 0.6) / 0.35) : 0;
+  return (
+    <svg width="100%" viewBox="0 0 840 360" style={{ display: "block" }} aria-hidden="true">
+      <rect x={52} y={40} width={736} height={280} rx={14} fill="rgba(10, 14, 23, 0.96)" stroke={DARK_TECH.border} strokeWidth={2} />
+      {Array.from({ length: removed }, (_, i) => {
+        const p = ramp(t, at + i * 0.12, at + i * 0.12 + 0.24);
+        return (
+          <g key={`r${i}`} opacity={p}>
+            <rect x={72} y={64 + i * 32} width={696} height={24} rx={5} fill="rgba(248, 113, 113, 0.12)" />
+            <text x={84} y={82 + i * 32} fill={DARK_TECH.red} fontFamily={FONT.mono} fontSize={16}>
+              - baris lama {i + 1}
+            </text>
+          </g>
+        );
+      })}
+      {Array.from({ length: added }, (_, i) => {
+        const p = ramp(t, at + 0.35 + i * 0.12, at + 0.35 + i * 0.12 + 0.24);
+        return (
+          <g key={`a${i}`} opacity={p}>
+            <rect x={72} y={196 + i * 30} width={696} height={22} rx={5} fill="rgba(127, 227, 196, 0.14)" />
+            <text x={84} y={213 + i * 30} fill={DARK_TECH.mint} fontFamily={FONT.mono} fontSize={16}>
+              + baris baru {i + 1}
+            </text>
+          </g>
+        );
+      })}
+      {badgeP > 0 ? (
+        <g opacity={clamp(badgeP)}>
+          <circle cx={744} cy={80} r={22} fill="rgba(127, 227, 196, 0.18)" stroke={DARK_TECH.mint} strokeWidth={2.5} />
+          <path d="M735 80l7 7 12 -13" fill="none" stroke={DARK_TECH.mint} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+      ) : null}
+    </svg>
+  );
+};
+
 export const IllustrationStage: React.FC<{
   t: number;
   at: number;
   title?: string;
   caption?: string;
-  variant?: "photo-wipe" | "mcp-bridge" | "doc-to-json" | "custom";
+  variant?: "photo-wipe" | "mcp-bridge" | "doc-to-json" | "agent-loop" | "context-window" | "code-diff" | "custom";
+  /** Which step the narration is on: brightens that node in the diagrams. */
+  activeStep?: number;
   children?: React.ReactNode;
-}> = ({ t, at, title, caption, variant, children }) => {
+}> = ({ t, at, title, caption, variant, activeStep, children }) => {
   const uid = useId();
   const enterP = spring((t - at) / 0.36);
   const mode = variant ?? (children ? "custom" : "mcp-bridge");
@@ -1322,6 +1451,12 @@ export const IllustrationStage: React.FC<{
           <PhotoWipeIllustration t={t} at={at} uid={uid} />
         ) : mode === "doc-to-json" ? (
           <DocToJsonIllustration t={t} at={at} />
+        ) : mode === "agent-loop" ? (
+          <AgentLoopIllustration t={t} at={at} activeStep={activeStep} />
+        ) : mode === "context-window" ? (
+          <ContextWindowIllustration t={t} at={at} activeStep={activeStep} />
+        ) : mode === "code-diff" ? (
+          <CodeDiffIllustration t={t} at={at} activeStep={activeStep} />
         ) : (
           <McpBridgeIllustration t={t} at={at} />
         )}

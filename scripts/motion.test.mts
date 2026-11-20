@@ -18,7 +18,7 @@ import {
   type TransitionKind,
 } from "../src/engine/motion/math.ts";
 import { shouldShowCaptions } from "../src/engine/overlays/Overlays.tsx";
-import { BeatCallout, ComparisonSplit, MetricPanel, TerminalCard } from "../src/engine/motion/blocks.tsx";
+import { BeatCallout, ComparisonSplit, IllustrationStage, MetricPanel, TerminalCard } from "../src/engine/motion/blocks.tsx";
 import type { ShotSpan } from "../src/engine/types.ts";
 
 describe("motion timing helpers", () => {
@@ -327,5 +327,22 @@ describe("ComparisonSplit line spotlighting", () => {
     const after = { label: "BARU", title: "Cara baru", points: ["Poin C"], at: 0 };
     const html = renderToStaticMarkup(ComparisonSplit({ t: 9, before, after }) as React.ReactElement);
     assert.doesNotMatch(html, /opacity:0\.55/);
+  });
+});
+
+describe("IllustrationStage presets", () => {
+  test("each new variant renders an SVG and changes between timestamps", () => {
+    for (const variant of ["agent-loop", "context-window", "code-diff"] as const) {
+      const a = renderToStaticMarkup(React.createElement(IllustrationStage, { t: 1, at: 1, variant, activeStep: 0 }));
+      const b = renderToStaticMarkup(React.createElement(IllustrationStage, { t: 3, at: 1, variant, activeStep: 2 }));
+      assert.match(a, /<svg/, `${variant} must draw an SVG`);
+      assert.notEqual(a.replace(/id="[^"]*"/g, ""), b.replace(/id="[^"]*"/g, ""), `${variant} did not change between timestamps`);
+    }
+  });
+
+  test("activeStep highlights a different node as the narration advances", () => {
+    const a = renderToStaticMarkup(React.createElement(IllustrationStage, { t: 4, at: 1, variant: "agent-loop", activeStep: 0 }));
+    const b = renderToStaticMarkup(React.createElement(IllustrationStage, { t: 4, at: 1, variant: "agent-loop", activeStep: 3 }));
+    assert.notEqual(a, b);
   });
 });
