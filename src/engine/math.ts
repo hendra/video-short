@@ -1,5 +1,5 @@
 import { PerspectiveCamera, Vector3 } from "three";
-import type { CamPose, Ctx, Timeline, Vec3 } from "./types";
+import type { CamPose, Ctx, Line, Timeline, Vec3 } from "./types";
 
 export const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 export const lerp = (a: number, b: number, x: number) => a + (b - a) * x;
@@ -106,6 +106,44 @@ export const makeProjector = (pose: CamPose, fov: number, width: number, height:
     const v = new Vector3(...p).project(cam);
     return { x: ((v.x + 1) / 2) * width, y: ((1 - v.y) / 2) * height, behind: v.z > 1 };
   };
+};
+
+// ---------- line beats: bind animation to the spoken script line instead of raw seconds
+/** 0 before the line starts, ramps smoothly to 1 over `lead` seconds as it begins, then stays 1. */
+export const beat = (t: number, line: Line, lead = 0.28) => ramp(t, line.s, line.s + Math.max(1e-6, lead));
+
+/** 1 only while this line is being spoken (fades in/out by `fade`), 0 outside it. */
+export const pulse = (t: number, line: Line, fade = 0.22) =>
+  clamp(Math.min(ramp(t, line.s, line.s + fade), 1 - ramp(t, line.e - fade, line.e)));
+
+/** 1 while the span from `from.s` to `to.e` is being spoken; fades at both ends. */
+export const between = (t: number, from: Line, to: Line, fade = 0.25) =>
+  clamp(Math.min(ramp(t, from.s, from.s + fade), 1 - ramp(t, to.e - fade, to.e)));
+
+/** Index of the latest line that has started (-1 before the first). */
+export const stepIndex = (t: number, lines: readonly Line[]): number => {
+  let idx = -1;
+  for (let i = 0; i < lines.length; i++) if (lines[i].s <= t) idx = i;
+  return idx;
+};
+
+/** A camera nudge towards the part being explained: offsets blend in over `transition` seconds. */
+export type FocusCue = { at: number; offset: Vec3; targetOffset?: Vec3 };
+
+const add3 = (a: Vec3, b: Vec3): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const ZERO: Vec3 = [0, 0, 0];
+
+export const focusOffset = (base: CamPose, t: number, cues: readonly FocusCue[], transition = 0.35): CamPose => {
+  let cur = -1;
+  for (let i = 0; i < cues.length; i++) if (cues[i].at <= t) cur = i;
+  if (cur < 0) return base;
+  const prev = cur > 0 ? cues[cur - 1] : undefined;
+  const u = ramp(t, cues[cur].at, cues[cur].at + transition);
+  const fromPos = add3(base.position, prev?.offset ?? ZERO);
+  const toPos = add3(base.position, cues[cur].offset);
+  const fromTarget = add3(base.target, prev?.targetOffset ?? ZERO);
+  const toTarget = add3(base.target, cues[cur].targetOffset ?? ZERO);
+  return { position: lerp3(fromPos, toPos, u), target: lerp3(fromTarget, toTarget, u) };
 };
 
 export const fmtID = (v: number, dec = 0) =>
