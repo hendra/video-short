@@ -11,6 +11,7 @@
     "align:local": "tsx scripts/align-local.mts",
     "timeline": "tsx scripts/build-timeline.mts",
     "check-sync": "tsx scripts/check-sync.mts",
+    "check-motion": "tsx scripts/check-motion.mts",
     "music": "tsx scripts/music.mts",
     "credits": "tsx scripts/credits.mts",
     "render": "remotion render",
