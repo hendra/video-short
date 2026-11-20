@@ -64,6 +64,16 @@ Jangan pakai brand channel lain dan jangan hilangkan `theme: "blueprint"`. Gate 
   - **Steel Gray (`#81909C`) & Soft White (`#F4F5F6`):** rangka luar, bagian diam, detail struktural.
   - Jangan memakai warna yang membalik makna proses (mis. panas berwarna biru/sian).
 - **Wajib tunjukkan mekanismenya:** potong cangkang luar (*cutaway*) atau pisahkan lapisan (*exploded view*) agar bagian dalam terlihat jelas. Semua komponen yang terhubung secara mekanik bergerak selaras — bukan gerak hiasan yang keliru secara fisika.
+- **Koreografi per baris (wajib).** Setiap shot mengikat geraknya ke `L(n)` yang sedang diucapkan, bukan satu `ramp` panjang. Helper di `engine/math.ts`:
+  ```ts
+  const on = beat(t, L(5));        // 0 → 1 saat baris 5 mulai
+  const hi = pulse(t, L(5));       // 1 hanya selama baris 5 diucapkan
+  const openU = between(t, L(5), L(7)); // 1 dari awal baris 5 sampai akhir baris 7
+  ```
+  Bagian yang sedang diceritakan harus bagian yang bergerak/menyala pada detik yang sama. Gate CI menolak shot yang objeknya tidak bergerak (kamera saja tidak cukup).
+- **Bagian mekanis siap pakai:** `kit.tube(points, r, mat)` (pipa/kabel/duct melengkung, `at(u)` untuk menempel objek), `kit.flowDots(points, count, color, { speed })` (aliran air/udara/listrik/panas; `dots.update(t, beat(t, L(n)))`), `kit.gear(x, y, z, { teeth, axis })` (putar `rotor.rotation[axis]`), `kit.fan(...)` (baling-baling, `rotor`), `kit.coil(...)` (pegas/kumparan pemanas/kumparan induksi), `kit.arrow(from, to, mat)` (vektor gaya/panas/arus; `setProgress(u)`), `kit.ring(...)` (flens, seal, cincin medan magnet).
+- **Cutaway & sorotan:** `kit.cutaway([...shell], openU, [dx, dy, dz])` menggeser cangkang luar (sembunyi saat `openU >= 0.99`). Untuk bagian yang menyala, pakai `kit.glowMat(color, "#20C9C3")` — material **tanpa cache** — lalu `mat.emissiveIntensity = pulse(t, L(n)) * 0.8`. Jangan mengubah material dari `kit.mat()`; material itu dipakai bersama oleh banyak mesh.
+- **Kamera:** minimal dua keyframe, plus dorongan halus saat baris penting: `focusOffset(base(t), t, [{ at: L(6).s, offset: [0, 0.3, -1.2] as Vec3 }])`.
 - Setiap proses penting yang sedang diceritakan di narasi harus tampak terjadi di layar pada detik yang sama (ikat animasi ke `L(n).s` / `L(n).e`).
 - Skema internal yang disederhanakan untuk kejelasan diberi `tag: "ILUSTRASI"` di shot terkait.
 - `label` di `shots.ts` berbentuk nomor langkah/komponen ringkas (mis. `"KOMPONEN 01"`, `"ALIRAN 02"`). `title` pendek dengan kata kunci di `*bintang*`.

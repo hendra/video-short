@@ -79,6 +79,20 @@ Supaya setiap objek tampak nyata (bukan kotak polos), bangun adegan dari `Kit` (
 - Jangan pakai environment map, bump map, atau post-processing: di render CPU (CI) biayanya 3× lipat.
 
 Standar kualitas (pelajaran dari video sebelumnya):
+- **Koreografi per baris (wajib).** Setiap shot mengikat animasinya ke baris yang sedang diucapkan, bukan satu `ramp` panjang sepanjang shot. Pakai helper di `engine/math.ts`:
+  ```ts
+  const on = beat(t, L(4));      // 0 sebelum baris 4, naik halus ke 1 saat baris itu mulai
+  const hi = pulse(t, L(4));     // 1 hanya selama baris 4 diucapkan (untuk menyorot bagian yang dibahas)
+  const openU = between(t, L(4), L(6)); // 1 dari awal baris 4 sampai akhir baris 6 (buka-tutup cangkang)
+  const step = stepIndex(t, [L(4), L(5), L(6)]); // 0,1,2 — langkah mana yang sedang dibahas
+  ```
+  Setiap shot **wajib** punya minimal satu bagian yang bergerak nyata sepanjang shot (gerigi berputar, `flowDots` mengalir, cangkang `kit.cutaway` bergeser, atau material `kit.glowMat` berdenyut). Kamera saja tidak cukup — gate CI menolaknya.
+- **Bagian mekanis siap pakai:** `kit.tube(points, r, mat)` (pipa/kabel/wire melengkung; `at(u)` untuk menempelkan objek di jalurnya), `kit.flowDots(points, count, color, { speed })` (partikel mengalir di jalur; panggil `dots.update(t, beat(t, L(n)))` supaya aliran ikut cepat saat dijelaskan), `kit.gear(x, y, z, { teeth, axis })` (putar `rotor.rotation[axis]`), `kit.fan(...)` (baling-baling/turbin, `rotor`), `kit.coil(...)` (pegas/kumparan pemanas), `kit.arrow(from, to, mat)` (vektor gaya/panas; `setProgress(u)`), `kit.ring(...)` (flens/seal).
+- **Cutaway & sorotan:** `kit.cutaway([...parts], openU, [dx, dy, dz])` menggeser cangkang luar dan menyembunyikannya saat `openU >= 0.99`; `kit.glowMat(color, emissive)` adalah material **tanpa cache** untuk bagian yang menyala — set `mat.emissiveIntensity = pulse(t, L(n)) * 0.8`. Jangan mengubah material dari `kit.mat()` karena material itu dipakai bersama.
+- **Kamera bergerak per bit:** `keyframes` minimal dua posisi, lalu beri dorongan halus saat baris penting:
+  ```ts
+  const pose = focusOffset(base(t), t, [{ at: L(6).s, offset: [0, 0.4, -1.4] as Vec3 }]);
+  ```
 - **Potongan tanah (cut face) di z = 0**, tanah dalam (BOT ≈ −11) supaya separuh bawah frame tidak kosong; strata warna + titik air.
 - Frame **potret**: FOV 44, objek utama mengisi ≥ 50% lebar; diorama yang memanjang diputar agar memanjang ke arah kamera.
 - 1 shot ≈ 1–2 baris naskah (8–12 shot). Setiap shot punya gerak nyata (bukan still).

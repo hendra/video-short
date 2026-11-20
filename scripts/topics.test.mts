@@ -201,3 +201,36 @@ describe("Sastra Mesin topic backlog", () => {
     }
   });
 });
+
+// ---------- line-beat choreography requirements
+describe("briefs teach line-beat choreography", () => {
+  test("every 3D brief documents beat()/pulse() and the new kit parts", () => {
+    for (const p of ["docs/AUTOPILOT.md", "ops/accounts/sastra-mesin.md", "ops/accounts/cerpenek.md"]) {
+      const text = fs.readFileSync(path.join(ROOT, p), "utf8");
+      assert.match(text, /beat\(t, L\(/, `${p} must show beat(t, L(n))`);
+      assert.match(text, /pulse\(t, L\(/, `${p} must show pulse(t, L(n))`);
+    }
+    const sm = fs.readFileSync(path.join(ROOT, "ops/accounts/sastra-mesin.md"), "utf8");
+    for (const name of ["kit.tube(", "kit.gear(", "kit.flowDots(", "kit.cutaway(", "kit.glowMat("]) {
+      assert.ok(sm.includes(name), `sastra-mesin must show ${name}`);
+    }
+    const cp = fs.readFileSync(path.join(ROOT, "ops/accounts/cerpenek.md"), "utf8");
+    for (const name of ["poseFigure(", "kit.cloud(", "kit.prop(", "kit.ripple("]) {
+      assert.ok(cp.includes(name), `cerpenek must show ${name}`);
+    }
+  });
+
+  test("ai-labs brief documents the new motion beats", () => {
+    const text = fs.readFileSync(path.join(ROOT, "ops/accounts/ai-labs.md"), "utf8");
+    for (const s of ["BeatCallout", "agent-loop", "context-window", "code-diff", "activeAt"]) {
+      assert.ok(text.includes(s), `ai-labs must document ${s}`);
+    }
+  });
+
+  test("CI runs the motion gate before rendering", () => {
+    const wf = fs.readFileSync(path.join(ROOT, ".github/workflows/video.yml"), "utf8");
+    assert.ok(wf.includes("check-motion"), "workflow must run check-motion");
+    const prompt = fs.readFileSync(path.join(ROOT, "ops/ci-prompt.md"), "utf8");
+    assert.ok(prompt.includes("check-motion"), "ci-prompt must list check-motion");
+  });
+});
