@@ -25,7 +25,7 @@ Kenapa dipecah: render CPU sudah memakai semua core (`--concurrency` tidak berpe
 | Publish | `scripts/publish.mts` (`npm run publish -- <slug>`) — Cloudinary signed upload → Buffer GraphQL; publish fetch Buffer lagi sebelum upload dan menolak kandidat yang sudah dekat dengan post live |
 | Report | `scripts/report.mts` (`npm run report -- <slug>`) — Slack #social; otomatis membaca links dari `/tmp/publish-result.json` bila `--links` kosong |
 | Publikasi history | `scripts/fetch-published-videos.mts` — fetch seluruh post Buffer sent ke `/tmp/published-videos-<akun>.json` (org + channel ID per akun dari `src/accounts.ts`); dipakai duplicate gate dan publish-time check; tidak di-commit |
-| Agent | `ops/ci-prompt.md` — opencode, `--model opencode/inkling-2-small-free` |
+| Agent | `ops/ci-prompt.md` — opencode, `--model opencode/deepseek-v4.1-flash-free` |
 
 ## Setup sekali jalan (baru)
 

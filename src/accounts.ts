@@ -47,7 +47,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
     madeForKids: false,
     tts: { voice: "id-id-podcaster-1", style: "natural, warm, conversational" },
     agent: {
-      model: "opencode/inkling-2-small-free",
+      model: "opencode/deepseek-v4.1-flash-free",
       prompt:
         "You are in CI. Follow AGENTS.md and docs/AUTOPILOT.md. Follow ops/ci-prompt.md exactly. Stop before any publish/upload/render step.",
       files: ["AGENTS.md", "docs/AUTOPILOT.md", "ops/ci-prompt.md"],
@@ -66,7 +66,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
     madeForKids: false,
     tts: { voice: "id-id-podcaster-1", style: "natural, warm, conversational" },
     agent: {
-      model: "opencode/inkling-2-small-free",
+      model: "opencode/deepseek-v4.1-flash-free",
       prompt:
         "You are in CI. Follow AGENTS.md and ops/ci-prompt.md exactly. Follow ops/accounts/ai-labs.md (channel brief) and ops/topics/ai-labs.md (topic backlog) — they are part of your instructions, and docs/AUTOPILOT.md does NOT apply to this channel. Stop before any publish/upload/render step.",
       files: ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/ai-labs.md", "ops/topics/ai-labs.md"],
@@ -87,7 +87,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
     madeForKids: true,
     tts: { voice: "id-id-storyteller-1", style: "hangat, ceria, bersemangat; intonasi naik-turun seperti bercerita" },
     agent: {
-      model: "opencode/inkling-2-small-free",
+      model: "opencode/deepseek-v4.1-flash-free",
       prompt:
         "You are in CI. Follow AGENTS.md and ops/ci-prompt.md exactly. Follow ops/accounts/cerpenek.md (channel brief) and ops/topics/cerpenek.md (topic backlog) — they are part of your instructions, they override ops/ci-prompt.md where they differ, and docs/AUTOPILOT.md does NOT apply to this channel. Stop before any publish/upload/render step.",
       files: ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/cerpenek.md", "ops/topics/cerpenek.md"],
@@ -108,7 +108,7 @@ export const ACCOUNTS: Record<AccountId, Account> = {
     madeForKids: false,
     tts: { voice: "id-id-tutor-1", style: "ramah, jelas, penasaran; seperti teman pintar yang menjelaskan sesuatu yang seru; tempo sedang" },
     agent: {
-      model: "opencode/inkling-2-small-free",
+      model: "opencode/deepseek-v4.1-flash-free",
       prompt:
         "You are in CI. Follow AGENTS.md and ops/ci-prompt.md exactly. Follow ops/accounts/sastra-mesin.md (channel brief) and ops/topics/sastra-mesin.md (topic backlog) — they are part of your instructions, they override ops/ci-prompt.md where they differ, and docs/AUTOPILOT.md does NOT apply to this channel. Stop before any publish/upload/render step.",
       files: ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/sastra-mesin.md", "ops/topics/sastra-mesin.md"],

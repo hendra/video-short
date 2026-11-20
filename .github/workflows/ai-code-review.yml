@@ -36,7 +36,7 @@ jobs:
         with:
           use_github_token: true
           share: false
-          model: opencode/inkling-2-small-free
+          model: opencode/deepseek-v4.1-flash-free
           prompt: |
             Act as a senior software engineer performing
             a thorough, production-grade code review.
