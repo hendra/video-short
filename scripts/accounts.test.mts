@@ -21,7 +21,7 @@ describe("account registry", () => {
     assert.equal(k.buffer.orgId, "6aed53e7ec5c7c6d73f3e437");
     assert.equal(k.buffer.youtubeChannelId, "6aedb753e29c69a171803f6e");
     assert.equal(k.buffer.tiktokChannelId, "6aedb7fee29c69a171804662");
-    assert.equal(k.agent.model, "opencode/inkling-2-small-free");
+    assert.equal(k.agent.model, "opencode/deepseek-v4.1-flash-free");
     assert.ok(k.agent.files.includes("AGENTS.md"));
     assert.ok(k.agent.files.includes("docs/AUTOPILOT.md"));
     assert.ok(k.agent.files.includes("ops/ci-prompt.md"));
