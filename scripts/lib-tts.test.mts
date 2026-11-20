@@ -10,8 +10,10 @@ import {
   synthesizeElevenLabs,
   synthesizeGemini,
   synthesizeGcloud,
+  trimSilence,
   xmlEscape,
 } from "./lib-tts.mts";
+import { ffmpeg } from "./align-core.mts";
 
 const realFetch = globalThis.fetch;
 const realEnv = { ...process.env };
@@ -228,5 +230,40 @@ describe("stageToMp3", () => {
     } finally {
       fs.rmSync(dest, { force: true });
     }
+  });
+});
+
+describe("trimSilence", () => {
+  const silences = (file: string) =>
+    [...ffmpeg(["-hide_banner", "-i", file, "-af", "silencedetect=n=-38dB:d=0.03", "-f", "null", "-"]).matchAll(/silence_start: ([\d.]+)[\s\S]*?silence_duration: ([\d.]+)/g)].map((m) => ({ start: +m[1], dur: +m[2] }));
+  const duration = (file: string) => +(/Duration: (\d+):(\d+):([\d.]+)/.exec(ffmpeg(["-hide_banner", "-i", file]))?.slice(1).reduce((a, x) => a * 60 + +x, 0) ?? NaN);
+  const run = (pcm: Buffer, check: (out: string, inp: string) => void) => {
+    const src = path.join(os.tmpdir(), `trim-src-${process.pid}.mp3`);
+    const out = path.join(os.tmpdir(), `trim-out-${process.pid}.mp3`);
+    try {
+      stageToMp3(wavOf(pcm), "wav", src);
+      trimSilence(src, out);
+      check(out, src);
+    } finally {
+      fs.rmSync(src, { force: true });
+      fs.rmSync(out, { force: true });
+    }
+  };
+  const quiet = (s: number) => Buffer.alloc(Math.floor(s * 24000) * 2);
+
+  test("trims inner pauses to <= 0.2 s, drops the head and keeps a ~0.05 s tail", () => {
+    run(Buffer.concat([quiet(1), pcmTone(1, 440), quiet(1), pcmTone(1, 440), quiet(1)]), (out) => {
+      const ss = silences(out);
+      assert.ok(ss.every((s) => s.dur <= 0.25), JSON.stringify(ss));
+      assert.ok(!ss.some((s) => s.start < 0.05 && s.dur > 0.1), `leading silence: ${JSON.stringify(ss)}`);
+      const d = duration(out);
+      assert.ok(d > 2.1 && d < 2.4, `duration ${d}`);
+    });
+  });
+
+  test("leaves audio without pauses untouched", () => {
+    run(pcmTone(2, 440), (out, inp) => {
+      assert.ok(Math.abs(duration(out) - duration(inp)) < 0.1, `${duration(out)} vs ${duration(inp)}`);
+    });
   });
 });

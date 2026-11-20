@@ -144,6 +144,19 @@ export const stageToMp3 = (audio: Buffer, ext: "mp3" | "wav", destPath: string):
   }
 };
 
+// -38 dB matches align-core's silencedetect. stop_duration 0.18 + the 0.02 s detection window ≈ 0.2 s pauses;
+// the reversed pass removes the head of the reversed audio = the tail, keeping 0.05 s for a seamless loop.
+const TRIM_FILTER =
+  "silenceremove=start_periods=1:start_threshold=-38dB:stop_periods=-1:stop_duration=0.18:stop_threshold=-38dB," +
+  "areverse,silenceremove=start_periods=1:start_threshold=-38dB:start_silence=0.05,areverse";
+
+/** Remove leading silence, shorten pauses to ≤ 0.2 s and the tail to 0.05 s (MP3 in, MP3 out). */
+export const trimSilence = (srcPath: string, destPath: string): void => {
+  fs.rmSync(destPath, { force: true });
+  const err = ffmpeg(["-hide_banner", "-y", "-i", srcPath, "-af", TRIM_FILTER, "-codec:a", "libmp3lame", "-b:a", "128k", destPath]);
+  if (!fs.existsSync(destPath) || fs.statSync(destPath).size === 0) throw new Error(`ffmpeg silence trim failed: ${err.slice(-300)}`);
+};
+
 export type RunResult =
   | { ok: true; provider: TtsProvider; bytes: number; wordCount: number }
   | { ok: false; attempts: string[]; analysisFailure?: { failedPath: string; reason: string } };
@@ -192,6 +205,19 @@ export const synthesizeAndPublish = async ({ videoId, lines, provider, tts, synt
       attempts.push(`${p}: ${(e as Error).message}`);
       console.error(`${p} failed while staging audio: ${(e as Error).message}`);
       continue;
+    }
+    // ElevenLabs ships its own timestamps; trimming would shift them.
+    if (!(p === "elevenlabs" && result.words)) {
+      const trimmed = `${staging}.trim.mp3`;
+      try {
+        trimSilence(staging, trimmed);
+        fs.renameSync(trimmed, staging);
+      } catch (e) {
+        fs.rmSync(trimmed, { force: true });
+        attempts.push(`${p}: ${(e as Error).message}`);
+        console.error(`${p} failed while trimming silence: ${(e as Error).message}`);
+        continue;
+      }
     }
     let words: TimedWord[];
     let source: "tts" | "estimated";
