@@ -346,3 +346,19 @@ describe("IllustrationStage presets", () => {
     assert.notEqual(a, b);
   });
 });
+
+describe("BeatCallout", () => {
+  test("appears at its cue, carries the step number, and hides after until", () => {
+    const el = BeatCallout({ t: 2, at: 2, step: 1, text: "Parse" });
+    assert.equal(React.isValidElement(el), true);
+    const html = renderToStaticMarkup(el as React.ReactElement);
+    assert.match(html, /Parse/);
+    assert.match(html, />1</);
+    assert.match(html, /opacity:0/, "the spring starts at 0 on the cue frame");
+
+    const shown = renderToStaticMarkup(BeatCallout({ t: 2.5, at: 2, step: 1, text: "Parse" }) as React.ReactElement);
+    assert.match(shown, /opacity:1/);
+    const gone = renderToStaticMarkup(BeatCallout({ t: 9, at: 2, until: 5, step: 2, text: "Validate" }) as React.ReactElement);
+    assert.match(gone, /opacity:0/);
+  });
+});
