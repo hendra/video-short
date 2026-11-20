@@ -146,9 +146,9 @@ Success: `{ "ok": true, "channel": "C0CDV7Y555K", "ts": "..." }` (a harmless `mi
 
 ## Step 4 — Done — committed catalog
 
-Video source is not committed: source lives only in the CI VM and is discarded when the job ends. CI fetches Buffer history (post `sent` **dan** `scheduled`) into `/tmp/published-videos-<account>.json` for duplicate/republication checks; nothing from it is committed or preserved. The publish command fetches Buffer again before uploading and refuses a candidate that matches a live post.
+Video source is not committed: source lives only in the CI VM and is discarded when the job ends. CI fetches Buffer history (post `sent` **dan** `scheduled`) into `/tmp/published-videos-<account>.json` for duplicate/republication checks; nothing from it is committed or preserved. The publish command fetches Buffer again before uploading and refuses a candidate that matches a live or scheduled post.
 
-**Retry setelah publish setengah gagal:** kalau `createPost` YouTube sudah sukses tapi TikTok gagal/timeout, pipeline berhenti dengan error. Menjalankan ulang akan **menolak** video yang sama karena kandidatnya cocok dengan post YouTube yang sudah live. Pulihkan dengan salah satu: (a) di Buffer, hapus post YouTube-nya lalu jalankan lagi (kedua platform akan ter-post ulang), atau (b) tayangkan TikTok itu manual lewat Buffer. Tidak ada jalur otomatis yang melanjutkan hanya sisi TikTok — jika Anda butuh itu, buat issue/request terlebih dulu.
+**Retry setelah publish setengah gagal:** kalau sebagian `createPost` sudah sukses (post live **atau masih terjadwal**) tapi platform lain gagal/timeout, pipeline berhenti dengan error. Menjalankan ulang akan **menolak** video yang sama karena kandidatnya cocok dengan post yang sudah live/terjadwal di Buffer. Pulihkan dengan salah satu: (a) di Buffer, hapus semua post video itu (termasuk yang masih terjadwal) lalu jalankan lagi, atau (b) buat post platform yang gagal manual lewat Buffer. Tidak ada jalur otomatis yang melanjutkan hanya sisi TikTok — jika Anda butuh itu, buat issue/request terlebih dulu.
 
 ## Content requirements (not negotiable for this channel)
 

@@ -11,6 +11,7 @@ import {
   isSlot,
   mapBufferPostNode,
   postTiming,
+  settleAction,
   resolveSlot,
   slotFor,
   validatePublishJson,
@@ -191,5 +192,21 @@ describe("resolveSlot (publish --slot/--date)", () => {
     assert.equal(typeof resolveSlot("pagi", "21-11-2026", now), "string");
     assert.equal(typeof resolveSlot("pagi", undefined, now), "string");
     assert.equal(typeof resolveSlot(undefined, "2026-11-21", now), "string");
+  });
+});
+
+describe("final review fixes", () => {
+  test("postTiming shares now when the air time is under 2 minutes away", () => {
+    assert.deepEqual(postTiming("2026-11-21T12:00:00.000Z", new Date("2026-11-21T11:59:00Z")), { mode: "shareNow" });
+    assert.deepEqual(postTiming("2026-11-21T12:00:00.000Z", new Date("2026-11-21T11:57:00Z")), { mode: "customScheduled", dueAt: "2026-11-21T12:00:00.000Z" });
+  });
+  test("settleAction: only a truly scheduled post is accepted without polling", () => {
+    const sched = { mode: "customScheduled" as const, dueAt: "2026-11-21T12:00:00.000Z" };
+    assert.equal(settleAction(sched, "scheduled"), "accept");
+    assert.equal(settleAction(sched, "sent"), "poll");
+    assert.equal(settleAction(sched, "draft"), "fail");
+    assert.equal(settleAction(sched, "needs_approval"), "fail");
+    assert.equal(settleAction(sched, "error"), "fail");
+    assert.equal(settleAction({ mode: "shareNow" }, "sending"), "poll");
   });
 });

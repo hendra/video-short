@@ -102,9 +102,16 @@ export const resolveSlot = (slot: string | undefined, date: string | undefined, 
 };
 
 export type PostTiming = { mode: "customScheduled"; dueAt: string } | { mode: "shareNow" };
-/** Schedule at the air time, or share now if it already passed (a slow run must not fail the publish). */
+const SCHEDULE_MARGIN_MS = 2 * 60_000; // posts are created one by one; never hand Buffer a dueAt that may be past on arrival
+/** Schedule at the air time, or share now if it passed / is too close (a slow run must not fail the publish). */
 export const postTiming = (due: string, now: Date): PostTiming =>
-  Date.parse(due) > now.getTime() ? { mode: "customScheduled", dueAt: due } : { mode: "shareNow" };
+  Date.parse(due) - now.getTime() >= SCHEDULE_MARGIN_MS ? { mode: "customScheduled", dueAt: due } : { mode: "shareNow" };
+
+/** After createPost: a scheduled post must come back "scheduled" (draft/needs-approval would never air); sent or share-now posts are polled. */
+export const settleAction = (timing: PostTiming, status: string): "accept" | "poll" | "fail" => {
+  if (timing.mode === "shareNow" || status === "sent") return "poll";
+  return status === "scheduled" ? "accept" : "fail";
+};
 
 /** Buffer CreatePostInput for an Instagram Reel shared to the main feed as well. */
 export const instagramInput = (channelId: string, videoUrl: string, caption: string, timing: PostTiming) => ({

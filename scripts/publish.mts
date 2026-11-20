@@ -27,7 +27,7 @@ import path from "node:path";
 import { ROOT, loadDotenv } from "./lib.mts";
 import { fetchPublishedVideos } from "./fetch-published-videos.mts";
 import { findDuplicate, type CandidatePost } from "./duplicate-core.mts";
-import { cloudinarySign, validatePublishJson, extractBufferError, instagramInput, youtubeSafe, youtubeMetadata, resolveSlot, dueAt, postTiming, type Platform, type PostTiming } from "./publish-lib.mts";
+import { cloudinarySign, validatePublishJson, extractBufferError, instagramInput, youtubeSafe, youtubeMetadata, resolveSlot, dueAt, postTiming, settleAction, type Platform, type PostTiming } from "./publish-lib.mts";
 import { ACCOUNT_IDS, accountById, isAccountId, isConfigured, missingConfigFields } from "../src/accounts.ts";
 
 loadDotenv();
@@ -193,8 +193,9 @@ const poll = async (id: string) => {
 };
 type Settled = { link: string | null; status: string; ok: boolean };
 const settle = async (post: { id: string; status: string; externalLink?: string | null } | null, timing: PostTiming | null): Promise<Settled | null> => {
-  if (!post) return null;
-  if (timing?.mode === "customScheduled" && post.status !== "sent") return { link: null, status: post.status, ok: post.status !== "error" };
+  if (!post || !timing) return null;
+  const action = settleAction(timing, post.status);
+  if (action !== "poll") return { link: null, status: post.status, ok: action === "accept" };
   const p = await poll(post.id);
   return { ...p, ok: Boolean(p.link) };
 };

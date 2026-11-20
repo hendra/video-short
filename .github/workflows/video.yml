@@ -114,6 +114,7 @@ jobs:
       # never drifts into the next slot's air times (YouTube is capped at 2/day by Buffer free).
       - name: Publish slot
         id: slot
+        shell: bash # pipefail: a failing slot.mts must fail here, not hours later in publish
         run: npx tsx scripts/slot.mts | tee -a "$GITHUB_OUTPUT"
 
       # Resolve the account: sets ACCOUNT, ACCOUNT_LABEL, BRAND_LINE, YOUTUBE_CATEGORY_ID,
