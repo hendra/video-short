@@ -12,6 +12,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   CapsuleGeometry,
+  CatmullRomCurve3,
   Color,
   ConeGeometry,
   CylinderGeometry,
@@ -32,10 +33,11 @@ import {
   Quaternion,
   SphereGeometry,
   TorusGeometry,
+  TubeGeometry,
   Vector3,
 } from "three";
 import { bevelBoxGeometry, grainTexture, worldUV } from "./surface";
-import { lerp, rng } from "./math";
+import { clamp, lerp, rng } from "./math";
 import type { Vec3 } from "./types";
 
 /** Physically plausible looks. `grain` adds the shared surface texture (subtle albedo + roughness variation). */
@@ -686,6 +688,118 @@ export class Kit {
     m.frustumCulled = false;
     this.root.add(m);
     return m;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Mechanical / explainer builders (Kali Aja, Sastra Mesin). Everything is a pure build step: the
+  // returned pivots are what update(t) rotates or slides, never the meshes themselves.
+  // ---------------------------------------------------------------------------------------------
+
+  private curveOf(points: Vec3[]) {
+    return new CatmullRomCurve3(points.map((p) => new Vector3(...p)));
+  }
+
+  /**
+   * Smooth pipe / wire / river along a path. `at(u)` samples the same curve so flow particles and
+   * arrows can travel along it. Segments stay low: the CPU renderer is fill-rate bound.
+   */
+  tube(points: Vec3[], r: number, m: string | Material, o: { tubularSegments?: number; radialSegments?: number; parent?: Object3D } = {}) {
+    const { tubularSegments = 28, radialSegments = 10, parent } = o;
+    const curve = this.curveOf(points);
+    const mesh = new Mesh(worldUV(new TubeGeometry(curve, tubularSegments, r, radialSegments, false)), this.resolve(m));
+    this.add(mesh, parent);
+    return { mesh, at: (u: number) => curve.getPointAt(clamp(u, 0, 1)).toArray() as Vec3 };
+  }
+
+  /** Torus ring: pipe flange, seal, magnetic field, water ripple. */
+  ring(x: number, y: number, z: number, r: number, tubeR: number, m: string | Material, o: { rot?: Vec3; parent?: Object3D } = {}) {
+    const mesh = this.add(new Mesh(new TorusGeometry(r, tubeR, 10, 24), this.resolve(m)), o.parent, false);
+    mesh.position.set(x, y, z);
+    if (o.rot) mesh.rotation.set(...o.rot);
+    return mesh;
+  }
+
+  /** Helical spring / heating coil / induction winding. Compress it with `root.scale.y`. */
+  coil(x: number, y0: number, z: number, o: { r?: number; tubeR?: number; h?: number; turns?: number; color?: string | Material; parent?: Object3D } = {}) {
+    const { r = 0.25, tubeR = 0.03, h = 0.8, turns = 5, color = "#9aa3ad", parent } = o;
+    const steps = 40;
+    const points: Vec3[] = [];
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps;
+      const a = u * turns * Math.PI * 2;
+      points.push([x + Math.cos(a) * r, y0 + h * u, z + Math.sin(a) * r]);
+    }
+    const g = new Group();
+    const t = this.tube(points, tubeR, color, { parent: g, tubularSegments: 60, radialSegments: 8 });
+    t.mesh.castShadow = false;
+    this.root.add(g);
+    if (parent) parent.add(g);
+    return g;
+  }
+
+  /** Toothed gear. Spin `rotor` around the chosen axis; `teeth` boxes sit on the rim. */
+  gear(x: number, y: number, z: number, o: { r?: number; thickness?: number; teeth?: number; color?: string | Material; axis?: "x" | "y" | "z"; parent?: Object3D } = {}) {
+    const { r = 0.45, thickness = 0.12, teeth = 10, color = "#9aa3ad", axis = "z", parent } = o;
+    const root = new Group();
+    root.position.set(x, y, z);
+    if (axis === "x") root.rotation.y = Math.PI / 2;
+    else if (axis === "y") root.rotation.x = Math.PI / 2;
+    const rotor = new Group();
+    root.add(rotor);
+    // hub + rim sit along local +z (the spin axis). They are rotationally symmetric, so they live on
+    // `root`: only the cogs need to spin, which keeps `rotor` == the teeth.
+    const hub = this.add(new Mesh(worldUV(new CylinderGeometry(r * 0.28, r * 0.28, thickness * 1.4, 20)), this.resolve(color)), root);
+    hub.rotation.x = Math.PI / 2;
+    const rim = this.add(new Mesh(worldUV(new CylinderGeometry(r, r, thickness, 24)), this.resolve(color)), root);
+    rim.rotation.x = Math.PI / 2;
+    for (let i = 0; i < teeth; i++) {
+      const a = (i / teeth) * Math.PI * 2;
+      const cog = this.add(new Mesh(worldUV(bevelBoxGeometry(r * 0.22, r * 0.22, thickness, 0.02)), this.resolve(color)), rotor);
+      cog.position.set(Math.cos(a) * r, Math.sin(a) * r, 0);
+      cog.rotation.z = a;
+    }
+    this.root.add(root);
+    if (parent) parent.add(root);
+    return { root, rotor };
+  }
+
+  /** Fan / propeller / turbine. Spin `rotor` around the chosen axis. */
+  fan(x: number, y: number, z: number, o: { r?: number; blades?: number; color?: string | Material; axis?: "x" | "y" | "z"; parent?: Object3D } = {}) {
+    const { r = 0.5, blades = 4, color = "#c8ced6", axis = "z", parent } = o;
+    const root = new Group();
+    root.position.set(x, y, z);
+    if (axis === "x") root.rotation.y = Math.PI / 2;
+    else if (axis === "y") root.rotation.x = Math.PI / 2;
+    const rotor = new Group();
+    root.add(rotor);
+    this.ball(0, 0, 0, r * 0.22, color, rotor);
+    for (let i = 0; i < blades; i++) {
+      const a = (i / blades) * Math.PI * 2;
+      const blade = this.add(new Mesh(worldUV(bevelBoxGeometry(r * 0.9, r * 0.34, r * 0.06, 0.02)), this.resolve(color)), rotor);
+      blade.position.set(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5, 0);
+      blade.rotation.z = a;
+      blade.rotation.x = 0.5; // pitch: catches the air instead of reading as a flat cross
+    }
+    this.root.add(root);
+    if (parent) parent.add(root);
+    return { root, rotor };
+  }
+
+  /** 3D vector arrow (force, heat, current, pressure). `setProgress(u)` grows it from `from` to `to`. */
+  arrow(from: Vec3, to: Vec3, m: string | Material, o: { r?: number; headR?: number; parent?: Object3D } = {}) {
+    const { r = 0.03, headR = 0.09, parent } = o;
+    const dir = new Vector3(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
+    const len = Math.max(1e-4, dir.length());
+    const root = new Group();
+    root.position.set(...from);
+    root.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), dir.normalize());
+    const shaft = this.add(new Mesh(worldUV(new CylinderGeometry(r, r, len, 12)), this.resolve(m)), root, false);
+    shaft.position.y = len / 2;
+    const head = this.add(new Mesh(new ConeGeometry(headR, headR * 2.2, 12), this.resolve(m)), root, false);
+    head.position.y = len;
+    this.root.add(root);
+    if (parent) parent.add(root);
+    return { root, setProgress: (u: number) => (root.scale.y = clamp(u, 0, 1)) };
   }
 }
 
