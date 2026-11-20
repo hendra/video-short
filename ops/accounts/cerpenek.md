@@ -132,7 +132,7 @@ Aturan scene:
 - Peta skematis (kalau perlu menunjukkan pulau) diberi `tag: "ILUSTRASI"`.
 - Tidak boleh `Math.random()` atau `Date.now()`.
 - Setiap frame dihitung ulang dari `t` dan frame bisa dirender tidak berurutan. Jadi **tulis `visible` dan posisi setiap frame dengan nilai langsung** — `putri.root.visible = t >= L(7).s;` — jangan hanya di dalam `if` yang mengubah satu arah (`if (belum) x.visible = false`), karena nilainya akan tertinggal dari frame sebelumnya.
-- Caption: satu potongan ≤ 5 token per saat, tidak pernah dua; `line-height: 1.8` jangan dikecilkan.
+- Caption: satu potongan ≤ 3 token per saat, tidak pernah dua.
 - Kamera pelan dan tenang (`keyframes` dengan dua atau tiga posisi); jangan berputar cepat.
 - **Bingkai:** tokoh yang sedang diceritakan harus berada di **tengah layar**, di antara judul (atas) dan teks cerita (bawah). Arahkan `target` kamera sedikit **di atas** kepala tokoh dan mundurkan kamera secukupnya, supaya adegan tidak menumpuk di balik judul dan separuh bawah layar tidak kosong.
 - **Setiap shot punya sesuatu yang jelas untuk dilihat** — tokoh atau tempat. Kalau cerita membuat tokoh pergi atau tempat hilang (tenggelam, berubah jadi batu), shot penutup tetap menampilkan hasilnya dengan jelas (danau dengan pulau dan perahu, batu di pantai), bukan layar yang hampir kosong.

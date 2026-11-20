@@ -7,6 +7,24 @@
 import { ACCOUNT_IDS, accountById, isAccountId, type Account, type AccountId } from "../src/accounts.ts";
 import { MOODS_BY_ACCOUNT } from "./music.mts";
 
+export const MAX_SCRIPT_WORDS = 130;
+
+/** Shorts stay ~45–55 s: reject long scripts before TTS spends quota. Cerpenek stories keep their own length. */
+export const scriptWordProblem = (account: Account, lines: string[]): string | null => {
+  if (account.id === "cerpenek") return null;
+  const n = lines.join(" ").split(/\s+/).filter(Boolean).length;
+  return n > MAX_SCRIPT_WORDS ? `naskah ${n} kata, maksimal ${MAX_SCRIPT_WORDS} — pendekkan sebelum TTS` : null;
+};
+
+export const MAX_LOOP_TAIL = 0.3;
+
+/** config.json `tail` = seconds of picture after the last word; a long tail breaks the loop back to line 01. */
+export const loopTailProblem = (account: Account, tail: unknown): string | null => {
+  if (account.id === "cerpenek") return null;
+  if (typeof tail !== "number" || !(tail >= 0)) return `config.json tail wajib angka ≥ 0 (maks ${MAX_LOOP_TAIL})`;
+  return tail > MAX_LOOP_TAIL ? `config.json tail ${tail} dtk, maksimal ${MAX_LOOP_TAIL} — video harus langsung loop ke baris 01` : null;
+};
+
 /** The brand line a generated video source must contain, exactly. */
 export const brandLine = (account: Account): string =>
   `brand: { prefix: ${JSON.stringify(account.brand.prefix)}, accent: ${JSON.stringify(account.brand.accent)} }`;
@@ -82,16 +100,12 @@ export const resolveAccountArg = (flag: string | undefined, envValue: string | u
 export const voiceProblem = (account: Account): string | null =>
   account.tts.voice.startsWith("TODO_") ? `suara akun ${account.id} belum dipilih (tts.voice di src/accounts.ts)` : null;
 
-const lastThreeLines = (text: string | null): string =>
-  (text ?? "").split(/\r?\n/).filter((l) => l.trim() !== "").slice(-3).join("\n");
-
-/** Rules specific to ai-labs videos: motion graphics only, captions disabled, no world.ts, and PromptCard must link to description. */
+/** Rules specific to ai-labs videos: motion graphics only, captions disabled, no world.ts, and PromptCard needs the prompt in the description. */
 export const aiLabsVideoProblems = (opts: {
   indexSource: string;
   shotsSource: string | null;
   hasWorldFile: boolean;
   publishJson: { description?: unknown } | null;
-  naskahText: string | null;
 }): string[] => {
   const problems: string[] = [];
   const indexCode = opts.indexSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -108,11 +122,6 @@ export const aiLabsVideoProblems = (opts: {
     const desc = opts.publishJson?.description;
     if (typeof desc !== "string" || !/Prompt siap copy:/i.test(desc)) {
       problems.push('shots pakai PromptCard — publish.json description wajib berisi "Prompt siap copy:"');
-    }
-    const mentionsDeskripsi =
-      /deskripsi/i.test(lastThreeLines(opts.naskahText)) || /cta\s*:\s*\{[^}]*deskripsi/i.test(opts.indexSource);
-    if (!mentionsDeskripsi) {
-      problems.push('shots pakai PromptCard — CTA di index.ts atau 3 baris terakhir naskah.txt wajib menyebut "deskripsi"');
     }
   }
   return problems;

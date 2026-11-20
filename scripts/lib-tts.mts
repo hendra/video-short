@@ -26,6 +26,9 @@ const snippet = async (res: Response): Promise<string> => {
 export const xmlEscape = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&apos;").replace(/"/g, "&quot;");
 
+// Gemini TTS takes no SSML; this style hint is the only lever for a faster hook (best effort, not guaranteed).
+export const HOOK_HINT = "kalimat pertama sedikit lebih cepat dan bertenaga; tekankan angka dan kata kunci";
+
 /** Gemini TTS via Google AI Studio, in the voice and style of the account the video belongs to. */
 export const synthesizeGemini = async (text: string, tts: Account["tts"]): Promise<SynthResult> => {
   const model = GEMINI_TTS_MODEL;
@@ -33,7 +36,7 @@ export const synthesizeGemini = async (text: string, tts: Account["tts"]): Promi
     method: "POST",
     headers: { "x-goog-api-key": process.env.GEMINI_API_KEY!, "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text, speechMetadata: { style: tts.style } }] }],
+      contents: [{ role: "user", parts: [{ text, speechMetadata: { style: `${tts.style}; ${HOOK_HINT}` } }] }],
       generationConfig: {
         responseModalities: ["AUDIO"],
         speechConfig: { languageCode: "id-ID", voiceConfig: { voice: tts.voice } },
@@ -144,6 +147,50 @@ export const stageToMp3 = (audio: Buffer, ext: "mp3" | "wav", destPath: string):
   }
 };
 
+const MAX_PAUSE = 0.2;
+const LOOP_TAIL = 0.05;
+
+/** Silences (−38 dB, like align-core) longer than MAX_PAUSE → the [from, to] spans to cut out. */
+const cutsFor = (srcPath: string): { dur: number; cuts: [number, number][] } => {
+  const log = ffmpeg(["-hide_banner", "-i", srcPath, "-af", `silencedetect=n=-38dB:d=${MAX_PAUSE}`, "-f", "null", "-"]);
+  const dur = Number(/Duration: (\d+):(\d+):([\d.]+)/.exec(log)?.slice(1).reduce((a, v, i) => a + Number(v) * [3600, 60, 1][i], 0));
+  if (!Number.isFinite(dur)) throw new Error(`ffmpeg could not read ${srcPath}: ${log.slice(-300)}`);
+  const st = [...log.matchAll(/silence_start: ([\d.]+)/g)].map((m) => Number(m[1]));
+  const en = [...log.matchAll(/silence_end: ([\d.]+)/g)].map((m) => Number(m[1]));
+  const cuts = st.flatMap((a, i): [number, number][] => {
+    const b = Math.min(en[i] ?? dur, dur);
+    if (a <= 0.01) return [[0, b]]; // leading silence: drop it
+    if (b >= dur - 0.01) return [[a + LOOP_TAIL, dur]]; // tail: keep 0.05 s for the loop seam
+    return [[a + MAX_PAUSE / 2, b - MAX_PAUSE / 2]]; // inner pause: keep 0.1 s on each side
+  });
+  return { dur, cuts };
+};
+
+/**
+ * Remove leading silence, shorten pauses to ≤ 0.2 s and the tail to 0.05 s (MP3 in, MP3 out).
+ * Returns the map from a time in the raw take to the trimmed audio, so timing found on the raw take
+ * (where line breaks are still the longest pauses) can be moved onto the trimmed file.
+ */
+export const trimSilence = (srcPath: string, destPath: string): ((t: number) => number) => {
+  const { dur, cuts } = cutsFor(srcPath);
+  fs.rmSync(destPath, { force: true });
+  // Kept spans between cuts, joined sample-accurately with atrim + concat.
+  const keep: [number, number][] = [];
+  let at = 0;
+  for (const [a, b] of cuts) {
+    if (a > at) keep.push([at, a]);
+    at = b;
+  }
+  if (dur > at) keep.push([at, dur]);
+  const graph = keep.map(([a, b], i) => `[0:a]atrim=start=${a.toFixed(5)}:end=${b.toFixed(5)},asetpts=PTS-STARTPTS[k${i}]`).join(";") +
+    `;${keep.map((_, i) => `[k${i}]`).join("")}concat=n=${keep.length}:v=0:a=1[out]`;
+  const err = keep.length
+    ? ffmpeg(["-hide_banner", "-y", "-i", srcPath, "-filter_complex", graph, "-map", "[out]", "-codec:a", "libmp3lame", "-b:a", "128k", destPath])
+    : "no audio left after trimming";
+  if (!fs.existsSync(destPath) || fs.statSync(destPath).size === 0) throw new Error(`ffmpeg silence trim failed: ${err.slice(-300)}`);
+  return (t) => t - cuts.reduce((sum, [a, b]) => sum + Math.max(0, Math.min(t, b) - a), 0);
+};
+
 export type RunResult =
   | { ok: true; provider: TtsProvider; bytes: number; wordCount: number }
   | { ok: false; attempts: string[]; analysisFailure?: { failedPath: string; reason: string } };
@@ -196,10 +243,11 @@ export const synthesizeAndPublish = async ({ videoId, lines, provider, tts, synt
     let words: TimedWord[];
     let source: "tts" | "estimated";
     if (p === "elevenlabs" && result.words) {
-      words = result.words;
+      words = result.words; // own timestamps; not trimmed so they stay valid
       source = "tts";
     } else {
       try {
+        // Align on the raw take: line breaks are still the longest pauses there, which the aligner relies on.
         words = analyzeAlignment(staging, lines).words;
       } catch (e) {
         const failed = path.join(os.tmpdir(), `vo-${videoId}-failed.mp3`);
@@ -207,6 +255,17 @@ export const synthesizeAndPublish = async ({ videoId, lines, provider, tts, synt
         return { ok: false, attempts, analysisFailure: { failedPath: failed, reason: (e as Error).message } };
       }
       source = "estimated";
+      const trimmed = `${staging}.trim.mp3`;
+      try {
+        const map = trimSilence(staging, trimmed);
+        fs.renameSync(trimmed, staging);
+        words = words.map((w) => ({ ...w, start: map(w.start), end: map(w.end) }));
+      } catch (e) {
+        fs.rmSync(trimmed, { force: true });
+        attempts.push(`${p}: ${(e as Error).message}`);
+        console.error(`${p} failed while trimming silence: ${(e as Error).message}`);
+        continue;
+      }
     }
     fs.mkdirSync(publicDir(videoId), { recursive: true });
     // Publish: prebuild both artifacts, then swap both into place back-to-back (each rename is

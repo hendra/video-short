@@ -36,11 +36,10 @@ Jangan pakai brand channel lain. Gate CI menolak video yang brand-nya beda.
 
 ## Naskah
 
-- `src/videos/<slug>/naskah.txt`: 13–16 baris, format `NN  teks` (dua digit, dua spasi), total 1.100–1.400 karakter (±70–85 detik).
+- `src/videos/<slug>/naskah.txt`: 10–14 baris, format `NN  teks` (dua digit, dua spasi), **maksimal 130 kata** (≈ 45–55 detik; `npm run tts` menolak naskah lebih panjang).
 - Kalimat lisan: "nggak", "kayak", "gitu deh". Angka ditulis dengan kata ("empat belas gambar").
-- Alur naskah: hook → isi → payoff → CTA. Tidak ada "Tapi tunggu… kok bisa…?".
+- Alur naskah: hook → isi → payoff → **ending loop** (kalimat terakhir menyambung ke kalimat pertama). **Tanpa CTA** — tidak ada "subscribe", "komentar", atau "cek deskripsi". Tidak ada "Tapi tunggu… kok bisa…?". `config.json` `tail` ≤ 0,3 dtk (gate CI).
 - Boleh pakai istilah teknis (MCP, hook, context window) tapi jelaskan sekali dengan analogi sederhana.
-- **Aturan CTA saat pakai `PromptCard` (gate CI):** kalau video menampilkan prompt lewat `<PromptCard>`, `cta.text` di `index.ts` atau 3 baris terakhir `naskah.txt` **wajib** menyebut kata `deskripsi` agar penonton tahu prompt lengkap siap copy ada di deskripsi.
 
 ## Visual: Motion Graphics (Dark Tech Studio)
 
@@ -119,7 +118,7 @@ Pilih satu dari 3 suasana ini:
 - `account` wajib `"ai-labs"` (kena gate CI kalau beda).
 - `title` ≤ 100 karakter, tanpa `<` dan `>` (YouTube menolaknya).
 - `description`: ringkasan 2–3 kalimat + (jika pakai `<PromptCard>`, lihat aturan di bawah) + `Sumber: <URL sumber resmi>` + `Animasi bersifat ilustrasi. Suara: AI (Google AI Studio).` + `#shorts` + 5–6 hashtag topik.
-- **Aturan wajib `PromptCard` (gate CI):** setiap kali `shots.tsx` memakai `<PromptCard>`, `publish.json.description` **wajib** mengandung `Prompt siap copy:` diikuti teks prompt lengkap yang bisa langsung disalin penonton (pakai kurung siku `[placeholder]`, **jangan pernah** `<placeholder>` karena YouTube menolak `<` dan `>`). Masukkan juga blok `Prompt siap copy:` ini ke `tiktokCaption` selama totalnya masih ≤ 2.200 karakter. Pastikan pula `cta.text` di `index.ts` atau 3 baris terakhir `naskah.txt` menyebut kata `deskripsi`.
+- **Aturan wajib `PromptCard` (gate CI):** setiap kali `shots.tsx` memakai `<PromptCard>`, `publish.json.description` **wajib** mengandung `Prompt siap copy:` diikuti teks prompt lengkap yang bisa langsung disalin penonton (pakai kurung siku `[placeholder]`, **jangan pernah** `<placeholder>` karena YouTube menolak `<` dan `>`). Masukkan juga blok `Prompt siap copy:` ini ke `tiktokCaption` selama totalnya masih ≤ 2.200 karakter.
 - `tiktokTitle` ≤ 90 karakter (hook saja), `tiktokCaption` seperti description + `Suara: AI (Google AI Studio)`.
 - `catatan` diawali `format: <id>;` dari `pick-format`.
 

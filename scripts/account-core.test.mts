@@ -8,14 +8,37 @@ import {
   brandProblems,
   cerpenekMusicProblems,
   envLines,
+  loopTailProblem,
   resolveAccountArg,
   sastraMesinVideoProblems,
+  scriptWordProblem,
   voiceProblem,
 } from "./account-core.mts";
 
 const ALL_ACCOUNTS = Object.values(ACCOUNTS);
 const kaliAja = ACCOUNTS["kali-aja"];
 const aiLabs = ACCOUNTS["ai-labs"];
+
+describe("loopTailProblem", () => {
+  test("accepts a tail up to 0.3 s", () => assert.equal(loopTailProblem(kaliAja, 0.3), null));
+  test("rejects a longer tail, which breaks the seamless loop", () => assert.match(String(loopTailProblem(aiLabs, 1.5)), /tail/));
+  test("rejects a missing or non-numeric tail", () => assert.match(String(loopTailProblem(kaliAja, undefined)), /tail/));
+  test("cerpenek keeps its own outro", () => assert.equal(loopTailProblem(ACCOUNTS.cerpenek, 3), null));
+});
+
+describe("scriptWordProblem", () => {
+  const lines = (n: number) => [Array(n - Math.floor(n / 2)).fill("kata").join(" "), Array(Math.floor(n / 2)).fill("kata").join("  ")];
+  test("accepts exactly 130 words", () => {
+    assert.equal(scriptWordProblem(kaliAja, lines(130)), null);
+  });
+  test("rejects 131 words with the count and the limit", () => {
+    const p = scriptWordProblem(kaliAja, lines(131));
+    assert.ok(p?.includes("131") && p.includes("130"), String(p));
+  });
+  test("cerpenek is exempt", () => {
+    assert.equal(scriptWordProblem(ACCOUNTS.cerpenek, lines(200)), null);
+  });
+});
 
 describe("brandProblems", () => {
   test("accepts the account's own brand literal", () => {
@@ -103,7 +126,6 @@ describe("aiLabsVideoProblems", () => {
         shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
         hasWorldFile: false,
         publishJson: { description: "Penjelasan AI CLI tools." },
-        naskahText: "01  Line one\n02  Line two\n03  Follow akun ini.",
       }),
       [],
     );
@@ -115,7 +137,6 @@ describe("aiLabsVideoProblems", () => {
       shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
       hasWorldFile: false,
       publishJson: { description: "Penjelasan AI CLI tools." },
-      naskahText: "01  Line one",
     });
     assert.ok(problems.some((p) => p.includes('mode: "motion"')), problems.join("; "));
   });
@@ -126,19 +147,17 @@ describe("aiLabsVideoProblems", () => {
       shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
       hasWorldFile: true,
       publishJson: { description: "Penjelasan AI CLI tools." },
-      naskahText: "01  Line one",
     });
     assert.ok(problems.some((p) => p.includes("world.ts")), problems.join("; "));
   });
 
-  test("accepts PromptCard when description has Prompt siap copy and naskah/CTA mentions deskripsi", () => {
+  test("accepts PromptCard when description has Prompt siap copy (with or without a CTA)", () => {
     assert.deepEqual(
       aiLabsVideoProblems({
         indexSource: 'export const VIDEO = { mode: "motion", captions: false, cta: { text: "Simpan!" } };',
         shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
         hasWorldFile: false,
         publishJson: { description: 'Ringkasan.\n\nPrompt siap copy:\n"Act as a senior engineer"' },
-        naskahText: "01  Intro\n02  Middle\n03  Cek deskripsi buat copy prompt-nya.",
       }),
       [],
     );
@@ -148,7 +167,6 @@ describe("aiLabsVideoProblems", () => {
         shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
         hasWorldFile: false,
         publishJson: { description: 'Prompt siap copy:\n"Act as a senior engineer"' },
-        naskahText: "01  Intro\n02  Middle\n03  Gas cobain sekarang.",
       }),
       [],
     );
@@ -160,20 +178,20 @@ describe("aiLabsVideoProblems", () => {
       shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
       hasWorldFile: false,
       publishJson: { description: "Prompt ini bagus banget." },
-      naskahText: "01  Cek deskripsi ya.",
     });
     assert.ok(problems.some((p) => p.includes("Prompt siap copy:")), problems.join("; "));
   });
 
-  test('rejects PromptCard when neither CTA nor last 3 lines of naskah mentions "deskripsi"', () => {
-    const problems = aiLabsVideoProblems({
-      indexSource: 'export const VIDEO = { mode: "motion", captions: false, cta: { text: "Follow!" } };',
-      shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
-      hasWorldFile: false,
-      publishJson: { description: 'Prompt siap copy:\n"Act as a senior engineer"' },
-      naskahText: "01  Di deskripsi ada bahannya\n02  Langkah satu\n03  Langkah dua\n04  Follow sekarang!",
-    });
-    assert.ok(problems.some((p) => p.includes("deskripsi")), problems.join("; "));
+  test("accepts PromptCard without any deskripsi mention when description has Prompt siap copy", () => {
+    assert.deepEqual(
+      aiLabsVideoProblems({
+        indexSource: 'export const VIDEO = { mode: "motion", captions: false };',
+        shotsSource: 'export const shots = () => <PromptCard prompt="Act as..." />;',
+        hasWorldFile: false,
+        publishJson: { description: 'Prompt siap copy:\n"Act as a senior engineer"' },
+      }),
+      [],
+    );
   });
 
   test("ignores PromptCard in imports or comments when <PromptCard is not rendered", () => {
@@ -187,7 +205,6 @@ describe("aiLabsVideoProblems", () => {
         ].join("\n"),
         hasWorldFile: false,
         publishJson: { description: "Penjelasan AI CLI tools tanpa prompt block." },
-        naskahText: "01  Intro\n02  Middle\n03  Follow akun ini.",
       }),
       [],
     );
@@ -199,7 +216,6 @@ describe("aiLabsVideoProblems", () => {
       shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
       hasWorldFile: false,
       publishJson: { description: "Penjelasan AI CLI tools." },
-      naskahText: "01  Line one",
     });
     assert.ok(missing.some((p) => p.includes("captions: false")), missing.join("; "));
 
@@ -208,7 +224,6 @@ describe("aiLabsVideoProblems", () => {
       shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
       hasWorldFile: false,
       publishJson: { description: "Penjelasan AI CLI tools." },
-      naskahText: "01  Line one",
     });
     assert.ok(enabled.some((p) => p.includes("captions: false")), enabled.join("; "));
 
@@ -217,7 +232,6 @@ describe("aiLabsVideoProblems", () => {
       shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
       hasWorldFile: false,
       publishJson: { description: "Penjelasan AI CLI tools." },
-      naskahText: "01  Line one",
     });
     assert.ok(commented.some((p) => p.includes("captions: false")), commented.join("; "));
   });
@@ -229,7 +243,6 @@ describe("aiLabsVideoProblems", () => {
         shotsSource: 'export const shots = () => <TerminalCard title="CLI" />;',
         hasWorldFile: false,
         publishJson: { description: "Penjelasan AI CLI tools." },
-        naskahText: "01  Line one",
       }),
       [],
     );

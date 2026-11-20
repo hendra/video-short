@@ -8,7 +8,7 @@
  */
 import { loadDotenv, readScript, videoIdArg } from "./lib.mts";
 import { synthesizeAndPublish, type TtsProvider } from "./lib-tts.mts";
-import { resolveAccountArg, voiceProblem } from "./account-core.mts";
+import { resolveAccountArg, scriptWordProblem, voiceProblem } from "./account-core.mts";
 
 loadDotenv();
 const id = videoIdArg();
@@ -44,6 +44,11 @@ const lines = readScript(id);
 const text = lines.join("\n\n");
 if (lines.length === 0 || text.trim().length === 0) {
   console.error("No script lines found in naskah.txt");
+  process.exit(1);
+}
+const wordIssue = scriptWordProblem(account, lines);
+if (wordIssue) {
+  console.error(wordIssue);
   process.exit(1);
 }
 

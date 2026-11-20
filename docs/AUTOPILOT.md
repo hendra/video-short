@@ -51,25 +51,27 @@ Tidak ada API kuota gratis untuk Gemini TTS. Kuota AI Studio gratis ±10 request
 
 ## 4. Naskah — `src/videos/<slug>/naskah.txt`
 
-- Format baris `NN  teks` (13–16 baris), total 1.100–1.400 karakter (≈ 70–85 detik). Baris `NN  teks` tetap sama; **format naratif** tidak boleh dikunci ke satu pola.
+- Format baris `NN  teks` (10–14 baris), **maksimal 130 kata** (≈ 45–55 detik; `npm run tts` menolak naskah > 130 kata sebelum memanggil Gemini). Baris `NN  teks` tetap sama; **format naratif** tidak boleh dikunci ke satu pola.
 - **Format harus diacak setiap run**: sebelum menulis, jalankan `npx tsx scripts/pick-format.mts` dan pakai format yang dipilih. Jangan mengganti pilihan karena "lebih enak". Di `publish.json`, tulis `catatan` dimulai dengan `format: <id>;`.
 - Pool yang dipakai (format populer/favorit YouTube Shorts + TikTok 2026; dibobot sesuai performa): `expert-explainer` (paling kuat untuk edukasi), `how-to-tutorial`, `numbered-listicle`, `myth-buster`, `mystery-story`, `before-after`, `storytime`, `qa-rapid`, `viewer-challenge`, `problem-solution`, `mini-documentary`.
-- Semua format tetap membuka dengan hook spesifik dalam 2–3 detik, satu ide per video, konteks Indonesia, payoff yang jelas, dan CTA di akhir. Jangan pakai template lama `hook → "Tapi tunggu… kok bisa…?" → langkah 1/2/3 → "Jadi…"` setiap kali; variasikan sintaks kalimat, urutan bukti, dan jenis opening sesuai format.
+- Semua format mengikuti 4 babak: **hook** (0–4 dtk, kontradiksi + angka spesifik/paradoks, tanpa basa-basi seperti "Tahukah kamu…"/"Bayangkan…") → **konteks cepat + re-hook** (≤ 2 kalimat, ditutup pertanyaan baru) → **twist + re-hook** (fakta paling mengejutkan disimpan di sini, bukan di tengah) → **ending loop**. Satu ide per video, konteks Indonesia.
+- **Ending loop, tanpa CTA:** dilarang "jangan lupa subscribe", "tulis di komentar", "sampai jumpa". Kalimat terakhir menggantung dan menyambung secara tata bahasa ke kalimat pertama, jadi saat video berputar ulang terdengar satu kalimat utuh. Cek dengan membaca `[baris terakhir] + [baris pertama]` berurutan.
+- Jangan pakai template lama `hook → "Tapi tunggu… kok bisa…?" → langkah 1/2/3 → "Jadi…"` setiap kali; variasikan sintaks kalimat, urutan bukti, dan jenis opening sesuai format.
 - `expert-explainer`: authority/number hook → mekanisme → implikasi. `how-to-tutorial`: janji hasil → 3 langkah → kesalahan umum. `numbered-listicle`: janji angka → 3 poin bukti → punchline. `myth-buster`: miskonsepsi → bukti → kenapa salah. `mystery-story`: fakta mustahil → petunjuk → reveal. `before-after`: asumsi → bukti mengejutkan → mekanisme → mental model baru. `storytime`: turning point → urutan fakta → pelajaran/konsekuensi. `qa-rapid`: pertanyaan → jawaban salah yang menggoda → jawaban benar. `viewer-challenge`: tebakan nyata → jawaban → aturan berpikir. `problem-solution`: masalah → mekanisme → benefit/batasan. `mini-documentary`: scene → turning point → consequence.
 - Kalimat lisan, santai ("nggak", "kayak"), angka ditulis dengan kata ("dua puluh delapan meter"). Kata hati-hati untuk temuan awal ("diduga", "menurut…").
 
 ## 5. Suara + timing
 
 ```bash
-npm run tts -- <slug>        # vo.mp3 + alignment.json (Gemini 3.8 locked voice; timing dari aligner offline, ±0,2 dtk/kata)
+npm run tts -- <slug>        # vo.mp3 + alignment.json (Gemini 3.8 locked voice; jeda dipotong otomatis ≤ 0,2 dtk, ekor 0,05 dtk; timing dari aligner offline, ±0,2 dtk/kata)
 npm run timeline -- <slug>   # caption + rentang shot
 npm run music -- <slug>      # musik latar dari koleksi Kali Aja sesuai field "music" di config.json
 ```
-Cek `timeline.json`: semua kata ter-match, durasi 60–90 dtk. Jika TTS gagal (kunci salah, 429, kuota habis, voice/model tidak tersedia, atau analisis timing gagal): **berhenti dan laporkan** (§10) — jangan coba berulang-ulang, jangan ganti voice/model/provider. Audio gagal menyimpan take segar di `os.tmpdir()/vo-<slug>-failed.mp3`; `vo.mp3`/`alignment.json` lama tidak tersentuh.
+Cek `timeline.json`: semua kata ter-match, durasi 45–55 dtk. Jika TTS gagal (kunci salah, 429, kuota habis, voice/model tidak tersedia, atau analisis timing gagal): **berhenti dan laporkan** (§10) — jangan coba berulang-ulang, jangan ganti voice/model/provider. Audio gagal menyimpan take segar di `os.tmpdir()/vo-<slug>-failed.mp3`; `vo.mp3`/`alignment.json` lama tidak tersentuh.
 
 ## 6. Adegan 3D — pola scene
 
-File: `config.json` (shot → baris pertama, `tail`, dan `"music"` wajib salah satu dari `"teknik"` untuk mekanisme teknik/infrastruktur, `"misteri"` untuk teka-teki *"kok bisa?"*/myth-buster, atau `"fenomena"` untuk fenomena alam/sains skala besar), `state.ts` (semua animasi = fungsi murni dari `t`, terikat `L(n)`), `world.ts` (diorama dibuat sekali, `update(t)` per frame), `shots.ts` (label, judul `*hijau*`, kamera keyframe, callout, chip), `index.ts` (`music: { src: "<slug>/music.wav", volume: 0.14 }`), lalu daftarkan di `src/videos/registry.ts`.
+File: `config.json` (shot → baris pertama, `tail` **≤ 0,3** dtk agar video langsung loop — gate CI menolak lebih dari itu, dan `"music"` wajib salah satu dari `"teknik"` untuk mekanisme teknik/infrastruktur, `"misteri"` untuk teka-teki *"kok bisa?"*/myth-buster, atau `"fenomena"` untuk fenomena alam/sains skala besar), `state.ts` (semua animasi = fungsi murni dari `t`, terikat `L(n)`), `world.ts` (diorama dibuat sekali, `update(t)` per frame), `shots.ts` (label, judul `*hijau*`, kamera keyframe, callout, chip), `index.ts` (`music: { src: "<slug>/music.wav", volume: 0.14 }`), lalu daftarkan di `src/videos/registry.ts`.
 
 Supaya setiap objek tampak nyata (bukan kotak polos), bangun adegan dari `Kit` (`src/engine/kit.ts`):
 - **Cahaya:** panggil `kit.lights()` sekali di `createWorld` (matahari hangat + bayangan lembut + langit/pantulan tanah). Jangan menambah `AmbientLight`/`DirectionalLight` sendiri. `reach` = setengah lebar area yang perlu bayangan (default 16).
@@ -110,10 +112,11 @@ Standar kualitas (pelajaran dari video sebelumnya):
 - Frame **potret**: FOV 44, objek utama mengisi ≥ 50% lebar; diorama yang memanjang diputar agar memanjang ke arah kamera.
 - 1 shot ≈ 1–2 baris naskah (8–12 shot). Setiap shot punya gerak nyata (bukan still).
 - Callout menunjuk objek 3D (anchor), maks 3 per shot, varian `orange` untuk fokus, `red` untuk bahaya.
-- **Tidak boleh ada teks bertumpuk.** `Overlays.tsx` otomatis: label dijauhkan satu sama lain (jarak ≥ 16 px), tetap di bawah header/chip/CTA dan di atas zona caption (y < 1242); anchor di luar zona dipin ke tepi tanpa titik; label yang tetap tak muat disembunyikan. Jadi rancang anchor agar berada **di dalam zona** (antara bawah header dan y ≈ 1240) — kalau tidak, label bisa hilang atau garisnya menunjuk ke tepi. Caption: satu potongan (≤ 5 token; rangkaian angka tertulis yang dieja tidak dipecah, jadi bisa lebih dari 5 kata) per saat, tidak pernah dua sekaligus. Caption dua baris harus punya jarak antarbaris yang jelas (line-height 1.8 di `Overlays.tsx`, jangan dikecilkan).
+- **Tidak boleh ada teks bertumpuk.** `Overlays.tsx` otomatis: label dijauhkan satu sama lain (jarak ≥ 16 px), tetap di bawah header/chip/CTA dan di atas zona caption (y < 1242); anchor di luar zona dipin ke tepi tanpa titik; label yang tetap tak muat disembunyikan. Jadi rancang anchor agar berada **di dalam zona** (antara bawah header dan y ≈ 1240) — kalau tidak, label bisa hilang atau garisnya menunjuk ke tepi. Caption: satu potongan (≤ 3 token; rangkaian angka tertulis yang dieja tidak dipecah, jadi bisa lebih dari 3 kata) per saat, tidak pernah dua sekaligus. Caption dua baris harus punya jarak antarbaris yang jelas (card `inline-block`, line-height 1.32 di `Overlays.tsx`, jangan diubah).
 - Partikel kecil (r ≤ 0,05) di close-up; sembunyikan yang menghalangi kamera.
 - Diorama skematis (peta, jalur) diberi `tag: "ILUSTRASI"`.
-- Shot terakhir: aerial/orbit hangat + CTA.
+- Shot terakhir: aerial/orbit hangat, tanpa CTA; frame terakhirnya sebaiknya mendekati framing shot pertama agar loop mulus. Pergantian shot 3D otomatis diberi gerak kamera 0,3 dtk (tidak perlu diatur).
+- Ganti visual setiap 2–3 dtk: tiap shot (≈ 5 dtk) butuh minimal satu `focusOffset` cue atau peristiwa animasi di tengahnya.
 
 ## 7. Verifikasi sebelum render penuh
 

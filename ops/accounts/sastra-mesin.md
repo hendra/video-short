@@ -45,7 +45,7 @@ Jangan pakai brand channel lain dan jangan hilangkan `theme: "blueprint"`. Gate 
 
 ## Naskah
 
-- `src/videos/<slug>/naskah.txt`: format `NN  teks`, **13–15 baris**, **900–1.300 karakter** (≈ 60–85 detik pada suara `tutor-1` ~15 kar/dtk; verifikasi durasi akhir di `timeline.json` antara 60–90 dtk).
+- `src/videos/<slug>/naskah.txt`: format `NN  teks`, **10–14 baris**, **maksimal 130 kata** (`npm run tts` menolak naskah lebih panjang; verifikasi durasi akhir di `timeline.json` antara 45–55 dtk).
 - Bahasa Indonesia lisan yang ramah, jelas, penasaran — seperti teman berpengetahuan yang menjelaskan ke teman lain. Bukan ceramah kaku, bukan gaya anak-anak.
 - Kalimat pendek; **satu gagasan per kalimat**.
 - **Aturan istilah teknis:** jangan lempar istilah asing begitu saja. Jika istilah penting (mis. *kompresor*, *bimetal*, *magnet*):
@@ -53,7 +53,7 @@ Jangan pakai brand channel lain dan jangan hilangkan `theme: "blueprint"`. Gate 
   2. Jelaskan langsung maknanya dengan kata sederhana,
   3. Beri analogi benda sehari-hari yang akrab.
 - Angka ditulis dengan kata ("seratus derajat", "dua puluh empat milimeter").
-- Buka dengan **hook 2–3 detik** (pertanyaan atau pengamatan yang membuat penasaran tentang benda itu). Akhiri dengan **CTA singkat** di baris terakhir (mengajak penonton menebak benda berikutnya atau menulis di komentar).
+- Buka dengan **hook 2–3 detik** (pertanyaan atau pengamatan yang membuat penasaran tentang benda itu). Akhiri dengan **ending loop**, **tanpa CTA**: kalimat terakhir menggantung dan menyambung secara tata bahasa ke kalimat pertama, sehingga saat video berputar ulang terdengar utuh. `config.json` `tail` ≤ 0,3 dtk (gate CI).
 
 ## Scene 3D
 
@@ -92,7 +92,7 @@ Jangan pakai brand channel lain dan jangan hilangkan `theme: "blueprint"`. Gate 
 - Skema internal yang disederhanakan untuk kejelasan diberi `tag: "ILUSTRASI"` di shot terkait.
 - `label` di `shots.ts` berbentuk nomor langkah/komponen ringkas (mis. `"KOMPONEN 01"`, `"ALIRAN 02"`). `title` pendek dengan kata kunci di `*bintang*`.
 - Callout maksimal 3 per shot, `orange` untuk komponen bergerak/panas yang sedang disorot, `red` hanya untuk batas bahaya/gagal. Pastikan jangkar tidak tertutup judul atau takarir (antara bawah header dan y≈1240).
-- Caption: mengikuti aturan mesin (`≤ 5` token per potong, `line-height: 1.8`, jangan ubah posisi).
+- Caption: mengikuti aturan mesin (`≤ 3` token per potong, jangan ubah posisi).
 - Pastikan frame selalu fungsi murni dari `t` (tanpa `Math.random()`, `Date.now()`, atau state lintas frame). Render minimal satu still tiap shot yang sibuk dan periksa hasilnya sebelum render penuh.
 
 ## Batas isi

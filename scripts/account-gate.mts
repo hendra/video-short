@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ACCOUNTS, accountById, isAccountId } from "../src/accounts.ts";
-import { accountMusicProblems, accountProblems, aiLabsVideoProblems, brandProblems, sastraMesinVideoProblems } from "./account-core.mts";
+import { accountMusicProblems, accountProblems, aiLabsVideoProblems, brandProblems, loopTailProblem, sastraMesinVideoProblems } from "./account-core.mts";
 import { videoDir } from "./lib.mts";
 
 const args = process.argv.slice(2);
@@ -62,14 +62,12 @@ if (account.id === "sastra-mesin") {
 
 if (account.id === "ai-labs") {
   const shotsPath = [path.join(dir, "shots.tsx"), path.join(dir, "shots.ts")].find((p) => fs.existsSync(p));
-  const naskahPath = path.join(dir, "naskah.txt");
   problems.push(
     ...aiLabsVideoProblems({
       indexSource,
       shotsSource: shotsPath ? fs.readFileSync(shotsPath, "utf8") : null,
       hasWorldFile: fs.existsSync(path.join(dir, "world.ts")),
       publishJson,
-      naskahText: fs.existsSync(naskahPath) ? fs.readFileSync(naskahPath, "utf8") : null,
     }),
   );
 }
@@ -79,8 +77,10 @@ if (!fs.existsSync(configPath)) {
   problems.push(`missing ${configPath}`);
 } else {
   try {
-    const configJson = JSON.parse(fs.readFileSync(configPath, "utf8")) as { music?: unknown };
+    const configJson = JSON.parse(fs.readFileSync(configPath, "utf8")) as { music?: unknown; tail?: unknown };
     problems.push(...accountMusicProblems(configJson, account.id));
+    const tailIssue = loopTailProblem(account, configJson.tail);
+    if (tailIssue) problems.push(tailIssue);
   } catch {
     problems.push(`${configPath}: not valid JSON`);
   }

@@ -2,12 +2,12 @@ import type { Word } from "../src/engine/types";
 
 export const normWord = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 
-// Caption chunks: punctuation phrases, max 5 tokens, spelled-out numbers never split internally.
+// Caption chunks: punctuation phrases, max 3 tokens, spelled-out numbers never split internally.
 const NUM = new Set([
   "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan",
   "sepuluh", "sebelas", "puluh", "belas", "ratus", "ribu", "juta", "seratus", "seribu",
 ]);
-const MAXW = 5;
+const MAXW = 3;
 const MAX_NUM_WORDS = 6;
 const MAX_LINE_CHARS = 46;
 const endsPhrase = (w: string) => /[,.:?!…]$/.test(w);
