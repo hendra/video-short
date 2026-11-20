@@ -62,3 +62,46 @@ describe("Kit mechanical builders", () => {
     assert.ok(tris < 20000, `mechanism uses ${tris} triangles, budget is 20000`);
   });
 });
+
+describe("Kit flow, cutaway and glow", () => {
+  test("flowDots advances along the curve and rate scales its speed", () => {
+    const kit = new Kit(new Group());
+    const dots = kit.flowDots([[0, 0, 0], [1, 0, 0], [2, 0, 0]], 6, "#7fe3c4", { speed: 0.5 });
+    const snap = () => Array.from(dots.instanceMatrix.array.slice(0, 16));
+    const before = snap();
+    dots.update(1, 1);
+    const normal = snap();
+    assert.notDeepEqual(before, normal);
+    for (const v of normal) assert.ok(Number.isFinite(v));
+    // rate is a pure scale of t: 0 puts every dot at its base phase, 2 runs twice as far. No cross-frame
+    // memory, so a paused flow means the caller stops advancing t (beat() ramps it), never a stored phase.
+    dots.update(1, 0);
+    assert.deepEqual(snap(), before);
+    dots.update(1, 2);
+    assert.notDeepEqual(snap(), normal);
+  });
+
+  test("cutaway slides parts open, hides them fully open, and returns to base when reopened", () => {
+    const kit = new Kit(new Group());
+    const shell = kit.box(0, 1, 0, 1, 0, 1, "#ccc");
+    kit.cutaway([shell], 0, [2, 0, 0]);
+    assert.equal(shell.position.x, 0.5);
+    assert.equal(shell.visible, true);
+    kit.cutaway([shell], 1, [2, 0, 0]);
+    assert.equal(shell.position.x, 2.5);
+    assert.equal(shell.visible, false);
+    kit.cutaway([shell], 0, [2, 0, 0]);
+    assert.equal(shell.position.x, 0.5, "reopening returns to the captured base position");
+    assert.equal(shell.visible, true);
+  });
+
+  test("glowMat returns a fresh material each call and never touches the cache", () => {
+    const kit = new Kit(new Group());
+    const a = kit.glowMat("#888", "#20C9C3");
+    const b = kit.glowMat("#888", "#20C9C3");
+    assert.notEqual(a, b);
+    a.emissiveIntensity = 0.9;
+    assert.notEqual(b.emissiveIntensity, 0.9);
+    assert.notEqual(kit.mat("#888"), a);
+  });
+});

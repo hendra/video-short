@@ -785,8 +785,7 @@ export class Kit {
     return { root, rotor };
   }
 
-  /** 3D vector arrow (force, heat, current, pressure). `setProgress(u)` grows it from `from` to `to`. */
-  arrow(from: Vec3, to: Vec3, m: string | Material, o: { r?: number; headR?: number; parent?: Object3D } = {}) {
+  /** 3D vector arrow (force, heat, current, pressure). `setProgress(u)` grows it from `from` to `to`. */  arrow(from: Vec3, to: Vec3, m: string | Material, o: { r?: number; headR?: number; parent?: Object3D } = {}) {
     const { r = 0.03, headR = 0.09, parent } = o;
     const dir = new Vector3(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
     const len = Math.max(1e-4, dir.length());
@@ -800,6 +799,66 @@ export class Kit {
     this.root.add(root);
     if (parent) parent.add(root);
     return { root, setProgress: (u: number) => (root.scale.y = clamp(u, 0, 1)) };
+  }
+
+  /**
+   * Particles flowing along a path (water, air, current, heat). `update(t, rate)` places them from the
+   * phase `t * speed * rate`, so a caller ramping `rate` with `beat(t, L(n))` speeds the flow up
+   * smoothly instead of jumping. One InstancedMesh: cheap on the CPU renderer.
+   */
+  flowDots(points: Vec3[], count: number, color: string, o: { r?: number; speed?: number; parent?: Object3D } = {}) {
+    const { r = 0.045, speed = 0.35, parent } = o;
+    const curve = this.curveOf(points);
+    const mesh = new InstancedMesh(
+      new SphereGeometry(r, 10, 8),
+      new MeshStandardMaterial({ color, roughness: 0.3, emissive: color, emissiveIntensity: 0.35 }),
+      count,
+    );
+    mesh.instanceMatrix.setUsage(DynamicDrawUsage);
+    mesh.frustumCulled = false;
+    mesh.castShadow = false;
+    this.root.add(mesh);
+    if (parent) parent.add(mesh);
+    const update = (t: number, rate = 1) => {
+      for (let i = 0; i < count; i++) {
+        const u = (i / count + t * speed * rate) % 1;
+        const p = curve.getPointAt((u + 1) % 1);
+        setInstance(mesh, i, p.x, p.y, p.z);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+    };
+    update(0, 0);
+    return Object.assign(mesh, { update });
+  }
+
+  /**
+   * Slide outer casings aside to reveal the inside. The base position is captured on the first call, so
+   * reopening (openU back to 0) returns every part exactly where it was built.
+   */
+  cutaway(parts: readonly Object3D[], openU: number, offset: Vec3) {
+    const u = clamp(openU);
+    for (const part of parts) {
+      let base = this.cutawayBase.get(part);
+      if (!base) {
+        base = [part.position.x, part.position.y, part.position.z];
+        this.cutawayBase.set(part, base);
+      }
+      part.position.set(base[0] + offset[0] * u, base[1] + offset[1] * u, base[2] + offset[2] * u);
+      part.visible = u < 0.99;
+    }
+  }
+
+  private cutawayBase = new WeakMap<Object3D, Vec3>();
+
+  /**
+   * Uncached emissive material for parts that light up while being explained. `mat()` caches by colour,
+   * so a pulsing part must never share one: drive `emissiveIntensity` from `pulse(t, L(n))` here.
+   */
+  glowMat(color: string, emissive: string, o: Surface | MeshStandardMaterialParameters = "matte") {
+    const { grain, ...preset } = typeof o === "string" ? SURFACES[o] : { ...SURFACES.matte, grain: false, ...o };
+    const m = new MeshStandardMaterial({ color, emissive, emissiveIntensity: 0, ...preset });
+    if (grain) m.map = grainTexture();
+    return m;
   }
 }
 
