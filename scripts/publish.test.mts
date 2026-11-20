@@ -6,7 +6,11 @@ import {
   cloudinarySign,
   extractBufferError,
   instagramInput,
+  dueAt,
+  isSlot,
   mapBufferPostNode,
+  postTiming,
+  slotFor,
   validatePublishJson,
   youtubeMetadata,
   youtubeSafe,
@@ -104,7 +108,7 @@ describe("youtubeMetadata", () => {
 
 describe("instagramInput", () => {
   test("builds a Buffer Reel payload sharing to feed with AI flag", () => {
-    const p = instagramInput("6afe07c2ece6dfde5f116be8", "https://cdn/v.mp4", "Caption #shorts");
+    const p = instagramInput("6afe07c2ece6dfde5f116be8", "https://cdn/v.mp4", "Caption #shorts", { mode: "shareNow" });
     assert.deepEqual(p, {
       channelId: "6afe07c2ece6dfde5f116be8",
       mode: "shareNow",
@@ -114,6 +118,36 @@ describe("instagramInput", () => {
       assets: [{ video: { url: "https://cdn/v.mp4" } }],
       metadata: { instagram: { type: "reel", shouldShareToFeed: true, isAiGenerated: true } },
     });
+  });
+  test("carries a customScheduled timing", () => {
+    const p = instagramInput("c", "u", "t", { mode: "customScheduled", dueAt: "2026-11-21T01:00:00.000Z" });
+    assert.equal(p.mode, "customScheduled");
+    assert.equal((p as { dueAt?: string }).dueAt, "2026-11-21T01:00:00.000Z");
+  });
+});
+
+describe("slot scheduling", () => {
+  test("slotFor picks the slot by WIB time, including the cron runs", () => {
+    assert.deepEqual(slotFor(new Date("2026-11-20T22:30:00Z")), { slot: "pagi", date: "2026-11-21" }); // 05:30 WIB
+    assert.deepEqual(slotFor(new Date("2026-11-21T03:30:00Z")), { slot: "siang", date: "2026-11-21" }); // 10:30
+    assert.deepEqual(slotFor(new Date("2026-11-21T10:30:00Z")), { slot: "malam", date: "2026-11-21" }); // 17:30
+  });
+  test("slotFor after the last slot rolls to next WIB day's pagi", () => {
+    assert.deepEqual(slotFor(new Date("2026-11-21T12:30:00Z")), { slot: "pagi", date: "2026-11-22" }); // 19:30
+  });
+  test("dueAt converts WIB air times to UTC; pagi has no YouTube", () => {
+    assert.equal(dueAt("pagi", "2026-11-21", "tiktok"), "2026-11-21T00:00:00.000Z");
+    assert.equal(dueAt("pagi", "2026-11-21", "youtube"), null);
+    assert.equal(dueAt("malam", "2026-11-21", "instagram"), "2026-11-21T13:00:00.000Z");
+    assert.equal(dueAt("siang", "2026-11-21", "youtube"), "2026-11-21T05:00:00.000Z");
+  });
+  test("postTiming falls back to shareNow once the air time passed", () => {
+    assert.deepEqual(postTiming("2026-11-21T00:00:00.000Z", new Date("2026-11-21T00:30:00Z")), { mode: "shareNow" });
+    assert.deepEqual(postTiming("2026-11-21T01:00:00.000Z", new Date("2026-11-21T00:30:00Z")), { mode: "customScheduled", dueAt: "2026-11-21T01:00:00.000Z" });
+  });
+  test("isSlot", () => {
+    assert.equal(isSlot("siang"), true);
+    assert.equal(isSlot("sore"), false);
   });
 });
 

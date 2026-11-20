@@ -60,10 +60,47 @@ export const extractBufferError = (body: any): string => {
   return `${d.__typename ?? "unknown"}: ${d.message ?? JSON.stringify(d)}`;
 };
 
+// ---------- Daily slots: one video per slot, aired per platform at fixed WIB times (Buffer free caps YouTube at 2/day).
+export type Slot = "pagi" | "siang" | "malam";
+export type Platform = "youtube" | "tiktok" | "instagram";
+export const SLOT_TIMES: Record<Slot, Partial<Record<Platform, string>>> = {
+  pagi: { tiktok: "07:00", instagram: "08:00" },
+  siang: { youtube: "12:00", tiktok: "13:00", instagram: "12:00" },
+  malam: { youtube: "19:00", tiktok: "19:00", instagram: "20:00" },
+};
+const SLOTS = Object.keys(SLOT_TIMES) as Slot[];
+const WIB_MS = 7 * 3_600_000; // UTC+7, no DST
+
+export const isSlot = (s: string): s is Slot => (SLOTS as string[]).includes(s);
+
+/** UTC ISO for a WIB "HH:MM" on WIB date YYYY-MM-DD. */
+const wibToIso = (date: string, hhmm: string): string => new Date(Date.parse(`${date}T${hhmm}:00Z`) - WIB_MS).toISOString();
+
+/** ISO UTC air time for a platform in a slot, or null when the slot skips that platform. */
+export const dueAt = (slot: Slot, date: string, platform: Platform): string | null => {
+  const t = SLOT_TIMES[slot][platform];
+  return t ? wibToIso(date, t) : null;
+};
+
+/** First slot whose earliest air time is still ahead of `now`; after the last one, next WIB day's pagi. */
+export const slotFor = (now: Date): { slot: Slot; date: string } => {
+  const today = new Date(now.getTime() + WIB_MS).toISOString().slice(0, 10);
+  for (const slot of SLOTS) {
+    const earliest = Object.values(SLOT_TIMES[slot]).sort()[0]!;
+    if (Date.parse(wibToIso(today, earliest)) > now.getTime()) return { slot, date: today };
+  }
+  return { slot: "pagi", date: new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10) };
+};
+
+export type PostTiming = { mode: "customScheduled"; dueAt: string } | { mode: "shareNow" };
+/** Schedule at the air time, or share now if it already passed (a slow run must not fail the publish). */
+export const postTiming = (due: string, now: Date): PostTiming =>
+  Date.parse(due) > now.getTime() ? { mode: "customScheduled", dueAt: due } : { mode: "shareNow" };
+
 /** Buffer CreatePostInput for an Instagram Reel shared to the main feed as well. */
-export const instagramInput = (channelId: string, videoUrl: string, caption: string) => ({
+export const instagramInput = (channelId: string, videoUrl: string, caption: string, timing: PostTiming) => ({
   channelId,
-  mode: "shareNow",
+  ...timing,
   schedulingType: "automatic",
   needsApproval: false,
   text: caption,

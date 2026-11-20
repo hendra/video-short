@@ -146,7 +146,7 @@ const yt = await bufferPost(ytInput);
 console.log(`youtube: ${yt.id} status=${yt.status} ${yt.externalLink ?? ""}`);
 const tt = await bufferPost(ttInput);
 console.log(`tiktok:  ${tt.id} status=${tt.status} ${tt.externalLink ?? ""}`);
-const ig = IG ? await bufferPost(instagramInput(IG, up.secure_url!, PUB.tiktokCaption)) : null;
+const ig = IG ? await bufferPost(instagramInput(IG, up.secure_url!, PUB.tiktokCaption, { mode: "shareNow" })) : null;
 if (ig) console.log(`instagram: ${ig.id} status=${ig.status} ${ig.externalLink ?? ""}`);
 
 // ---------- 3. Poll until all settle (max 5 min)
