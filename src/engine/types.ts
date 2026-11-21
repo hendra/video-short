@@ -102,4 +102,25 @@ export type VideoDefMotion = BaseVideoDef & {
   shots: (ctx: Ctx) => Record<string, MotionShotDef>;
 };
 
-export type VideoDef = VideoDef3D | VideoDefMotion;
+export type FootageShotDef = {
+  /** Small mono label above the title, e.g. "LANGKAH 1". */
+  label: string;
+  /** Title; wrap highlighted words in *asterisks*, use \n for a line break. */
+  title: string;
+  /** Small badge top-right under the brand, e.g. "ILUSTRASI". */
+  tag?: string;
+  chip?: (t: number) => ChipState | null;
+  /** Clip path inside public/, e.g. "<slug>/clips/03.mp4". */
+  clip: string;
+  /** Seconds into the clip where the shot starts (default 0). */
+  from?: number;
+  /** Clip length in seconds, from clips.json. */
+  clipDur: number;
+};
+
+export type VideoDefFootage = BaseVideoDef & {
+  mode: "footage";
+  shots: (ctx: Ctx) => Record<string, FootageShotDef>;
+};
+
+export type VideoDef = VideoDef3D | VideoDefMotion | VideoDefFootage;

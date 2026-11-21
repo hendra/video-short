@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { lineCoverage, motionProblems, snapshotMotion, snapshotWorld } from "./motion-gate-core.mts";
 import { readScript, videoDir } from "./lib.mts";
-import type { VideoDef } from "../src/engine/types";
+import type { VideoDef, VideoDef3D } from "../src/engine/types";
 
 const slug = process.argv[2];
 if (!slug) {
@@ -43,7 +43,7 @@ if (!video) {
   process.exit(1);
 }
 
-const world = video.mode === "motion" ? [] : snapshotWorld(video, video.timeline);
+const world = video.mode === "motion" ? [] : snapshotWorld(video as VideoDef3D, video.timeline);
 const motion = video.mode === "motion" ? snapshotMotion(video, video.timeline) : [];
 const problems = motionProblems({
   account: video.mode === "motion" ? "motion" : "3d",
