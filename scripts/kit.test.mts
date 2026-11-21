@@ -234,3 +234,44 @@ describe("Opsi C figure polish", () => {
     assert.ok(Math.abs(f.armR.rotation.z - 0.18) < 0.05);
   });
 });
+
+describe("Opsi C creatures (animal, bird, swimmer)", () => {
+  test("animal exposes head and tail pivots and builds all ear/horn/stripe/tail variants cleanly", () => {
+    const configs = [
+      { s: 1.8, color: "#5c5650", horns: true, tail: "panjang" as const },
+      { s: 1.4, color: "#e08a2e", tail: "panjang" as const, stripes: true },
+      { s: 0.9, color: "#b98a5a", ears: "runcing" as const },
+      { s: 1.0, color: "#e8dfd5", ears: "panjang" as const, tail: "pendek" as const },
+    ];
+    for (const o of configs) {
+      const root = new Group();
+      const kit = new Kit(root);
+      const a = kit.animal(0, 0, 0, o);
+      assert.ok(isGroup(a.root) && isGroup(a.head) && isGroup(a.tail));
+      assert.ok(a.tail.children.length >= 1, "animal tail pivot must hold tail geometry");
+      root.traverse((obj) => {
+        assert.ok(Number.isFinite(obj.position.x + obj.position.y + obj.position.z));
+        assert.ok(Number.isFinite(obj.rotation.x + obj.rotation.y + obj.rotation.z));
+      });
+    }
+  });
+
+  test("bird and swimmers (ikan, buaya) build multi-part geometry with finite transforms inside CPU triangle budget", () => {
+    const root = new Group();
+    const kit = new Kit(root);
+    const b = kit.bird(0, 1, 0, 0, { s: 1.2 });
+    const f = kit.swimmer(0, 0, 0, { kind: "ikan" });
+    const c = kit.swimmer(1, 0, 0, { kind: "buaya" });
+    kit.animal(-1, 0, 0, { horns: true, stripes: true, tail: "panjang" });
+    assert.ok(isGroup(b.wingL) && isGroup(b.wingR));
+    assert.ok(isGroup(f.tail) && isGroup(c.tail));
+    let tris = 0;
+    root.traverse((o) => {
+      assert.ok(Number.isFinite(o.position.x + o.position.y + o.position.z));
+      const g = (o as Mesh).geometry as { index?: { count: number } | null; attributes?: { position?: { count: number } } } | undefined;
+      if (!g?.attributes?.position) return;
+      tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
+    });
+    assert.ok(tris < 25000, `creatures use ${tris} triangles, budget is 25000`);
+  });
+});
