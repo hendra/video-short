@@ -121,9 +121,9 @@ export const ACCOUNTS: Record<AccountId, Account> = {
     label: "Upwayyy",
     brand: { prefix: "Up", accent: "wayyy" },
     buffer: {
-      orgId: "TODO_ORG",
-      youtubeChannelId: "TODO_YOUTUBE",
-      tiktokChannelId: "TODO_TIKTOK",
+      orgId: "6b0133b51b0e893dcb2b070c",
+      youtubeChannelId: "6b0133e2ece6dfde5f3ffc2f",
+      tiktokChannelId: "6b0176e5ece6dfde5f42e897",
     },
     youtubeCategoryId: "20",
     madeForKids: false,
