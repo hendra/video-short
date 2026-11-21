@@ -8,8 +8,8 @@ import { ACCOUNT_IDS, ACCOUNTS, DEFAULT_ACCOUNT, accountById, isAccountId, isCon
 const isPlaceholder = (v: string) => v.startsWith("TODO_");
 
 describe("account registry", () => {
-  test("holds exactly the four known accounts and defaults to Kali Aja", () => {
-    assert.deepEqual([...ACCOUNT_IDS], ["kali-aja", "ai-labs", "cerpenek", "sastra-mesin"]);
+  test("holds exactly the five known accounts and defaults to Kali Aja", () => {
+    assert.deepEqual([...ACCOUNT_IDS], ["kali-aja", "ai-labs", "cerpenek", "sastra-mesin", "upwayyy"]);
     assert.equal(DEFAULT_ACCOUNT, "kali-aja");
   });
 
@@ -85,6 +85,23 @@ describe("account registry", () => {
     assert.deepEqual(missingConfigFields(s), []);
     const others = [ACCOUNTS["kali-aja"], ACCOUNTS["ai-labs"], ACCOUNTS.cerpenek].flatMap((o) => Object.values(o.buffer));
     for (const id of Object.values(s.buffer)) assert.equal(others.includes(id), false, `buffer id ${id} belongs to another account`);
+  });
+
+  // Upwayyy: horror-game lore over Steam trailers. Buffer ids are placeholders until the user
+  // connects the channels, so it is registered but not publishable yet.
+  test("Upwayyy has its own identity and is not configured yet", () => {
+    const u = ACCOUNTS.upwayyy;
+    assert.equal(u.label, "Upwayyy");
+    assert.deepEqual(u.brand, { prefix: "Up", accent: "wayyy" });
+    assert.equal(u.youtubeCategoryId, "20");
+    assert.equal(u.madeForKids, false);
+    assert.equal(u.tts.voice, "id-id-podcaster-1");
+    assert.equal(u.agent.model, "opencode/deepseek-v4.1-flash-free");
+    assert.deepEqual(u.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/upwayyy.md", "ops/topics/upwayyy.md"]);
+    assert.equal(isConfigured(u), false);
+    assert.deepEqual(missingConfigFields(u), ["buffer.orgId", "buffer.youtubeChannelId", "buffer.tiktokChannelId"]);
+    // TikTok is required like the other channels, not optional.
+    assert.ok(u.buffer.tiktokChannelId.startsWith("TODO_"));
   });
 
   test("a placeholder instagramChannelId counts as unconfigured", () => {
