@@ -1,7 +1,7 @@
 /**
  * Fetch official Steam trailer footage for a video, cut into short silent clips.
  *   npm run footage -- <slug> --appid <id> [--min 8]
- * Writes public/<slug>/clips/NN.mp4 (1080 wide, H.264, no audio) and public/<slug>/clips.json.
+ * Writes public/<slug>/clips/NN.mp4 (up to 1080p, H.264, no audio) and public/<slug>/clips.json.
  * Everything is staged in public/<slug>/.clips.tmp (same device, so the swap is a rename); public/<slug>/clips is only replaced once enough clips exist.
  */
 import { spawnSync } from "node:child_process";
@@ -9,11 +9,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { publicDir } from "./lib.mts";
-import { type ClipPlan, type SteamMovie, parseSceneCuts, parseSteamMovies, planClips } from "./footage-core.mts";
+import { type ClipPlan, type SteamMovie, clipEncodeArgs, hasNvencEncoder, parseSceneCuts, parseSteamMovies, planClips } from "./footage-core.mts";
 
 /** Steam trailer scenes are cut at ~0.3; download errors still exit 0, so check the file exists. */
 const SCENE_THRESHOLD = 0.3;
 const TRIED_TRAILERS = 3;
+const STEAM_TIMEOUT_MS = 30_000;
 
 const run = (cmd: string, args: string[]) => {
   const r = spawnSync(cmd, args, { encoding: "utf8" });
@@ -36,10 +37,11 @@ const duration = (file: string): number => {
 const sceneCuts = (file: string): number[] =>
   parseSceneCuts(run("ffmpeg", ["-hide_banner", "-i", file, "-vf", `select='gt(scene,${SCENE_THRESHOLD})',showinfo`, "-an", "-f", "null", "-"]));
 
-const cutClips = (file: string, plans: ClipPlan[], dir: string): string[] =>
+const cutClips = (file: string, plans: ClipPlan[], dir: string, encode: string[]): string[] =>
   plans.map((p, i) => {
     const name = `${String(i + 1).padStart(2, "0")}.mp4`;
-    run("ffmpeg", ["-v", "error", "-y", "-ss", String(p.start), "-t", String(p.dur), "-i", file, "-an", "-vf", "scale=1080:-2", "-c:v", "libx264", "-crf", "20", "-pix_fmt", "yuv420p", path.join(dir, name)]);
+    // shortcut: scene detector keeps burned-in trailer title cards, upgrade with vision/OCR filter if needed
+    run("ffmpeg", ["-v", "error", "-y", "-ss", String(p.start), "-t", String(p.dur), "-i", file, "-an", ...encode, path.join(dir, name)]);
     return name;
   });
 
@@ -63,11 +65,15 @@ const main = async () => {
 
   // Staged inside public/<slug> so the final rename is same-device; removed on any failure.
   const outDir = path.join(publicDir(slug), "clips");
+  const clipsJson = path.join(publicDir(slug), "clips.json");
   const stage = path.join(publicDir(slug), ".clips.tmp");
   fs.rmSync(stage, { recursive: true, force: true });
   fs.mkdirSync(stage, { recursive: true });
+  const encode = clipEncodeArgs(hasNvencEncoder(spawnSync("ffmpeg", ["-hide_banner", "-encoders"], { encoding: "utf8" }).stdout ?? ""));
   try {
-    const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}&filters=movies`);
+    const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}&filters=movies`, {
+      signal: AbortSignal.timeout(STEAM_TIMEOUT_MS),
+    });
     if (!res.ok) throw new Error(`Steam appdetails HTTP ${res.status} for app ${appId}`);
     const movies = parseSteamMovies(await res.json(), appId).slice(0, TRIED_TRAILERS);
 
@@ -81,7 +87,7 @@ const main = async () => {
         const dir = path.join(stage, `trailer-${ti}`);
         fs.mkdirSync(dir);
         const plan = planClips(sceneCuts(src), duration(src), ti);
-        cutClips(src, plan, dir).forEach((file, i) => batch.push({ ...plan[i], file: path.join(dir, file) }));
+        cutClips(src, plan, dir, encode).forEach((file, i) => batch.push({ ...plan[i], file: path.join(dir, file) }));
         plans.push(...batch);
         fs.rmSync(src);
         console.log(`trailer ${movie.id} "${movie.name}": ${batch.length} clips`);
@@ -98,12 +104,26 @@ const main = async () => {
     fs.mkdirSync(fresh);
     for (const c of clips) fs.renameSync(c.src, path.join(fresh, c.file));
 
-    // Swap: keep the old dir until the fresh one is in place.
+    // Swap: stage the index too, keep the old dir and index until both are in place; restore on error.
+    const freshJson = path.join(stage, "clips.json");
+    fs.writeFileSync(freshJson, JSON.stringify(clips.map(({ file, dur, trailer, start }) => ({ file, dur, trailer, start }))));
     const old = path.join(stage, "old");
-    if (fs.existsSync(outDir)) fs.renameSync(outDir, old);
-    fs.renameSync(fresh, outDir);
+    const oldJson = path.join(stage, "clips.json.old");
+    const hadOld = fs.existsSync(outDir);
+    const hadOldJson = fs.existsSync(clipsJson);
+    try {
+      if (hadOld) fs.renameSync(outDir, old);
+      if (hadOldJson) fs.renameSync(clipsJson, oldJson);
+      fs.renameSync(fresh, outDir);
+      fs.renameSync(freshJson, clipsJson);
+    } catch (e) {
+      fs.rmSync(outDir, { recursive: true, force: true });
+      if (hadOld) fs.renameSync(old, outDir);
+      if (hadOldJson) fs.renameSync(oldJson, clipsJson);
+      throw e;
+    }
     fs.rmSync(old, { recursive: true, force: true });
-    fs.writeFileSync(path.join(publicDir(slug), "clips.json"), JSON.stringify(clips.map(({ file, dur, trailer, start }) => ({ file, dur, trailer, start }))));
+    fs.rmSync(oldJson, { force: true });
     console.log(`${clips.length} clips written to public/${slug}/clips and clips.json`);
   } catch (e) {
     console.error((e as Error).message);

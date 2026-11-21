@@ -42,3 +42,18 @@ export const planClips = (
 /** Scene change times from FFmpeg's `select=gt(scene,0.3),showinfo` stderr. */
 export const parseSceneCuts = (ffmpegStderr: string): number[] =>
   [...ffmpegStderr.matchAll(/pts_time:([\d.]+)/g)].map((m) => Number(m[1]));
+
+/**
+ * Clip output as ffmpeg args. Full 1080p-equivalent height is kept: 1920x1080 stays 1920x1080 and 4K
+ * is scaled to 1080p. NVENC is used when the local machine has it; CI falls back to libx264 CRF 16.
+ */
+export const clipEncodeArgs = (hasNvenc: boolean): string[] => [
+  "-vf",
+  "scale=-2:'min(1080,ih)'",
+  ...(hasNvenc
+    ? ["-c:v", "h264_nvenc", "-preset", "p5", "-cq", "16", "-pix_fmt", "yuv420p"]
+    : ["-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p"]),
+];
+
+/** True when this ffmpeg advertises the NVENC H.264 encoder. */
+export const hasNvencEncoder = (ffmpegEncodersOutput: string): boolean => ffmpegEncodersOutput.includes("h264_nvenc");

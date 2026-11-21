@@ -53,7 +53,7 @@ Urutannya **footage dulu, naskah belakangan**:
 4. Baca `public/<slug>/clips.json`. **Satu baris naskah = satu shot, minimal 8 shot**, supaya `L(n)` per shot dan `--min 8` sejalan. Satu klip untuk satu shot, **tidak boleh ada klip yang dipakai dua kali** dalam satu video (gate CI).
 5. **Klip panjang untuk baris panjang**, klip pendek untuk baris pendek. `clipDur` di `shots.ts` = `dur` klip itu dari `clips.json`. Pakai `from` kalau shot hanya butuh sebagian klip.
 6. Shot dengan `label` singkat, `title` pendek dengan kata kunci di `*bintang*`. `clip` berbentuk `"<slug>/clips/NN.mp4"` — path di dalam `public/`, tanpa `public/`.
-7. **Wajib ikat timing ke baris** dengan `L(n)` dari ctx (mis. di `chip` atau judul shot), karena gate `check-motion` menghitung cakupan baris. Minimal 70% baris harus terlihat terikat.
+7. **Wajib ikat timing ke baris** dengan `L(n)` dari ctx (mis. di `chip` atau judul shot), karena gate `check-motion` menghitung cakupan baris dengan regex atas teks sumber. Tulis `ctx.L(n)` **secara literal per shot** (`ctx.L(7)`), **bukan** di dalam loop/`.map` seperti `ctx.L(i + 1)` — regex tidak melihat indeks variabel, jadi loop memberi cakupan 0%. Minimal 70% baris harus terlihat terikat.
 8. Tidak ada `Math.random()` atau `Date.now()`.
 
 ## Batas isi
@@ -72,11 +72,11 @@ Urutannya **footage dulu, naskah belakangan**:
 - Alur: hook → peringatan spoiler → cerita sesuai sudut → satu reaksi jujur di tengah → penutup.
 - **Penutup loop, tanpa CTA**: kalimat terakhir menggantung secara tata bahasa dan menyambung ke baris pertama, supaya saat video berulang terdengar utuh. `config.json` `tail` ≤ 0,3 detik (gate CI).
 - Kata sehari-hari, kalimat pendek, satu gagasan per kalimat.
-- `index.ts`: tanpa `cta` (loop line sudah jadi penutup), `music: { src: "<slug>/music.wav", volume: 0.18 }`.
+- `index.ts`: tanpa `cta` (loop line sudah jadi penutup), `music: { src: "<slug>/music.wav", volume: 0.35 }`. `callouts` tidak dipakai di mode footage.
 
 ## Musik latar
 
-Di `src/videos/<slug>/config.json` **wajib** isi `"music"` sesuai suasana video — satu dari: `"mencekam"` (penyelidikan, ruang sepi), `"misteri"` (membongkar lore, teka-teki), `"klimaks"` (ending, konfrontasi, pengungkapan). Track ada di `public/upwayyy/music/<mood>.mp3`.
+Di `src/videos/<slug>/config.json` **wajib** isi `"music"` sesuai suasana video — satu dari: `"mencekam"` (penyelidikan, ruang sepi), `"misteri"` (membongkar lore, teka-teki), `"klimaks"` (ending, konfrontasi, pengungkapan). Track ada di `public/upwayyy/music/<mood>.mp3`. Dari hasil dengar, `"mencekam"` paling pas untuk kanal ini — jadikan pilihan utama.
 
 ## publish.json
 

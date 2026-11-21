@@ -5,7 +5,7 @@ Format baris: `- <slug>: <judul sudut> — appid <appId Steam> — rilis <YYYY-M
 
 Semua entri: rilis Steam **2025-05 atau lebih baru** (diperiksa lewat `api/appdetails` saat entri ditulis) dan punya minimal satu sumber yang benar-benar menceritakan plotnya. Satu game boleh dipakai lebih dari sekali dengan **sudut berbeda** dari `pick-format`; game + sudut sama ditolak gate duplikat.
 
-Aturan pakai: pilih entri yang belum tayang, jalankan `npm run footage -- <slug> --appid <appId>` dulu, lalu baca kedua URL dengan `WebFetch` sebelum menulis naskah. Tambah game baru hanya dari halaman toko/tag horor Steam (`https://store.steampowered.com/search/?tags=1667&sort_by=Released_DESC`) — jangan mengarang app id.
+Aturan pakai: pilih entri yang belum tayang, jalankan `npm run footage -- <slug> --appid <appId> --min <jumlah baris>` dulu, lalu baca kedua URL dengan `WebFetch` sebelum menulis naskah. Tambah game baru hanya dari halaman toko/tag horor Steam (`https://store.steampowered.com/search/?tags=1667&sort_by=Released_DESC`) — jangan mengarang app id.
 
 ## Horor naratif & survival horror
 
