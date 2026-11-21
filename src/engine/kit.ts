@@ -354,8 +354,8 @@ export class Kit {
       this.part(new TorusGeometry(0.074, 0.016, 10, 20), "#f5efe2", torso, [0, 0.38, 0.008], undefined, [Math.PI / 2, 0, 0]);
     }
     if (costume === "selempang") {
-      this.part(new BoxGeometry(0.085, 0.36, 0.024), trim, torso, [0.01, 0.2, 0.158], undefined, [0, 0, 0.62]);
-      this.part(new BoxGeometry(0.04, 0.18, 0.016), "#f4e7c8", torso, [0.13, 0.04, 0.168], undefined, [0, 0, 0.62]);
+      this.part(new BoxGeometry(0.076, 0.34, 0.024), trim, torso, [0.005, 0.195, 0.152], undefined, [0, 0, 0.62]);
+      this.part(new BoxGeometry(0.022, 0.34, 0.026), "#f4e7c8", torso, [0.005, 0.195, 0.153], undefined, [0, 0, 0.62]);
     } else if (costume === "rompi") {
       for (const sx of [-1, 1]) {
         this.part(new BoxGeometry(0.072, 0.29, 0.028), bottom, torso, [sx * 0.072, 0.19, 0.142], undefined, [0, 0, -sx * 0.08]);
@@ -376,10 +376,10 @@ export class Kit {
     }
 
     const arm = (sx: number) => {
-      const g = this.pivot(root, [sx * 0.155, 0.7, 0]);
+      const g = this.pivot(root, [sx * 0.148, 0.67, 0]);
       g.rotation.z = sx * 0.18;
-      this.part(new CapsuleGeometry(0.042, 0.2, 6, 12), top, g, [0, -0.11, 0]);
-      this.part(new SphereGeometry(0.046, 14, 10), skin, g, [0, -0.24, 0]);
+      this.part(new CapsuleGeometry(0.042, 0.18, 6, 12), top, g, [0, -0.105, 0]);
+      this.part(new SphereGeometry(0.046, 14, 10), skin, g, [0, -0.225, 0]);
       return g;
     };
     const armL = arm(-1), armR = arm(1);
@@ -393,11 +393,11 @@ export class Kit {
     this.face(head, hc, r, { blush: true, brows: true, child: age === "anak", eyesTo: blink });
 
     if (headwear === "kerudung") {
-      this.part(new SphereGeometry(r * 1.04, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.44), "#efe6d6", head, [0, 0.018, -0.015], [0.97, 1.02, 0.98], [-0.45, 0, 0]);
-      this.part(new SphereGeometry(r * 1.11, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.58), top, head, [0, 0.015, -0.032], [0.98, 1.06, 1.04], [-0.62, 0, 0]);
-      this.part(new TorusGeometry(r * 0.88, 0.038, 10, 22, Math.PI * 1.15), top, head, [0, -0.065, 0.045], [0.96, 0.94, 0.88], [0.68, 0, -Math.PI * 0.075]);
-      this.part(new CylinderGeometry(0.145, 0.19, 0.22, 20), top, torso, [0.015, 0.26, 0.018], [1.0, 1.0, 0.88], [0.12, 0, -0.22]);
-      this.part(new ConeGeometry(0.175, 0.38, 18), top, torso, [-0.015, 0.22, -0.055], [1.0, 1.0, 0.6], [-0.14, 0, 0.06]);
+      this.part(new SphereGeometry(r * 1.03, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.48), "#efe6d6", head, [0, 0.02, -0.005], [0.97, 1.02, 0.98], [-0.38, 0, 0]);
+      this.part(new SphereGeometry(r * 1.12, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.6), top, head, [0, 0.018, -0.028], [0.99, 1.06, 1.04], [-0.56, 0, 0]);
+      this.part(new TorusGeometry(r * 0.82, 0.036, 10, 22, Math.PI * 1.15), top, head, [0, -0.07, 0.02], [0.98, 0.95, 0.92], [-0.55, 0, Math.PI * 0.925]);
+      this.part(new CylinderGeometry(0.128, 0.165, 0.18, 20), top, torso, [0.01, 0.27, 0.025], [0.95, 1.0, 0.85], [0.12, 0, -0.18]);
+      this.part(new ConeGeometry(0.165, 0.36, 18), top, torso, [-0.01, 0.22, -0.055], [0.98, 1.0, 0.6], [-0.14, 0, 0.06]);
     } else {
       this.part(new SphereGeometry(r * 1.065, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), hair, head, [0, 0.012, -0.022], [0.98, 1.04, 1.03], [-0.55, 0, 0]);
       this.part(new SphereGeometry(r * 0.72, 16, 10), hair, head, [0, -0.07, -0.085], [1.1, 0.85, 0.85]);
