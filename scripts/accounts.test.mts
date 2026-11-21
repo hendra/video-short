@@ -87,9 +87,7 @@ describe("account registry", () => {
     for (const id of Object.values(s.buffer)) assert.equal(others.includes(id), false, `buffer id ${id} belongs to another account`);
   });
 
-  // Upwayyy: horror-game lore over Steam trailers. Buffer ids are placeholders until the user
-  // connects the channels, so it is registered but not publishable yet.
-  test("Upwayyy has its own identity and is not configured yet", () => {
+  test("Upwayyy is fully configured with its own Buffer org and channels", () => {
     const u = ACCOUNTS.upwayyy;
     assert.equal(u.label, "Upwayyy");
     assert.deepEqual(u.brand, { prefix: "Up", accent: "wayyy" });
@@ -98,10 +96,17 @@ describe("account registry", () => {
     assert.equal(u.tts.voice, "id-id-podcaster-1");
     assert.equal(u.agent.model, "opencode/deepseek-v4.1-flash-free");
     assert.deepEqual(u.agent.files, ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/upwayyy.md", "ops/topics/upwayyy.md"]);
-    assert.equal(isConfigured(u), false);
-    assert.deepEqual(missingConfigFields(u), ["buffer.orgId", "buffer.youtubeChannelId", "buffer.tiktokChannelId"]);
-    // TikTok is required like the other channels, not optional.
-    assert.ok(u.buffer.tiktokChannelId.startsWith("TODO_"));
+    assert.deepEqual(u.buffer, {
+      orgId: "6b0133b51b0e893dcb2b070c",
+      youtubeChannelId: "6b0133e2ece6dfde5f3ffc2f",
+      tiktokChannelId: "6b0176e5ece6dfde5f42e897",
+    });
+    assert.equal(isConfigured(u), true);
+    assert.deepEqual(missingConfigFields(u), []);
+    const others = [ACCOUNTS["kali-aja"], ACCOUNTS["ai-labs"], ACCOUNTS.cerpenek, ACCOUNTS["sastra-mesin"]].flatMap((o) =>
+      Object.values(o.buffer),
+    );
+    for (const id of Object.values(u.buffer)) assert.equal(others.includes(id), false, `buffer id ${id} belongs to another account`);
   });
 
   test("a placeholder instagramChannelId counts as unconfigured", () => {

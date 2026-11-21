@@ -115,7 +115,9 @@ jobs:
       - name: Publish slot
         id: slot
         shell: bash # pipefail: a failing slot.mts must fail here, not hours later in publish
-        run: npx tsx scripts/slot.mts | tee -a "$GITHUB_OUTPUT"
+        env:
+          ACCOUNT: ${{ inputs.account || github.event.client_payload.account || 'kali-aja' }}
+        run: npx tsx scripts/slot.mts --account "$ACCOUNT" | tee -a "$GITHUB_OUTPUT"
 
       # Resolve the account: sets ACCOUNT, ACCOUNT_LABEL, BRAND_LINE, YOUTUBE_CATEGORY_ID,
       # AGENT_MODEL, AGENT_FILES, AGENT_PROMPT, CATALOG_PATH. Fails fast — before the agent and
