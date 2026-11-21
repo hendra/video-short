@@ -20,6 +20,15 @@ Aturan pakai: pilih entri yang belum tayang, jalankan `npm run footage -- <slug>
 - dementium-the-ward: William Redmoor bangun di bangsal tanpa ingatan, dan dokternya punya rencana — appid 3909960 — rilis 2025-10 — https://en.wikipedia.org/wiki/Dementium:_The_Ward
 - dementium-ii: kartu pos dari dirinya sendiri dan rumah sakit yang berubah di antara dua dunia — appid 5342930 — rilis 2026-10 — https://en.wikipedia.org/wiki/Dementium_II
 - dummy-house: ruang riset tertutup, "Experiment Nights", dan makhluk yang meniru manusia di kegelapan — appid 3681450 — rilis 2026-11 — https://thecrossover.studio https://store.steampowered.com/app/3681450
+- house-2: Tabby, kutukan yang ikut pindah rumah, dan loop yang tak mau berhenti — appid 2586440 — rilis 2026-08 — https://tvtropes.org/pmwiki/pmwiki.php/VideoGame/House2020 https://www.gamespress.com/HOUSE-2-LAUNCHES-AUGUST-28TH
+
+## Catatan per entri
+
+`dementium-ii`: sumbernya plot game DS aslinya (2010); rilis 2026 memakai cerita yang sama, jadi pakai sudut yang tidak bergantung pada detail baru. Kalau butuh detail versi 2026, baca juga halaman Steam-nya.
+
+`vampire-the-masquerade-oaths-ashes`: visual novel bercabang — lebih cocok untuk sudut `lore-recap` atau `character-story` daripada `ending-explained` (banyak ending, tidak ada satu kanon).
+
+`dummy-house`: sumbernya baru premis (belum ada artikel cerita/ending yang terbit), jadi cocok untuk sudut `lore-recap` saja; kalau tidak cukup, ganti game.
 
 ## Horor aksi, remake, dan horor unik
 

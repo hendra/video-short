@@ -39,7 +39,7 @@ Jangan pakai brand channel lain dan jangan ganti `mode`. Jangan set `theme` — 
 2. **Baca katalog video yang sudah tayang** (path ada di prompt run). Pilih game + sudut yang belum pernah dipakai.
 3. **Game "baru" = rilis di Steam dalam 12–18 bulan terakhir** dan punya ringkasan cerita yang bisa dibaca (wiki/Fandom, artikel "story/ending explained" dari media game, halaman resmi). Game lama atau belum rilis boleh, tetapi bukan format utama.
 4. Kamu **boleh menambah game baru** di luar backlog kalau baru rilis dan punya halaman Steam serta sumber cerita yang bisa di-fetch. Cari lewat halaman toko/tag horor Steam dengan `WebFetch` (mis. `https://store.steampowered.com/search/?tags=1667&sort_by=Released_DESC`). Jangan mengarang app id.
-5. **Baca sumbernya** dengan `WebFetch` sebelum menulis naskah. Nama tokoh, peristiwa, dan akhir cerita hanya boleh yang ada di sumber. Teori penggemar disebut sebagai teori ("teorinya…"). Sumber tidak terjangkau atau ceritanya tipis → ganti game.
+5. **Baca sumbernya** dengan `WebFetch` sebelum menulis naskah. Nama tokoh, peristiwa, dan akhir cerita hanya boleh yang ada di sumber. Teori penggemar disebut sebagai teori ("teorinya…"). Sumber tidak terjangkau atau ceritanya tipis → ganti game, **maksimal 3 percobaan ganti game, lalu berhenti non-zero** (sama seperti jalur footage).
 6. Jangan panggil WebSearch — tool itu tidak ada di runner ini.
 7. **Sisa game + sudut yang belum terpakai habis → berhenti dan lapor** (jangan mengarang).
 
@@ -47,10 +47,10 @@ Jangan pakai brand channel lain dan jangan ganti `mode`. Jangan set `theme` — 
 
 Urutannya **footage dulu, naskah belakangan**:
 
-1. Pilih game dari backlog, lalu jalankan **`npm run footage -- <slug> --appid <appId>`** (default minimal 8 klip; turunkan `--min` kalau naskahnya lebih pendek). Ini **sebelum menulis naskah**, karena tanpa klip yang cukup tidak ada video.
+1. Pilih game dari backlog, tentukan dulu **jumlah baris naskah** (10–14), lalu jalankan **`npm run footage -- <slug> --appid <appId> --min <jumlah baris>`** (minimal 8). Ini **sebelum menulis naskah**, karena tanpa klip yang cukup tidak ada video. Kalau naskah akhirnya lebih panjang dari klip, jalankan ulang dengan `--min` lebih besar.
 2. Perintah itu mengunduh trailer resmi Steam, memotongnya jadi klip pendek **tanpa audio** (`-an`) di `public/<slug>/clips/NN.mp4`, dan menulis indeksnya di `public/<slug>/clips.json` (`[{ file, dur, trailer, start }]`). Hanya trailer Steam — jangan unduh dari YouTube atau upload pihak ketiga.
 3. Gagal (keluar non-zero, klip kurang) → **ganti game dan ulangi langkah 1, maksimal 3 game**. Ketiganya gagal → berhenti dan keluar non-zero.
-4. Baca `public/<slug>/clips.json`. Satu klip untuk satu shot, **tidak boleh ada klip yang dipakai dua kali** dalam satu video (gate CI).
+4. Baca `public/<slug>/clips.json`. **Satu baris naskah = satu shot, minimal 8 shot**, supaya `L(n)` per shot dan `--min 8` sejalan. Satu klip untuk satu shot, **tidak boleh ada klip yang dipakai dua kali** dalam satu video (gate CI).
 5. **Klip panjang untuk baris panjang**, klip pendek untuk baris pendek. `clipDur` di `shots.ts` = `dur` klip itu dari `clips.json`. Pakai `from` kalau shot hanya butuh sebagian klip.
 6. Shot dengan `label` singkat, `title` pendek dengan kata kunci di `*bintang*`. `clip` berbentuk `"<slug>/clips/NN.mp4"` — path di dalam `public/`, tanpa `public/`.
 7. **Wajib ikat timing ke baris** dengan `L(n)` dari ctx (mis. di `chip` atau judul shot), karena gate `check-motion` menghitung cakupan baris. Minimal 70% baris harus terlihat terikat.
@@ -95,7 +95,7 @@ Di `src/videos/<slug>/config.json` **wajib** isi `"music"` sesuai suasana video 
 
 - `account` wajib `"upwayyy"` (gate CI menolak kalau beda).
 - `title` ≤ 100 karakter, tanpa `<` dan `>`, menyebut game + sudutnya dengan kata-kata sendiri; jangan clickbait kosong.
-- `description`: 2 kalimat ringkas + **wajib** baris kredit **`Cuplikan: trailer resmi <Game> (Steam). Suara: AI (Google AI Studio).`** + `Sumber: <URL sumber yang dibaca>` + `#shorts` + 4–6 hashtag (mis. `#horrorgame #gaming #upwayyy`).
+- `description`: 2–3 kalimat ringkas + **wajib** baris kredit **`Cuplikan: trailer resmi <Game> (Steam). Suara: AI (Google AI Studio).`** + `Sumber: <URL sumber yang dibaca>` + `#shorts` + 4–6 hashtag (mis. `#horrorgame #gaming #upwayyy`).
 - `tiktokTitle` ≤ 90 karakter (hook saja), `tiktokCaption` seperti description.
 - `catatan` diawali `format: <id>;` dari `pick-format`.
 

@@ -243,7 +243,7 @@ const snippetBlocks = (text: string): string[] =>
 describe("brief TypeScript snippets are copy-paste safe", () => {
   test("no choreography snippet declares an unused local (root tsconfig sets noUnusedLocals)", () => {
     const NEW_HELPERS = /\b(beat|pulse|between|stepIndex|flowPhase|focusOffset|poseFigure)\b/;
-    for (const p of ["docs/AUTOPILOT.md", "ops/accounts/sastra-mesin.md", "ops/accounts/cerpenek.md", "ops/accounts/ai-labs.md"]) {
+    for (const p of ["docs/AUTOPILOT.md", "ops/accounts/sastra-mesin.md", "ops/accounts/cerpenek.md", "ops/accounts/ai-labs.md", "ops/accounts/upwayyy.md"]) {
       const text = fs.readFileSync(path.join(ROOT, p), "utf8");
       for (const block of snippetBlocks(text).filter((b) => NEW_HELPERS.test(b))) {
         const declared = [...block.matchAll(/^\s*const (\w+)\s*=/gm)].map((m) => m[1]);
@@ -262,7 +262,7 @@ describe("brief TypeScript snippets are copy-paste safe", () => {
       for (const m of src.matchAll(/export (?:const|function|type|class) (\w+)/g)) engineExports.add(m[1]);
     }
     const ALLOWED = new Set(["t", "ctx", "L", "Kit", "kit", "poseFigure", "beat", "pulse", "between", "stepIndex", "flowPhase", "focusOffset", "keyframes", "Vec3", "CamPose", "BentoItem", "BeatCallout", "BentoGrid", "TerminalCard", "MetricPanel", "NodeFlow", "PromptCard", "ComparisonSplit", "IllustrationStage", "anak", "cards", "base", "pose", "mode", "on", "hi", "openU", "step", "box", "mat", "root", "shot", "import", "from"]);
-    for (const p of ["docs/AUTOPILOT.md", "ops/accounts/sastra-mesin.md", "ops/accounts/cerpenek.md", "ops/accounts/ai-labs.md"]) {
+    for (const p of ["docs/AUTOPILOT.md", "ops/accounts/sastra-mesin.md", "ops/accounts/cerpenek.md", "ops/accounts/ai-labs.md", "ops/accounts/upwayyy.md"]) {
       const text = fs.readFileSync(path.join(ROOT, p), "utf8");
       for (const block of snippetBlocks(text)) {
         for (const m of block.matchAll(/\b(base|shot)\(/g)) {

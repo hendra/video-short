@@ -11,7 +11,7 @@ Your task: produce a **complete new vertical Short** (3D explainer, motion-graph
 - Follow `AGENTS.md` and the **per-account instruction files this prompt lists** (for Kali Aja: `docs/AUTOPILOT.md`; for AI Labs: `ops/accounts/ai-labs.md` + `ops/topics/ai-labs.md`; for Cerpenek: `ops/accounts/cerpenek.md` + `ops/topics/cerpenek.md`; for Sastra Mesin: `ops/accounts/sastra-mesin.md` + `ops/topics/sastra-mesin.md`; for Upwayyy: `ops/accounts/upwayyy.md` + `ops/topics/upwayyy.md`). Where an account brief states a different script length, scene rule, CTA or description line than this file, the account brief wins. Do not import rules from another account's brief — channel voice, brand and limits differ per account.
 - You MAY create/edit only files under `src/videos/<your-slug>/` and register the video in `src/videos/registry.ts`.
 - You MUST produce, before stopping:
-  1. `src/videos/<slug>/naskah.txt` (13–16 lines, `NN  text`, 1.100–1.400 chars; narrative format from `pick-format`, not the old fixed mystery/hook pattern). Account briefs may override the line count; for `upwayyy` run `npm run footage -- <slug> --appid <appId>` **before** writing the script.
+  1. `src/videos/<slug>/naskah.txt` (`NN  text`; narrative format from `pick-format`, not the old fixed mystery/hook pattern). Length is per account: 3D/motion accounts 13–16 lines, 1.100–1.400 chars; **`upwayyy`: 10–14 lines, no char target, ≤130 words — see its brief**. For `upwayyy` run `npm run footage -- <slug> --appid <appId>` **before** writing the script.
   2. `src/videos/<slug>/config.json` (shots list, tail)
   3. For 3D channels (`kali-aja`, `cerpenek`, `sastra-mesin`): `src/videos/<slug>/state.ts`, `world.ts`, `shots.ts`, `index.ts`. For `mode: "motion"` (`ai-labs`): `src/videos/<slug>/shots.tsx` and `index.ts` (without `world.ts` or `state.ts`). For `mode: "footage"` (`upwayyy`): `src/videos/<slug>/shots.ts` and `index.ts` (without `world.ts` or `state.ts`), plus `public/<slug>/clips/` written by `npm run footage -- <slug> --appid <appId>`.
   4. `src/videos/<slug>/timeline.json` (via `npm run timeline -- <slug>`)
@@ -20,7 +20,7 @@ Your task: produce a **complete new vertical Short** (3D explainer, motion-graph
      `{ "account": "<account-id>", "title": "...", "description": "...", "tiktokTitle": "...", "tiktokCaption": "...", "catatan": "..." }`
      - `account` **must equal the account id of this run** (the workflow refuses to publish a mismatch)
      - `title` ≤ 100 chars
-     - `description` (YouTube): ringkasan 2–3 kalimat + `Sumber: …` + `Animasi bersifat ilustrasi. Suara: AI (Google AI Studio).` + hashtag (`#shorts` + 5–6 topik). `upwayyy` uses `Cuplikan: trailer resmi <Game> (Steam). Suara: AI (Google AI Studio).` instead of the animasi line.
+     - `description` (YouTube): 2–3 kalimat ringkasan + `Sumber: …` + `Animasi bersifat ilustrasi. Suara: AI (Google AI Studio).` + hashtag (`#shorts` + 5–6 topik). For `upwayyy` the credit line differs (`Cuplikan: trailer resmi <Game> (Steam). Suara: AI (Google AI Studio).`) — follow its brief.
      - No `<` or `>` in `title` or `description` (YouTube rejects them) — write "lebih dari" / "kurang dari"
      - `tiktokTitle` ≤ 90 chars (hook only), `tiktokCaption` like description + `Suara: AI (Google AI Studio)`
      - `catatan`: start with `format: <id>;` from `pick-format`, followed by one short line (kept in the VM-local publish log only; not committed anywhere)
