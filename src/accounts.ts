@@ -9,7 +9,7 @@
  * Kept free of node imports so it can be imported from scripts and from src alike.
  */
 
-export type AccountId = "kali-aja" | "ai-labs" | "cerpenek" | "sastra-mesin";
+export type AccountId = "kali-aja" | "ai-labs" | "cerpenek" | "sastra-mesin" | "upwayyy";
 
 export type Account = {
   id: AccountId;
@@ -29,7 +29,7 @@ export type Account = {
   agent: { model: string; prompt: string; files: string[] };
 };
 
-export const ACCOUNT_IDS: readonly AccountId[] = ["kali-aja", "ai-labs", "cerpenek", "sastra-mesin"];
+export const ACCOUNT_IDS: readonly AccountId[] = ["kali-aja", "ai-labs", "cerpenek", "sastra-mesin", "upwayyy"];
 
 export const DEFAULT_ACCOUNT: AccountId = "kali-aja";
 
@@ -112,6 +112,27 @@ export const ACCOUNTS: Record<AccountId, Account> = {
       prompt:
         "You are in CI. Follow AGENTS.md and ops/ci-prompt.md exactly. Follow ops/accounts/sastra-mesin.md (channel brief) and ops/topics/sastra-mesin.md (topic backlog) — they are part of your instructions, they override ops/ci-prompt.md where they differ, and docs/AUTOPILOT.md does NOT apply to this channel. Stop before any publish/upload/render step.",
       files: ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/sastra-mesin.md", "ops/topics/sastra-mesin.md"],
+    },
+  },
+  // Upwayyy: horror-game lore Shorts over official Steam trailer footage. Buffer ids are placeholders
+  // until the user connects the channels; the `--require-configured` guard keeps publishing blocked.
+  upwayyy: {
+    id: "upwayyy",
+    label: "Upwayyy",
+    brand: { prefix: "Up", accent: "wayyy" },
+    buffer: {
+      orgId: "TODO_ORG",
+      youtubeChannelId: "TODO_YOUTUBE",
+      tiktokChannelId: "TODO_TIKTOK",
+    },
+    youtubeCategoryId: "20",
+    madeForKids: false,
+    tts: { voice: "id-id-podcaster-1", style: "santai, akrab, seperti teman gamer bercerita; serius saat cerita seram" },
+    agent: {
+      model: "opencode/deepseek-v4.1-flash-free",
+      prompt:
+        "You are in CI. Follow AGENTS.md and ops/ci-prompt.md exactly. Follow ops/accounts/upwayyy.md (channel brief) and ops/topics/upwayyy.md (topic backlog) — they are part of your instructions, they override ops/ci-prompt.md where they differ, and docs/AUTOPILOT.md does NOT apply to this channel. Stop before any publish/upload/render step.",
+      files: ["AGENTS.md", "ops/ci-prompt.md", "ops/accounts/upwayyy.md", "ops/topics/upwayyy.md"],
     },
   },
 };

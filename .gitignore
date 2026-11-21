@@ -13,6 +13,9 @@ public/*/music.wav
 public/*/.vo.mp3.*.tmp
 src/videos/*/.alignment.json.*.tmp
 
+# Steam trailer clips (scripts/fetch-footage.mts regenerates them)
+public/*/clips/
+
 # superpowers scratch (SDD workspace)
 .superpowers/
 
