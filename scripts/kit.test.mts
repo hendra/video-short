@@ -182,7 +182,7 @@ describe("poseFigure keeps the built arm splay", () => {
   test("arms keep their outward z-splay in every mode that does not override it", () => {
     const kit = new Kit(new Group());
     const f = kit.figure(0, 0, 0);
-    // Kit.figure builds the arms with rotation.z = ±0.22; poseFigure must reset onto the same axis
+    // Kit.figure builds the arms with rotation.z = ±0.18; poseFigure must reset onto the same axis
     for (const mode of ["talk", "wave", "point", "sad"] as const) {
       poseFigure(f, 1, mode, 1);
       assert.ok(Math.abs(f.armL.rotation.y) < 1e-9, `${mode}: left arm yawed to ${f.armL.rotation.y}`);
@@ -191,5 +191,46 @@ describe("poseFigure keeps the built arm splay", () => {
     poseFigure(f, 1, "sad", 1);
     assert.ok(f.armL.rotation.z < 0, `sad: left arm lost its outward splay (z=${f.armL.rotation.z})`);
     assert.ok(f.armR.rotation.z > 0, `sad: right arm lost its outward splay (z=${f.armR.rotation.z})`);
+  });
+});
+
+describe("Opsi C figure polish", () => {
+  test("all age, headwear, and costume combinations build with finite transforms and waist torso pivot", () => {
+    const ages = ["anak", "dewasa", "lansia"] as const;
+    const headwears = ["none", "caping", "mahkota", "ikat", "kerudung"] as const;
+    const costumes = ["none", "selempang", "rompi"] as const;
+    for (const age of ages) {
+      for (const headwear of headwears) {
+        for (const costume of costumes) {
+          const root = new Group();
+          const kit = new Kit(root);
+          const f = kit.figure(0, 0, 0, { age, headwear, costume });
+          assert.ok(f.torso.position.y >= 0.3, `torso pivot too low (${f.torso.position.y}) for ${age}/${headwear}`);
+          assert.ok(f.blink.children.length >= 4, `missing blink eyes for ${age}/${headwear}`);
+          assert.ok(Math.abs(f.armL.rotation.z + 0.18) < 1e-6 && Math.abs(f.armR.rotation.z - 0.18) < 1e-6);
+          root.traverse((o) => {
+            assert.ok(Number.isFinite(o.position.x + o.position.y + o.position.z));
+            assert.ok(Number.isFinite(o.rotation.x + o.rotation.y + o.rotation.z));
+          });
+        }
+      }
+    }
+  });
+
+  test("kerudung skirt stays on root while torso tilts cleanly around waist", () => {
+    const kit = new Kit(new Group());
+    const f = kit.figure(0, 0, 0, { headwear: "kerudung", costume: "selempang" });
+    poseFigure(f, 1, "sad", 1);
+    assert.ok(f.torso.rotation.x > 0, "sad pose should tilt torso at waist");
+    assert.equal(f.root.rotation.x, 0, "root must stay upright when torso tilts");
+  });
+
+  test("poseFigure resets idle arms to ±0.18 splay", () => {
+    const kit = new Kit(new Group());
+    const f = kit.figure(0, 0, 0);
+    poseFigure(f, 0, "talk", 1);
+    poseFigure(f, 0, "idle", 1);
+    assert.ok(Math.abs(f.armL.rotation.z + 0.18) < 0.05);
+    assert.ok(Math.abs(f.armR.rotation.z - 0.18) < 0.05);
   });
 });
