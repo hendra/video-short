@@ -274,4 +274,48 @@ describe("Opsi C creatures (animal, bird, swimmer)", () => {
     });
     assert.ok(tris < 25000, `creatures use ${tris} triangles, budget is 25000`);
   });
+
+  test("animal smile tube sits flush on muzzle surface rather than buried inside", () => {
+    const kit = new Kit(new Group());
+    const a = kit.animal(0, 0, 0);
+    let smileMaxZ = -Infinity;
+    a.head.traverse((o) => {
+      const m = o as Mesh;
+      if (!isMesh(m)) return;
+      const g = m.geometry as { type?: string; attributes?: { position?: { count: number; getZ: (i: number) => number } } };
+      if (g?.type === "TubeGeometry" && g.attributes?.position) {
+        for (let i = 0; i < g.attributes.position.count; i++) {
+          smileMaxZ = Math.max(smileMaxZ, g.attributes.position.getZ(i));
+        }
+      }
+    });
+    // Muzzle center is z=0.13 with Z radius 0.0684 (front at z=0.1984); smile must sit near front surface (>= 0.194)
+    assert.ok(smileMaxZ >= 0.194, `animal smile max Z (${smileMaxZ.toFixed(4)}) is buried inside muzzle`);
+  });
+
+  test("ikan eyes sit outward along the fish cheek without clipping inside the body", () => {
+    const kit = new Kit(new Group());
+    const f = kit.swimmer(0, 0, 0, { kind: "ikan" });
+    const eyeWorldXs: number[] = [];
+    f.root.traverse((o) => {
+      const m = o as Mesh;
+      if (!isMesh(m)) return;
+      // Eye groups/meshes sit around y ~ 0.195; find pupil/dot front positions in root space
+      if (o.parent !== f.root && o.parent?.parent === f.root) {
+        const rx = o.parent.position.x + o.position.x;
+        eyeWorldXs.push(Math.abs(rx));
+      }
+    });
+    assert.ok(eyeWorldXs.some((x) => x >= 0.075), `ikan eyes sit too close to centerline (${eyeWorldXs.join(", ")})`);
+  });
+
+  test("poseFigure walk never swings arms inward past vertical into the torso", () => {
+    const kit = new Kit(new Group());
+    const f = kit.figure(0, 0, 0);
+    for (let i = 0; i < 40; i++) {
+      poseFigure(f, i * 0.05, "walk", 1);
+      assert.ok(f.armL.rotation.z < 0, `walk frame ${i}: armL crossed into torso (z=${f.armL.rotation.z})`);
+      assert.ok(f.armR.rotation.z > 0, `walk frame ${i}: armR crossed into torso (z=${f.armR.rotation.z})`);
+    }
+  });
 });

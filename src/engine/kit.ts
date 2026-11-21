@@ -766,12 +766,18 @@ export class Kit {
     this.part(new SphereGeometry(0.118, 20, 14), color, head, [0, 0.05, 0.03], [1.02, 0.96, 1.04]);
     this.part(new SphereGeometry(0.072, 16, 12), belly, head, [0, 0.01, 0.13], [1.08, 0.78, 0.95]);
     this.part(new SphereGeometry(0.024, 12, 10), horns ? "#3b332e" : "#2e221d", head, [0, 0.035, 0.195], [1.2, 0.85, 0.8]);
-    const smilePts = [
-      new Vector3(-0.036, -0.003, 0.176),
-      new Vector3(0, -0.015, 0.186),
-      new Vector3(0.036, -0.003, 0.176),
-    ];
-    this.part(new TubeGeometry(new CatmullRomCurve3(smilePts), 8, 0.006, 5, false), "#4a2e23", head, [0, 0, 0]);
+    const smilePts: Vector3[] = [];
+    for (let i = -2; i <= 2; i++) {
+      const u = i / 2;
+      const mx = u * 0.034;
+      const my = -0.008 + u * u * 0.012;
+      // Project onto the [0.0778, 0.0562, 0.0684] muzzle ellipsoid at [0, 0.01, 0.13] so the full smile sits flush
+      const nx = mx / 0.0778;
+      const ny = (my - 0.01) / 0.0562;
+      const mz = 0.13 + 0.0684 * Math.sqrt(Math.max(0.05, 1 - nx * nx - ny * ny)) + 0.002;
+      smilePts.push(new Vector3(mx, my, mz));
+    }
+    this.part(new TubeGeometry(new CatmullRomCurve3(smilePts), 8, 0.0055, 5, false), "#4a2e23", head, [0, 0, 0]);
     for (const sx of [-1, 1]) {
       this.creatureEye(head, [sx * 0.056, 0.075, 0.125], 0.028, sx);
       if (ears === "runcing") {
@@ -863,7 +869,9 @@ export class Kit {
       this.part(new SphereGeometry(0.2, 22, 14), color, root, [0, 0.16, 0], [0.56, 0.78, 1.25]);
       this.part(new SphereGeometry(0.16, 16, 12), "#ffe3b8", root, [0, 0.1, 0.04], [0.52, 0.58, 1.05]);
       for (const sx of [-1, 1]) {
-        this.creatureEye(root, [sx * 0.068, 0.19, 0.18], 0.032, sx);
+        const eyeG = this.pivot(root, [sx * 0.078, 0.195, 0.165]);
+        eyeG.rotation.y = sx * 0.65;
+        this.creatureEye(eyeG, [0, 0, 0], 0.034, sx);
         this.part(new ConeGeometry(0.055, 0.11, 10), "#f7b259", root, [sx * 0.115, 0.13, 0.04], [0.35, 1, 0.8], [0, 0, -sx * 1.1]);
       }
       this.part(new CapsuleGeometry(0.022, 0.1, 4, 10), "#f7b259", root, [0, 0.32, -0.02], [0.45, 1, 1.4], [-0.4, 0, 0]);
@@ -1095,8 +1103,10 @@ export const poseFigure = (fig: FigureParts, t: number, mode: PoseMode, seed = 0
       const step = Math.sin(t * 6 + seed);
       fig.legL.rotation.x = step * 0.42;
       fig.legR.rotation.x = -step * 0.42;
-      fig.armL.rotation.z = -0.18 - step * 0.22;
-      fig.armR.rotation.z = 0.18 + step * 0.22;
+      fig.armL.rotation.x = -step * 0.3;
+      fig.armR.rotation.x = step * 0.3;
+      fig.armL.rotation.z = -0.18 - step * 0.11;
+      fig.armR.rotation.z = 0.18 + step * 0.11;
       fig.torso.rotation.x = -0.05;
       break;
     }
