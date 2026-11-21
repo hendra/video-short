@@ -50,6 +50,16 @@ Channel ketiga `cerpenek` (dongeng anak) sudah terkonfigurasi (ID Buffer + envir
 
 Channel keempat `sastra-mesin` (cara kerja benda sehari-hari, tema 3D `blueprint`) sudah terkonfigurasi dan masuk `ACCOUNTS` di `ops/cloudflare-cron/wrangler.toml` (deploy ulang worker dengan `npx wrangler deploy --config ops/cloudflare-cron/wrangler.toml` agar aktif di Cloudflare).
 
+### Channel kelima `upwayyy` — belum aktif, belum di cron
+
+`upwayyy` (lore game horor baru di atas cuplikan trailer Steam, `mode: "footage"`) sudah terdaftar di `src/accounts.ts` + `video.yml` dengan ID Buffer `TODO_`. Karena itu resolve akun gagal sampai siap. Urutan setup:
+
+1. Sambungkan YouTube **dan** TikTok Upwayyy ke Buffer, ambil org id + kedua channel id, isi `buffer` di `src/accounts.ts` (ganti semua `TODO_`).
+2. Buat GitHub Environment `upwayyy`, isi secret Buffer/Cloudinary/`GEMINI_API_KEY` untuk channel ini (repo secrets tetap jadi fallback).
+3. Taruh tiga track Suno milik user di `public/upwayyy/music/mencekam.mp3`, `misteri.mp3`, `klimaks.mp3` (di-commit seperti track channel lain; lisensi monetisasi butuh paket Suno berbayar saat dibuat).
+4. Uji lewat `gh workflow run video-run --ref main -f account=upwayyy -f dry_run=true` sampai satu video utuh keluar. `npm run footage` butuh `ffmpeg` — sudah dipasang preflight CI.
+5. **Baru setelah itu** tambahkan `upwayyy` ke `ACCOUNTS` di `ops/cloudflare-cron/wrangler.toml` lalu deploy worker. Sebelum itu channel ini hanya jalan manual.
+
 ⚠️ Dispatch manual **tanpa `dry_run` adalah live run** — video akan benar-benar diposting ke YouTube + TikTok. Untuk rehearsal, pakai `-f dry_run=true` (lihat bawah). Video untuk `account=ai-labs` butuh isi `accounts.ts` (ID Buffer AI Labs — sudah terisi) dan environment `ai-labs` (sudah terpasang).
 
 Render+publish video yang **sudah di-commit & push ke main** (mis. video yang kamu bangun sendiri, tanpa agent):

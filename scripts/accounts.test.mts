@@ -138,8 +138,7 @@ describe("account registry", () => {
   });
 
   test("every agent instruction file exists on disk", () => {
-    // upwayyy's ops/accounts + ops/topics files are written by a later task (channel brief + backlog).
-    for (const id of ACCOUNT_IDS.filter((i) => i !== "upwayyy")) {
+    for (const id of ACCOUNT_IDS) {
       for (const file of ACCOUNTS[id].agent.files) {
         assert.ok(fs.existsSync(path.join(ROOT, file)), `account ${id} references missing file ${file}`);
       }
